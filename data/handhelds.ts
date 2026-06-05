@@ -19,7 +19,7 @@ export const handhelds: Handheld[] = [
     battery: "40 Wh",
     weight: "608 g",
 
-    image: "/images/handhelds/rog-ally.jpg",
+    image: "/images/handhelds/rog-ally.png",
     tagline:
       "The original ASUS handheld that brought strong Windows gaming performance into a compact form.",
   },
@@ -41,7 +41,7 @@ export const handhelds: Handheld[] = [
     battery: "80 Wh",
     weight: "678 g",
 
-    image: "/images/handhelds/rog-ally-x.jpg",
+    image: "/images/handhelds/rog-ally-x.png",
     tagline:
       "High-performance Windows handheld with strong battery life and broad game compatibility.",
   },
@@ -63,7 +63,7 @@ export const handhelds: Handheld[] = [
     battery: "60 Wh",
     weight: "670 g",
 
-    image: "/images/handhelds/rog-xbox-ally.jpg",
+    image: "/images/handhelds/rog-xbox-ally.png",
     tagline:
       "The accessible Xbox-flavoured Ally model focused on efficiency and console-like simplicity.",
   },
@@ -85,7 +85,7 @@ export const handhelds: Handheld[] = [
     battery: "80 Wh",
     weight: "715 g",
 
-    image: "/images/handhelds/rog-xbox-ally-x.jpg",
+    image: "/images/handhelds/rog-xbox-ally-x.png",
     tagline:
       "Xbox-focused handheld experience with a console-like layer on top of Windows.",
   },
@@ -107,7 +107,7 @@ export const handhelds: Handheld[] = [
     battery: "50 Wh",
     weight: "640 g",
 
-    image: "/images/handhelds/steam-deck-oled.jpg",
+    image: "/images/handhelds/steam-deck-oled.png",
     tagline:
       "OLED display, efficient gaming and one of the smoothest handheld user experiences.",
   },
@@ -129,7 +129,7 @@ export const handhelds: Handheld[] = [
     battery: "49.2 Wh",
     weight: "854 g",
 
-    image: "/images/handhelds/legion-go.jpg",
+    image: "/images/handhelds/legion-go.png",
     tagline:
       "Big display, detachable controllers and a bold portable PC approach.",
   },
@@ -151,7 +151,7 @@ export const handhelds: Handheld[] = [
     battery: "55.5 Wh",
     weight: "730 g",
 
-    image: "/images/handhelds/legion-go-s.jpg",
+    image: "/images/handhelds/legion-go-s.png",
     tagline:
       "A streamlined Legion handheld with a friendlier shape and modern specs.",
   },
@@ -173,7 +173,7 @@ export const handhelds: Handheld[] = [
     battery: "80 Wh",
     weight: "795 g",
 
-    image: "/images/handhelds/msi-claw-8-ai-plus.jpg",
+    image: "/images/handhelds/msi-claw-8-ai-plus.png",
     tagline:
       "Large premium Intel handheld focused on efficiency and modern hardware.",
   },
@@ -195,7 +195,7 @@ export const handhelds: Handheld[] = [
     battery: "49 Wh",
     weight: "690 g",
 
-    image: "/images/handhelds/ayaneo-3.jpg",
+    image: "/images/handhelds/ayaneo-3.png",
     tagline:
       "Premium enthusiast handheld with sleek design and high-end portable PC ambitions.",
   },
@@ -217,7 +217,7 @@ export const handhelds: Handheld[] = [
     battery: "45.6 Wh",
     weight: "598 g",
 
-    image: "/images/handhelds/gpd-win-4.jpg",
+    image: "/images/handhelds/gpd-win-4.png",
     tagline:
       "Compact slider-style handheld keyboard machine for power users and tinkerers.",
   },
@@ -239,7 +239,7 @@ export const handhelds: Handheld[] = [
     battery: "44.2 Wh",
     weight: "520 g",
 
-    image: "/images/handhelds/gpd-win-mini.jpg",
+    image: "/images/handhelds/gpd-win-mini.png",
     tagline:
       "Tiny clamshell gaming PC with absurd portability and proper handheld nerd energy.",
   },
@@ -261,7 +261,7 @@ export const handhelds: Handheld[] = [
     battery: "Integrated battery",
     weight: "Approx. 534 g with Joy-Con",
 
-    image: "/images/handhelds/nintendo-switch-2.jpg",
+    image: "/images/handhelds/nintendo-switch-2.png",
     tagline:
       "Mainstream hybrid console with massive first-party appeal and strong handheld identity.",
   },

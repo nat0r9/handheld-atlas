@@ -5,16 +5,16 @@ import { handhelds } from "../../data/handhelds";
 function getStatusStyle(status: string) {
   switch (status) {
     case "Current":
-      return "bg-green-500 text-white";
+      return "border-green-400/30 bg-green-500/15 text-green-400";
 
     case "Upcoming":
-      return "bg-orange-500 text-white";
+      return "border-orange-400/30 bg-orange-500/15 text-orange-400";
 
     case "Discontinued":
-      return "bg-red-500 text-white";
+      return "border-red-400/30 bg-red-500/15 text-red-400";
 
     default:
-      return "bg-slate-600 text-white";
+      return "border-slate-500/30 bg-slate-500/15 text-slate-300";
   }
 }
 
@@ -32,11 +32,11 @@ export default function HandheldsPage() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-center text-slate-400">
-            Explore specifications, presets and benchmarks for supported
-            handheld gaming devices.
+            Explore handheld gaming devices, specifications, presets and
+            verified performance data.
           </p>
 
-          <div className="mt-10 flex items-center justify-between gap-4">
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
             <h2 className="rounded-full border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-black uppercase tracking-[0.18em]">
               {handhelds.length} Devices
             </h2>
@@ -49,28 +49,24 @@ export default function HandheldsPage() {
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {handhelds.map((handheld) => (
               <Link
                 key={handheld.slug}
                 href={`/handhelds/${handheld.slug}`}
                 className="group"
               >
-                <article className="overflow-hidden rounded-[1.75rem] border border-slate-800 bg-slate-950 shadow-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-500">
-                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
-                    <Image
-                      src={handheld.image}
-                      alt={handheld.name}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover transition duration-300 group-hover:scale-105"
-                    />
+                <article className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-800 bg-slate-950 shadow-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-500">
+                  <div className="relative flex min-h-72 items-center justify-center overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-5">
+                    <div className="absolute left-5 top-5 z-10">
+                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500">
+                        {handheld.manufacturer}
+                      </p>
+                    </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-
-                    <div className="absolute right-4 top-4">
+                    <div className="absolute right-4 top-4 z-10">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide shadow-lg ${getStatusStyle(
+                        className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide backdrop-blur ${getStatusStyle(
                           handheld.status,
                         )}`}
                       >
@@ -78,23 +74,29 @@ export default function HandheldsPage() {
                       </span>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 p-6">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-                        {handheld.manufacturer}
-                      </p>
-
-                      <h2 className="mt-2 text-4xl font-black">
-                        {handheld.name}
-                      </h2>
+                    <div className="relative mt-8 h-56 w-full">
+                      <Image
+                        src={handheld.image}
+                        alt={handheld.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                        className="object-contain object-center drop-shadow-[0_25px_35px_rgba(0,0,0,0.7)] transition duration-300 group-hover:scale-110"
+                      />
                     </div>
+
+                    <div className="pointer-events-none absolute inset-x-16 bottom-5 h-8 rounded-full bg-cyan-500/10 blur-2xl" />
                   </div>
 
-                  <div className="p-6">
-                    <p className="leading-7 text-slate-400">
+                  <div className="flex flex-1 flex-col p-6">
+                    <h2 className="text-3xl font-black transition group-hover:text-cyan-400">
+                      {handheld.name}
+                    </h2>
+
+                    <p className="mt-3 leading-7 text-slate-400">
                       {handheld.tagline}
                     </p>
 
-                    <div className="mt-6 grid grid-cols-2 gap-4">
+                    <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-4">
                       <div>
                         <p className="text-xs uppercase tracking-wide text-slate-500">
                           Processor
@@ -136,12 +138,12 @@ export default function HandheldsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-between border-t border-slate-800 pt-5">
-                      <span className="text-sm text-slate-500">
+                    <div className="mt-auto flex items-center justify-between gap-4 border-t border-slate-800 pt-6">
+                      <span className="line-clamp-2 max-w-[65%] text-sm text-slate-500">
                         {handheld.operatingSystem}
                       </span>
 
-                      <span className="font-bold text-cyan-400">
+                      <span className="shrink-0 font-bold text-cyan-400">
                         View profile →
                       </span>
                     </div>
