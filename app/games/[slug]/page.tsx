@@ -1,3 +1,4 @@
+import PresetCard from "../../../components/PresetCard";
 import { games } from "../../../data/games";
 import { handhelds } from "../../../data/handhelds";
 import { presets } from "../../../data/presets";
@@ -25,12 +26,12 @@ export default async function GamePage({
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-24">
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.35em] text-cyan-400">
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-cyan-400">
           Game Profile
         </p>
 
-        <h1 className="text-5xl font-black">{game.name}</h1>
+        <h1 className="mt-3 text-5xl font-black">{game.name}</h1>
 
         <p className="mt-4 text-slate-400">Genre: {game.genre}</p>
 
@@ -43,21 +44,33 @@ export default async function GamePage({
         <div className="mt-10 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <p className="text-sm text-slate-500">Developer</p>
-            <h2 className="mt-2 text-xl font-bold">{game.developer}</h2>
+
+            <h2 className="mt-2 text-xl font-bold">
+              {game.developer}
+            </h2>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <p className="text-sm text-slate-500">Release Year</p>
-            <h2 className="mt-2 text-xl font-bold">{game.releaseYear}</h2>
+
+            <h2 className="mt-2 text-xl font-bold">
+              {game.releaseYear}
+            </h2>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <p className="text-sm text-slate-500">Best Handheld</p>
-            <h2 className="mt-2 text-xl font-bold">{game.bestHandheld}</h2>
+
+            <h2 className="mt-2 text-xl font-bold">
+              {game.bestHandheld}
+            </h2>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-sm text-slate-500">Recommended TDP</p>
+            <p className="text-sm text-slate-500">
+              Recommended TDP
+            </p>
+
             <h2 className="mt-2 text-xl font-bold">
               {game.recommendedTDP}
             </h2>
@@ -66,6 +79,7 @@ export default async function GamePage({
 
         <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <p className="text-sm text-slate-500">Atlas Notes</p>
+
           <p className="mt-3 text-slate-300">{game.notes}</p>
         </div>
 
@@ -88,84 +102,18 @@ export default async function GamePage({
                 );
 
                 return (
-                  <article
+                  <PresetCard
                     key={preset.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-500"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm text-slate-500">
-                          {handheld?.manufacturer ?? "Unknown manufacturer"}
-                        </p>
-
-                        <h3 className="mt-2 text-2xl font-bold">
-                          {preset.name}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-slate-400">
-                          {handheld?.name ?? preset.handheldSlug}
-                        </p>
-                      </div>
-
-                      <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-bold text-cyan-400">
-                        {preset.type}
-                      </span>
-                    </div>
-
-                    <div className="mt-6 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs uppercase text-slate-500">
-                          Resolution
-                        </p>
-                        <p className="mt-1 font-semibold">
-                          {preset.resolution}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase text-slate-500">
-                          TDP
-                        </p>
-                        <p className="mt-1 font-semibold">{preset.tdp}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase text-slate-500">
-                          Average FPS
-                        </p>
-                        <p className="mt-1 font-semibold">
-                          {preset.fpsAverage}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase text-slate-500">
-                          Upscaler
-                        </p>
-                        <p className="mt-1 font-semibold">
-                          {preset.upscaler}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase text-slate-500">
-                          Battery
-                        </p>
-                        <p className="mt-1 font-semibold">
-                          {preset.batteryLife}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs uppercase text-slate-500">
-                          Rating
-                        </p>
-                        <p className="mt-1 font-semibold text-cyan-400">
-                          ★ {preset.communityRating}/5
-                        </p>
-                      </div>
-                    </div>
-                  </article>
+                    preset={preset}
+                    gameName={game.name}
+                    handheldName={
+                      handheld?.name ?? preset.handheldSlug
+                    }
+                    manufacturer={
+                      handheld?.manufacturer ??
+                      "Unknown manufacturer"
+                    }
+                  />
                 );
               })}
             </div>

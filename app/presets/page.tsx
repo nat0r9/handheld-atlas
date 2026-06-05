@@ -1,42 +1,61 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
+import PresetCard from "../../components/PresetCard";
 import { games } from "../../data/games";
 import { handhelds } from "../../data/handhelds";
 import { presets } from "../../data/presets";
 import type { PresetType } from "../../types/presets";
 
-function getPresetStyle(type: PresetType) {
-  switch (type) {
+type PresetFilter = "All" | PresetType;
+
+const filters: PresetFilter[] = [
+  "All",
+  "Performance",
+  "Balanced",
+  "Battery",
+  "Docked",
+];
+
+function getFilterStyle(
+  filter: PresetFilter,
+  activeFilter: PresetFilter,
+) {
+  const isActive = filter === activeFilter;
+
+  if (!isActive) {
+    return "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white";
+  }
+
+  switch (filter) {
     case "Performance":
-      return {
-        badge: "bg-orange-500/20 text-orange-400",
-        border: "hover:border-orange-500",
-        glow: "hover:shadow-orange-500/10",
-      };
+      return "border-orange-500 bg-orange-500/20 text-orange-400";
 
     case "Balanced":
-      return {
-        badge: "bg-cyan-500/20 text-cyan-400",
-        border: "hover:border-cyan-500",
-        glow: "hover:shadow-cyan-500/10",
-      };
+      return "border-cyan-500 bg-cyan-500/20 text-cyan-400";
 
     case "Battery":
-      return {
-        badge: "bg-green-500/20 text-green-400",
-        border: "hover:border-green-500",
-        glow: "hover:shadow-green-500/10",
-      };
+      return "border-green-500 bg-green-500/20 text-green-400";
 
     case "Docked":
-      return {
-        badge: "bg-red-500/20 text-red-400",
-        border: "hover:border-red-500",
-        glow: "hover:shadow-red-500/10",
-      };
+      return "border-red-500 bg-red-500/20 text-red-400";
+
+    case "All":
+      return "border-white bg-white text-slate-950";
   }
 }
 
 export default function PresetsPage() {
+  const [activeFilter, setActiveFilter] =
+    useState<PresetFilter>("All");
+
+  const filteredPresets =
+    activeFilter === "All"
+      ? presets
+      : presets.filter(
+          (preset) => preset.type === activeFilter,
+        );
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl px-6 py-16">
@@ -47,113 +66,64 @@ export default function PresetsPage() {
         <h1 className="mt-3 text-5xl font-black">Presets</h1>
 
         <p className="mt-4 max-w-2xl text-slate-400">
-          Browse performance, balanced, battery and docked settings for
-          supported handheld gaming devices.
+          Browse performance, balanced, battery and docked settings
+          for supported handheld gaming devices.
         </p>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {presets.map((preset) => {
-            const game = games.find(
-              (item) => item.slug === preset.gameSlug,
-            );
-
-            const handheld = handhelds.find(
-              (item) => item.slug === preset.handheldSlug,
-            );
-
-            const presetStyle = getPresetStyle(preset.type);
-
-            return (
-              <article
-                key={preset.id}
-                className={`rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl transition duration-200 ${presetStyle.border} ${presetStyle.glow}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">
-                      {game?.name ?? preset.gameSlug}
-                    </p>
-
-                    <h2 className="mt-2 text-2xl font-bold">
-                      {preset.name}
-                    </h2>
-
-                    <p className="mt-1 text-sm text-slate-400">
-                      {handheld?.name ?? preset.handheldSlug}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${presetStyle.badge}`}
-                  >
-                    {preset.type}
-                  </span>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Resolution
-                    </p>
-                    <p className="mt-1 font-semibold">
-                      {preset.resolution}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      TDP
-                    </p>
-                    <p className="mt-1 font-semibold">{preset.tdp}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Average FPS
-                    </p>
-                    <p className="mt-1 font-semibold">
-                      {preset.fpsAverage}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Upscaler
-                    </p>
-                    <p className="mt-1 font-semibold">
-                      {preset.upscaler}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Battery
-                    </p>
-                    <p className="mt-1 font-semibold">
-                      {preset.batteryLife}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Rating
-                    </p>
-                    <p className="mt-1 font-semibold text-cyan-400">
-                      ★ {preset.communityRating}/5
-                    </p>
-                  </div>
-                </div>
-
-                <Link
-                  href={`/games/${preset.gameSlug}`}
-                  className="mt-6 inline-flex rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-500 hover:text-white"
-                >
-                  View game profile
-                </Link>
-              </article>
-            );
-          })}
+        <div className="mt-8 flex flex-wrap gap-3">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setActiveFilter(filter)}
+              className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${getFilterStyle(
+                filter,
+                activeFilter,
+              )}`}
+            >
+              {filter}
+            </button>
+          ))}
         </div>
+
+        <div className="mt-5 text-sm text-slate-500">
+          Showing {filteredPresets.length}{" "}
+          {filteredPresets.length === 1 ? "preset" : "presets"}
+        </div>
+
+        {filteredPresets.length === 0 ? (
+          <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
+            No presets found for this mode.
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {filteredPresets.map((preset) => {
+              const game = games.find(
+                (item) => item.slug === preset.gameSlug,
+              );
+
+              const handheld = handhelds.find(
+                (item) => item.slug === preset.handheldSlug,
+              );
+
+              return (
+                <PresetCard
+                  key={preset.id}
+                  preset={preset}
+                  gameName={game?.name ?? preset.gameSlug}
+                  handheldName={
+                    handheld?.name ?? preset.handheldSlug
+                  }
+                  manufacturer={
+                    handheld?.manufacturer ??
+                    "Unknown manufacturer"
+                  }
+                  showGameLink
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );
