@@ -1,4 +1,7 @@
-export type HandheldStatus = "Current" | "Upcoming" | "Discontinued";
+export type HandheldStatus =
+  | "Current"
+  | "Upcoming"
+  | "Discontinued";
 
 export interface Handheld {
   name: string;
@@ -17,4 +20,7 @@ export interface Handheld {
 
   battery: string;
   weight: string;
+
+  image: string;
+  tagline: string;
 }

@@ -18,6 +18,9 @@ export const handhelds: Handheld[] = [
 
     battery: "80 Wh",
     weight: "678 g",
+
+    image: "/images/handhelds/rog-ally-x.jpg",
+    tagline: "High-performance Windows handheld with extended battery life.",
   },
   {
     name: "Steam Deck OLED",
@@ -36,6 +39,9 @@ export const handhelds: Handheld[] = [
 
     battery: "50 Wh",
     weight: "640 g",
+
+    image: "/images/handhelds/steam-deck-oled.jpg",
+    tagline: "OLED display, efficient performance and a console-like experience.",
   },
   {
     name: "Legion Go",
@@ -54,6 +60,9 @@ export const handhelds: Handheld[] = [
 
     battery: "49.2 Wh",
     weight: "854 g",
+
+    image: "/images/handhelds/legion-go.jpg",
+    tagline: "Large high-resolution display with detachable controllers.",
   },
   {
     name: "ROG Xbox Ally X",
@@ -72,5 +81,8 @@ export const handhelds: Handheld[] = [
 
     battery: "80 Wh",
     weight: "715 g",
+
+    image: "/images/handhelds/rog-xbox-ally-x.jpg",
+    tagline: "Xbox-focused handheld experience powered by Windows.",
   },
 ];
