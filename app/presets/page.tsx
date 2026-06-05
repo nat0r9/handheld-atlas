@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import PresetCard from "../../components/PresetCard";
 import { games } from "../../data/games";
 import { handhelds } from "../../data/handhelds";
@@ -49,12 +49,48 @@ export default function PresetsPage() {
   const [activeFilter, setActiveFilter] =
     useState<PresetFilter>("All");
 
-  const filteredPresets =
-    activeFilter === "All"
-      ? presets
-      : presets.filter(
-          (preset) => preset.type === activeFilter,
-        );
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredPresets = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return presets.filter((preset) => {
+      const game = games.find(
+        (item) => item.slug === preset.gameSlug,
+      );
+
+      const handheld = handhelds.find(
+        (item) => item.slug === preset.handheldSlug,
+      );
+
+      const matchesFilter =
+        activeFilter === "All" || preset.type === activeFilter;
+
+      const searchableText = [
+        preset.name,
+        preset.type,
+        preset.resolution,
+        preset.tdp,
+        preset.upscaler,
+        game?.name ?? "",
+        handheld?.name ?? "",
+        handheld?.manufacturer ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        searchableText.includes(normalizedQuery);
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [activeFilter, searchQuery]);
+
+  function clearFilters() {
+    setActiveFilter("All");
+    setSearchQuery("");
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -70,7 +106,25 @@ export default function PresetsPage() {
           for supported handheld gaming devices.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 max-w-2xl">
+          <label
+            htmlFor="preset-search"
+            className="mb-2 block text-sm font-semibold text-slate-300"
+          >
+            Search presets
+          </label>
+
+          <input
+            id="preset-search"
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search Cyberpunk, ROG Ally X, 25W, FSR..."
+            className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+          />
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
           {filters.map((filter) => (
             <button
               key={filter}
@@ -86,14 +140,38 @@ export default function PresetsPage() {
           ))}
         </div>
 
-        <div className="mt-5 text-sm text-slate-500">
-          Showing {filteredPresets.length}{" "}
-          {filteredPresets.length === 1 ? "preset" : "presets"}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm text-slate-500">
+            Showing {filteredPresets.length}{" "}
+            {filteredPresets.length === 1 ? "preset" : "presets"}
+          </p>
+
+          {(activeFilter !== "All" || searchQuery.length > 0) && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
         {filteredPresets.length === 0 ? (
-          <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
-            No presets found for this mode.
+          <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-8">
+            <h2 className="text-xl font-bold">No presets found</h2>
+
+            <p className="mt-2 text-slate-400">
+              Try another game, handheld or preset mode.
+            </p>
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-5 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400"
+            >
+              Reset search
+            </button>
           </div>
         ) : (
           <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
