@@ -11,4 +11,5 @@ export interface Game {
   recommendedTDP: string;
 
   notes: string;
+  coverImage: string;
 }

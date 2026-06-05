@@ -14,6 +14,7 @@ export const games: Game[] = [
     recommendedTDP: "25W",
 
     notes: "Excellent handheld experience with FSR.",
+    coverImage: "/images/games/cyberpunk-2077.jpg",
   },
   {
     name: "Diablo IV",
@@ -28,6 +29,7 @@ export const games: Game[] = [
     recommendedTDP: "20W",
 
     notes: "Runs very well at 60 FPS.",
+    coverImage: "/images/games/diablo-iv.jpg",
   },
   {
     name: "Path of Exile 2",
@@ -42,6 +44,7 @@ export const games: Game[] = [
     recommendedTDP: "25W",
 
     notes: "Heavy CPU load during endgame.",
+    coverImage: "/images/games/path-of-exile-2.jpg",
   },
   {
     name: "Elden Ring",
@@ -56,5 +59,6 @@ export const games: Game[] = [
     recommendedTDP: "15W",
 
     notes: "Excellent performance and battery balance.",
+    coverImage: "/images/games/elden-ring.jpg",
   },
 ];
