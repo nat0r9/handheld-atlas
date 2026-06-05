@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { games } from "../../data/games";
 
+type RatingFilter = "All" | "Excellent" | "Great" | "Playable";
+type GenreFilter = "All" | string;
+type HandheldFilter = "All" | string;
+type TdpFilter = "All" | string;
+
 function getRatingLabel(score: number) {
   if (score >= 90) {
     return {
@@ -54,27 +59,106 @@ function renderStars(starCount: number) {
 
 export default function GamesPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [ratingFilter, setRatingFilter] =
+    useState<RatingFilter>("All");
+  const [genreFilter, setGenreFilter] =
+    useState<GenreFilter>("All");
+  const [handheldFilter, setHandheldFilter] =
+    useState<HandheldFilter>("All");
+  const [tdpFilter, setTdpFilter] =
+    useState<TdpFilter>("All");
+
+  const genres = useMemo(
+    () => ["All", ...Array.from(new Set(games.map((game) => game.genre)))],
+    [],
+  );
+
+  const handheldOptions = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(games.map((game) => game.bestHandheld)),
+      ),
+    ],
+    [],
+  );
+
+  const tdpOptions = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(games.map((game) => game.recommendedTDP)),
+      ),
+    ],
+    [],
+  );
 
   const filteredGames = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return games;
-    }
-
     return games.filter((game) => {
+      const rating = getRatingLabel(game.atlasScore);
+
       const searchableText = [
         game.name,
         game.genre,
         game.developer,
         game.bestHandheld,
+        game.recommendedTDP,
       ]
         .join(" ")
         .toLowerCase();
 
-      return searchableText.includes(normalizedQuery);
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        searchableText.includes(normalizedQuery);
+
+      const matchesRating =
+        ratingFilter === "All" ||
+        rating.label === ratingFilter;
+
+      const matchesGenre =
+        genreFilter === "All" ||
+        game.genre === genreFilter;
+
+      const matchesHandheld =
+        handheldFilter === "All" ||
+        game.bestHandheld === handheldFilter;
+
+      const matchesTdp =
+        tdpFilter === "All" ||
+        game.recommendedTDP === tdpFilter;
+
+      return (
+        matchesSearch &&
+        matchesRating &&
+        matchesGenre &&
+        matchesHandheld &&
+        matchesTdp
+      );
     });
-  }, [searchQuery]);
+  }, [
+    searchQuery,
+    ratingFilter,
+    genreFilter,
+    handheldFilter,
+    tdpFilter,
+  ]);
+
+  const hasActiveFilters =
+    searchQuery.length > 0 ||
+    ratingFilter !== "All" ||
+    genreFilter !== "All" ||
+    handheldFilter !== "All" ||
+    tdpFilter !== "All";
+
+  function resetFilters() {
+    setSearchQuery("");
+    setRatingFilter("All");
+    setGenreFilter("All");
+    setHandheldFilter("All");
+    setTdpFilter("All");
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -90,77 +174,109 @@ export default function GamesPage() {
 
           <p className="mx-auto mt-4 max-w-2xl text-center text-slate-400">
             Browse supported games, ratings and recommended handheld
-            settings in a cleaner poster-style database.
+            settings.
           </p>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 md:col-span-2">
-              <label
-                htmlFor="game-search"
-                className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-              >
-                Search
-              </label>
+          <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
+              <div className="xl:col-span-2">
+                <label
+                  htmlFor="game-search"
+                  className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
+                >
+                  Search
+                </label>
 
-              <input
-                id="game-search"
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search games, developers, genres..."
-                className="w-full rounded-xl border border-slate-800 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
+                <input
+                  id="game-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) =>
+                    setSearchQuery(event.target.value)
+                  }
+                  placeholder="Search games, developers, handhelds..."
+                  className="w-full rounded-xl border border-slate-800 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
+                />
+              </div>
+
+              <FilterSelect
+                label="Rating"
+                value={ratingFilter}
+                options={[
+                  "All",
+                  "Excellent",
+                  "Great",
+                  "Playable",
+                ]}
+                onChange={(value) =>
+                  setRatingFilter(value as RatingFilter)
+                }
+              />
+
+              <FilterSelect
+                label="Genre"
+                value={genreFilter}
+                options={genres}
+                onChange={setGenreFilter}
+              />
+
+              <FilterSelect
+                label="TDP"
+                value={tdpFilter}
+                options={tdpOptions}
+                onChange={setTdpFilter}
               />
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4">
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                Results
-              </p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto]">
+              <FilterSelect
+                label="Best Handheld"
+                value={handheldFilter}
+                options={handheldOptions}
+                onChange={setHandheldFilter}
+              />
 
-              <div className="flex h-[52px] items-center rounded-xl border border-slate-800 bg-black/40 px-4 text-lg font-bold text-cyan-400">
-                {filteredGames.length} games
-              </div>
+              <button
+                type="button"
+                onClick={resetFilters}
+                disabled={!hasActiveFilters}
+                className="self-end rounded-xl bg-red-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Reset Filters
+              </button>
             </div>
-          </div>
+          </section>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-slate-400">
-            <span className="font-bold uppercase tracking-[0.15em] text-slate-500">
-              Quick filters:
-            </span>
-
-            <span className="rounded-full border border-slate-700 px-3 py-1">
-              Best games
-            </span>
-            <span className="rounded-full border border-slate-700 px-3 py-1">
-              Great games
-            </span>
-            <span className="rounded-full border border-slate-700 px-3 py-1">
-              RPG
-            </span>
-            <span className="rounded-full border border-slate-700 px-3 py-1">
-              ARPG
-            </span>
-            <span className="rounded-full border border-slate-700 px-3 py-1">
-              Steam Deck
-            </span>
-            <span className="rounded-full border border-slate-700 px-3 py-1">
-              ROG Ally X
-            </span>
-          </div>
-
-          <div className="mt-10 flex items-center justify-between gap-4">
-            <h2 className="rounded-full border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-white">
-              {filteredGames.length} Game Settings
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+            <h2 className="rounded-full border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-black uppercase tracking-[0.18em]">
+              {filteredGames.length}{" "}
+              {filteredGames.length === 1 ? "Game" : "Games"}
             </h2>
+
+            {hasActiveFilters && (
+              <p className="text-sm text-slate-500">
+                Filters active
+              </p>
+            )}
           </div>
 
           {filteredGames.length === 0 ? (
             <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/80 p-10 text-center">
-              <h3 className="text-2xl font-black">No games found</h3>
+              <h3 className="text-2xl font-black">
+                No games found
+              </h3>
 
               <p className="mt-3 text-slate-400">
-                Try another search query.
+                Try changing or resetting the active filters.
               </p>
+
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="mt-6 rounded-xl bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-400"
+              >
+                Reset filters
+              </button>
             </div>
           ) : (
             <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -222,6 +338,28 @@ export default function GamesPage() {
                         <div className="mt-3 flex items-center gap-1 text-xl">
                           {renderStars(rating.starCount)}
                         </div>
+
+                        <div className="mt-4 border-t border-slate-800 pt-4">
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="text-slate-500">
+                              Best Handheld
+                            </span>
+
+                            <span className="text-right font-bold text-slate-300">
+                              {game.bestHandheld}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                            <span className="text-slate-500">
+                              Recommended TDP
+                            </span>
+
+                            <span className="font-bold text-cyan-400">
+                              {game.recommendedTDP}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </article>
                   </Link>
@@ -232,5 +370,39 @@ export default function GamesPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+interface FilterSelectProps {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: FilterSelectProps) {
+  return (
+    <div>
+      <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+        {label}
+      </label>
+
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-slate-800 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
