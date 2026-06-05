@@ -70,20 +70,18 @@ export default async function GamePage({
         </div>
 
         <section className="mt-16">
-          <div className="mb-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-              Recommended Settings
-            </p>
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
+            Recommended Settings
+          </p>
 
-            <h2 className="mt-2 text-3xl font-black">Presets</h2>
-          </div>
+          <h2 className="mt-2 text-3xl font-black">Presets</h2>
 
           {gamePresets.length === 0 ? (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
               No presets available yet.
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {gamePresets.map((preset) => {
                 const handheld = handhelds.find(
                   (item) => item.slug === preset.handheldSlug,
@@ -91,16 +89,28 @@ export default async function GamePage({
 
                 return (
                   <article
-                    key={`${preset.gameSlug}-${preset.handheldSlug}`}
-                    className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
+                    key={preset.id}
+                    className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-500"
                   >
-                    <p className="text-sm text-slate-500">
-                      {handheld?.manufacturer ?? "Unknown manufacturer"}
-                    </p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm text-slate-500">
+                          {handheld?.manufacturer ?? "Unknown manufacturer"}
+                        </p>
 
-                    <h3 className="mt-2 text-2xl font-bold">
-                      {handheld?.name ?? preset.handheldSlug}
-                    </h3>
+                        <h3 className="mt-2 text-2xl font-bold">
+                          {preset.name}
+                        </h3>
+
+                        <p className="mt-1 text-sm text-slate-400">
+                          {handheld?.name ?? preset.handheldSlug}
+                        </p>
+                      </div>
+
+                      <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-bold text-cyan-400">
+                        {preset.type}
+                      </span>
+                    </div>
 
                     <div className="mt-6 grid grid-cols-2 gap-4">
                       <div>
