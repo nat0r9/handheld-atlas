@@ -2,6 +2,39 @@ import Link from "next/link";
 import { games } from "../../data/games";
 import { handhelds } from "../../data/handhelds";
 import { presets } from "../../data/presets";
+import type { PresetType } from "../../types/presets";
+
+function getPresetStyle(type: PresetType) {
+  switch (type) {
+    case "Performance":
+      return {
+        badge: "bg-orange-500/20 text-orange-400",
+        border: "hover:border-orange-500",
+        glow: "hover:shadow-orange-500/10",
+      };
+
+    case "Balanced":
+      return {
+        badge: "bg-cyan-500/20 text-cyan-400",
+        border: "hover:border-cyan-500",
+        glow: "hover:shadow-cyan-500/10",
+      };
+
+    case "Battery":
+      return {
+        badge: "bg-green-500/20 text-green-400",
+        border: "hover:border-green-500",
+        glow: "hover:shadow-green-500/10",
+      };
+
+    case "Docked":
+      return {
+        badge: "bg-red-500/20 text-red-400",
+        border: "hover:border-red-500",
+        glow: "hover:shadow-red-500/10",
+      };
+  }
+}
 
 export default function PresetsPage() {
   return (
@@ -28,10 +61,12 @@ export default function PresetsPage() {
               (item) => item.slug === preset.handheldSlug,
             );
 
+            const presetStyle = getPresetStyle(preset.type);
+
             return (
               <article
                 key={preset.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-500"
+                className={`rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl transition duration-200 ${presetStyle.border} ${presetStyle.glow}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -48,7 +83,9 @@ export default function PresetsPage() {
                     </p>
                   </div>
 
-                  <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-bold text-cyan-400">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${presetStyle.badge}`}
+                  >
                     {preset.type}
                   </span>
                 </div>
