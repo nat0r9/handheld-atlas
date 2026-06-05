@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import PresetCard from "../../../components/PresetCard";
@@ -5,6 +6,47 @@ import { benchmarks } from "../../../data/benchmarks";
 import { games } from "../../../data/games";
 import { handhelds } from "../../../data/handhelds";
 import { presets } from "../../../data/presets";
+
+interface GamePageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: GamePageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const game = games.find((item) => item.slug === slug);
+
+  if (!game) {
+    return {
+      title: "Game Not Found",
+      description:
+        "The requested game does not exist in the HandheldAtlas database.",
+    };
+  }
+
+  return {
+    title: `${game.name} Handheld Settings`,
+    description: `${game.name} handheld presets, recommended TDP, performance benchmarks and Atlas Score. Best handheld: ${game.bestHandheld}.`,
+    openGraph: {
+      title: `${game.name} Handheld Settings | HandheldAtlas`,
+      description: `${game.name} presets, benchmarks and recommended handheld settings.`,
+      images: [
+        {
+          url: game.coverImage,
+          alt: game.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${game.name} Handheld Settings | HandheldAtlas`,
+      description: `${game.name} presets, benchmarks and recommended handheld settings.`,
+      images: [game.coverImage],
+    },
+  };
+}
 
 function getCompatibilityStyle(score: number) {
   if (score >= 90) {
@@ -36,9 +78,7 @@ function getCompatibilityStyle(score: number) {
 
 export default async function GamePage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+}: GamePageProps) {
   const { slug } = await params;
 
   const game = games.find((item) => item.slug === slug);
@@ -201,33 +241,21 @@ export default async function GamePage({
             <dl className="mt-5 space-y-4">
               <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <dt className="text-sm text-slate-500">Developer</dt>
-
-                <dd className="text-right font-bold">
-                  {game.developer}
-                </dd>
+                <dd className="text-right font-bold">{game.developer}</dd>
               </div>
 
               <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-4">
-                <dt className="text-sm text-slate-500">
-                  Release year
-                </dt>
-
+                <dt className="text-sm text-slate-500">Release year</dt>
                 <dd className="font-bold">{game.releaseYear}</dd>
               </div>
 
               <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-4">
-                <dt className="text-sm text-slate-500">
-                  Available presets
-                </dt>
-
+                <dt className="text-sm text-slate-500">Available presets</dt>
                 <dd className="font-bold">{gamePresets.length}</dd>
               </div>
 
               <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm text-slate-500">
-                  Benchmarks
-                </dt>
-
+                <dt className="text-sm text-slate-500">Benchmarks</dt>
                 <dd className="font-bold">{gameBenchmarks.length}</dd>
               </div>
             </dl>
@@ -241,9 +269,7 @@ export default async function GamePage({
                 Recommended Settings
               </p>
 
-              <h2 className="mt-2 text-4xl font-black">
-                Presets
-              </h2>
+              <h2 className="mt-2 text-4xl font-black">Presets</h2>
             </div>
 
             <Link
@@ -256,9 +282,7 @@ export default async function GamePage({
 
           {gamePresets.length === 0 ? (
             <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-8">
-              <h3 className="text-xl font-bold">
-                No presets available
-              </h3>
+              <h3 className="text-xl font-bold">No presets available</h3>
 
               <p className="mt-2 text-slate-400">
                 Presets for this game will be added later.
@@ -297,9 +321,7 @@ export default async function GamePage({
                 Performance Data
               </p>
 
-              <h2 className="mt-2 text-4xl font-black">
-                Benchmarks
-              </h2>
+              <h2 className="mt-2 text-4xl font-black">Benchmarks</h2>
             </div>
 
             <Link
@@ -312,9 +334,7 @@ export default async function GamePage({
 
           {gameBenchmarks.length === 0 ? (
             <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-8">
-              <h3 className="text-xl font-bold">
-                No benchmarks available
-              </h3>
+              <h3 className="text-xl font-bold">No benchmarks available</h3>
 
               <p className="mt-2 text-slate-400">
                 Verified benchmark results will be added later.
@@ -365,8 +385,7 @@ export default async function GamePage({
                           className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
                         >
                           <td className="px-6 py-5 font-semibold">
-                            {handheld?.name ??
-                              benchmark.handheldSlug}
+                            {handheld?.name ?? benchmark.handheldSlug}
                           </td>
 
                           <td className="px-6 py-5 text-slate-300">
@@ -399,17 +418,6 @@ export default async function GamePage({
             </div>
           )}
         </section>
-
-        <div className="mt-10 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-5">
-          <p className="text-sm font-semibold text-yellow-300">
-            Development data
-          </p>
-
-          <p className="mt-2 text-sm text-yellow-100/70">
-            Scores, presets and benchmark values are currently
-            development data and will be verified before launch.
-          </p>
-        </div>
       </div>
     </main>
   );

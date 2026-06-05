@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import PresetCard from "../../../components/PresetCard";
@@ -5,6 +6,47 @@ import { benchmarks } from "../../../data/benchmarks";
 import { games } from "../../../data/games";
 import { handhelds } from "../../../data/handhelds";
 import { presets } from "../../../data/presets";
+
+interface HandheldPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: HandheldPageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const handheld = handhelds.find((item) => item.slug === slug);
+
+  if (!handheld) {
+    return {
+      title: "Handheld Not Found",
+      description:
+        "The requested handheld does not exist in the HandheldAtlas database.",
+    };
+  }
+
+  return {
+    title: `${handheld.name} Specs and Benchmarks`,
+    description: `${handheld.name} specifications, presets, supported games and performance benchmarks. ${handheld.tagline}`,
+    openGraph: {
+      title: `${handheld.name} | HandheldAtlas`,
+      description: `${handheld.name} specifications, presets and handheld gaming benchmarks.`,
+      images: [
+        {
+          url: handheld.image,
+          alt: handheld.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${handheld.name} | HandheldAtlas`,
+      description: `${handheld.name} specifications, presets and handheld gaming benchmarks.`,
+      images: [handheld.image],
+    },
+  };
+}
 
 function getStatusStyle(status: string) {
   switch (status) {
@@ -24,9 +66,7 @@ function getStatusStyle(status: string) {
 
 export default async function HandheldPage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+}: HandheldPageProps) {
   const { slug } = await params;
 
   const handheld = handhelds.find((item) => item.slug === slug);
@@ -35,9 +75,7 @@ export default async function HandheldPage({
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
         <div className="mx-auto max-w-7xl">
-          <h1 className="text-4xl font-black">
-            Handheld not found
-          </h1>
+          <h1 className="text-4xl font-black">Handheld not found</h1>
 
           <p className="mt-3 text-slate-400">
             This device does not exist in the HandheldAtlas database.
@@ -174,9 +212,7 @@ export default async function HandheldPage({
             Hardware
           </p>
 
-          <h2 className="mt-2 text-4xl font-black">
-            Specifications
-          </h2>
+          <h2 className="mt-2 text-4xl font-black">Specifications</h2>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <SpecCard
@@ -233,24 +269,18 @@ export default async function HandheldPage({
                 Recommended Settings
               </p>
 
-              <h2 className="mt-2 text-4xl font-black">
-                Presets
-              </h2>
+              <h2 className="mt-2 text-4xl font-black">Presets</h2>
             </div>
 
             <p className="text-sm text-slate-500">
               {handheldPresets.length}{" "}
-              {handheldPresets.length === 1
-                ? "preset"
-                : "presets"}
+              {handheldPresets.length === 1 ? "preset" : "presets"}
             </p>
           </div>
 
           {handheldPresets.length === 0 ? (
             <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
-              <h3 className="text-xl font-bold">
-                No presets available
-              </h3>
+              <h3 className="text-xl font-bold">No presets available</h3>
 
               <p className="mt-2 text-slate-400">
                 Presets for this handheld will be added later.
@@ -285,9 +315,7 @@ export default async function HandheldPage({
                 Performance Data
               </p>
 
-              <h2 className="mt-2 text-4xl font-black">
-                Benchmarks
-              </h2>
+              <h2 className="mt-2 text-4xl font-black">Benchmarks</h2>
             </div>
 
             <p className="text-sm text-slate-500">
@@ -300,9 +328,7 @@ export default async function HandheldPage({
 
           {handheldBenchmarks.length === 0 ? (
             <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
-              <h3 className="text-xl font-bold">
-                No benchmarks available
-              </h3>
+              <h3 className="text-xl font-bold">No benchmarks available</h3>
 
               <p className="mt-2 text-slate-400">
                 Verified benchmark results will be added later.
@@ -386,17 +412,6 @@ export default async function HandheldPage({
             </div>
           )}
         </section>
-
-        <div className="mt-10 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-5">
-          <p className="text-sm font-semibold text-yellow-300">
-            Development data
-          </p>
-
-          <p className="mt-2 text-sm text-yellow-100/70">
-            Device specifications and benchmark values are currently
-            development data and will be verified before launch.
-          </p>
-        </div>
       </div>
     </main>
   );

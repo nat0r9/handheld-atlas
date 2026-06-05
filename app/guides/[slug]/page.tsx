@@ -1,6 +1,42 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { guides } from "../../../data/guides";
 import type { GuideCategory } from "../../../types/guides";
+
+interface GuidePageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: GuidePageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const guide = guides.find((item) => item.slug === slug);
+
+  if (!guide) {
+    return {
+      title: "Guide Not Found",
+      description:
+        "The requested guide does not exist in the HandheldAtlas knowledge base.",
+    };
+  }
+
+  return {
+    title: guide.title,
+    description: guide.excerpt,
+    openGraph: {
+      title: `${guide.title} | HandheldAtlas`,
+      description: guide.excerpt,
+      type: "article",
+    },
+    twitter: {
+      card: "summary",
+      title: `${guide.title} | HandheldAtlas`,
+      description: guide.excerpt,
+    },
+  };
+}
 
 function getCategoryStyle(category: GuideCategory) {
   switch (category) {
@@ -23,9 +59,7 @@ function getCategoryStyle(category: GuideCategory) {
 
 export default async function GuidePage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+}: GuidePageProps) {
   const { slug } = await params;
 
   const guide = guides.find((item) => item.slug === slug);
@@ -92,18 +126,6 @@ export default async function GuidePage({
               {paragraph}
             </p>
           ))}
-        </div>
-
-        <div className="mt-14 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-5">
-          <p className="text-sm font-semibold text-yellow-300">
-            Development content
-          </p>
-
-          <p className="mt-2 text-sm text-yellow-100/70">
-            These guides are currently placeholder content used to build
-            the HandheldAtlas knowledge base. They will be expanded and
-            verified before launch.
-          </p>
         </div>
       </article>
     </main>
