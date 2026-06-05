@@ -1,8 +1,26 @@
+import Image from "next/image";
+import Link from "next/link";
 import PresetCard from "../../../components/PresetCard";
 import { benchmarks } from "../../../data/benchmarks";
 import { games } from "../../../data/games";
 import { handhelds } from "../../../data/handhelds";
 import { presets } from "../../../data/presets";
+
+function getStatusStyle(status: string) {
+  switch (status) {
+    case "Current":
+      return "border-green-400/30 bg-green-500/15 text-green-400";
+
+    case "Upcoming":
+      return "border-orange-400/30 bg-orange-500/15 text-orange-400";
+
+    case "Discontinued":
+      return "border-red-400/30 bg-red-500/15 text-red-400";
+
+    default:
+      return "border-slate-500/30 bg-slate-500/15 text-slate-300";
+  }
+}
 
 export default async function HandheldPage({
   params,
@@ -17,11 +35,20 @@ export default async function HandheldPage({
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
         <div className="mx-auto max-w-7xl">
-          <h1 className="text-3xl font-black">Handheld not found</h1>
+          <h1 className="text-4xl font-black">
+            Handheld not found
+          </h1>
 
           <p className="mt-3 text-slate-400">
-            The requested handheld does not exist in the database.
+            This device does not exist in the HandheldAtlas database.
           </p>
+
+          <Link
+            href="/handhelds"
+            className="mt-8 inline-flex rounded-xl bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-400"
+          >
+            Back to handhelds
+          </Link>
         </div>
       </main>
     );
@@ -35,47 +62,128 @@ export default async function HandheldPage({
     (benchmark) => benchmark.handheldSlug === handheld.slug,
   );
 
+  const bestBenchmark =
+    handheldBenchmarks.length > 0
+      ? [...handheldBenchmarks].sort(
+          (first, second) =>
+            second.averageFps - first.averageFps,
+        )[0]
+      : undefined;
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <section>
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-cyan-400">
-            Handheld Profile
-          </p>
+      <section className="relative overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(6,182,212,0.16),transparent_35%)]" />
 
-          <div className="mt-4 flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <p className="text-sm text-slate-500">
+        <div className="relative mx-auto grid min-h-[34rem] max-w-7xl items-center gap-10 px-6 py-14 lg:grid-cols-[1fr_1.2fr]">
+          <div>
+            <Link
+              href="/handhelds"
+              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+            >
+              ← Back to handhelds
+            </Link>
+
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getStatusStyle(
+                  handheld.status,
+                )}`}
+              >
+                {handheld.status}
+              </span>
+
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 backdrop-blur">
                 {handheld.manufacturer}
-              </p>
-
-              <h1 className="mt-2 text-5xl font-black">
-                {handheld.name}
-              </h1>
-
-              <p className="mt-4 text-slate-400">
-                {handheld.operatingSystem}
-              </p>
+              </span>
             </div>
 
-            <span className="rounded-full bg-cyan-500/20 px-4 py-2 text-sm font-bold text-cyan-400">
-              {handheld.status}
-            </span>
-          </div>
-        </section>
+            <h1 className="mt-5 text-5xl font-black leading-tight md:text-7xl">
+              {handheld.name}
+            </h1>
 
-        <section className="mt-12">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-              Hardware
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+              {handheld.tagline}
             </p>
 
-            <h2 className="mt-2 text-3xl font-black">
-              Specifications
-            </h2>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                  Processor
+                </p>
+
+                <p className="mt-1 text-lg font-bold">
+                  {handheld.processor}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                  Memory
+                </p>
+
+                <p className="mt-1 text-lg font-bold">
+                  {handheld.memory}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                  Battery
+                </p>
+
+                <p className="mt-1 text-lg font-bold">
+                  {handheld.battery}
+                </p>
+              </div>
+
+              {bestBenchmark && (
+                <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4 backdrop-blur">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">
+                    Highest Tested FPS
+                  </p>
+
+                  <p className="mt-1 text-lg font-bold">
+                    {bestBenchmark.averageFps} FPS
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="relative flex min-h-[24rem] items-center justify-center">
+            <div className="absolute h-52 w-52 rounded-full bg-cyan-500/20 blur-3xl" />
+
+            <div className="relative h-72 w-full max-w-2xl md:h-96">
+              <Image
+                src={handheld.image}
+                alt={handheld.name}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-contain object-center drop-shadow-[0_35px_45px_rgba(0,0,0,0.75)]"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        <section>
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
+            Hardware
+          </p>
+
+          <h2 className="mt-2 text-4xl font-black">
+            Specifications
+          </h2>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <SpecCard
+              label="Operating System"
+              value={handheld.operatingSystem}
+            />
+
             <SpecCard
               label="Processor"
               value={handheld.processor}
@@ -115,11 +223,6 @@ export default async function HandheldPage({
               label="Weight"
               value={handheld.weight}
             />
-
-            <SpecCard
-              label="Operating System"
-              value={handheld.operatingSystem}
-            />
           </div>
         </section>
 
@@ -130,19 +233,21 @@ export default async function HandheldPage({
                 Recommended Settings
               </p>
 
-              <h2 className="mt-2 text-3xl font-black">
-                Available Presets
+              <h2 className="mt-2 text-4xl font-black">
+                Presets
               </h2>
             </div>
 
             <p className="text-sm text-slate-500">
               {handheldPresets.length}{" "}
-              {handheldPresets.length === 1 ? "preset" : "presets"}
+              {handheldPresets.length === 1
+                ? "preset"
+                : "presets"}
             </p>
           </div>
 
           {handheldPresets.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8">
+            <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
               <h3 className="text-xl font-bold">
                 No presets available
               </h3>
@@ -152,7 +257,7 @@ export default async function HandheldPage({
               </p>
             </div>
           ) : (
-            <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {handheldPresets.map((preset) => {
                 const game = games.find(
                   (item) => item.slug === preset.gameSlug,
@@ -180,7 +285,7 @@ export default async function HandheldPage({
                 Performance Data
               </p>
 
-              <h2 className="mt-2 text-3xl font-black">
+              <h2 className="mt-2 text-4xl font-black">
                 Benchmarks
               </h2>
             </div>
@@ -194,7 +299,7 @@ export default async function HandheldPage({
           </div>
 
           {handheldBenchmarks.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8">
+            <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
               <h3 className="text-xl font-bold">
                 No benchmarks available
               </h3>
@@ -204,7 +309,7 @@ export default async function HandheldPage({
               </p>
             </div>
           ) : (
-            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+            <div className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
                   <thead className="border-b border-slate-800 bg-slate-950/60">
@@ -289,8 +394,7 @@ export default async function HandheldPage({
 
           <p className="mt-2 text-sm text-yellow-100/70">
             Device specifications and benchmark values are currently
-            development data. Every value will be verified before the
-            public launch.
+            development data and will be verified before launch.
           </p>
         </div>
       </div>
@@ -305,7 +409,7 @@ interface SpecCardProps {
 
 function SpecCard({ label, value }: SpecCardProps) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-cyan-500/50">
       <p className="text-sm text-slate-500">{label}</p>
 
       <p className="mt-2 text-lg font-bold text-slate-100">
