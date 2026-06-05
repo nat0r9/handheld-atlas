@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Footer from "../components/Footer";
 import Header from "../components/Header";
 import "./globals.css";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s | HandheldAtlas",
   },
   description:
-    "Find the best settings, benchmarks, TDP profiles and battery presets for handheld gaming devices.",
+    "Find handheld gaming settings, presets, benchmarks, comparisons and practical guides.",
 };
 
 export default function RootLayout({
@@ -21,7 +22,11 @@ export default function RootLayout({
       <body className="bg-slate-950 text-white antialiased">
         <Header />
 
-        <div className="pt-16">{children}</div>
+        <div className="min-h-screen pt-16">
+          {children}
+        </div>
+
+        <Footer />
       </body>
     </html>
   );
