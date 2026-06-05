@@ -1,18 +1,34 @@
-const navItems = ["Games", "Handhelds", "Presets", "Benchmarks", "Compare", "Guides"];
+import Link from "next/link";
+
+const navItems = [
+  { label: "Games", href: "/games" },
+  { label: "Handhelds", href: "/handhelds" },
+  { label: "Presets", href: "/presets" },
+  { label: "Benchmarks", href: "/benchmarks" },
+  { label: "Compare", href: "/compare" },
+  { label: "Guides", href: "/guides" },
+];
 
 export default function Header() {
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <div className="text-xl font-black tracking-tight text-white">
+        <Link
+          href="/"
+          className="text-xl font-black tracking-tight text-white transition hover:text-cyan-400"
+        >
           HandheldAtlas
-        </div>
+        </Link>
 
-        <div className="hidden gap-6 text-sm text-slate-400 md:flex">
+        <div className="hidden items-center gap-6 md:flex">
           {navItems.map((item) => (
-            <a key={item} href="#" className="hover:text-white">
-              {item}
-            </a>
+            <Link
+              key={item.href}
+              href={item.href}
+              className="text-sm text-slate-400 transition hover:text-white"
+            >
+              {item.label}
+            </Link>
           ))}
         </div>
       </nav>

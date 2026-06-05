@@ -1,11 +1,7 @@
-import Header from "../components/Header";
-
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <Header />
-
-      <section className="mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 pt-24">
+    <main className="min-h-[calc(100vh-4rem)] bg-slate-950 text-white">
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col justify-center px-6 py-20">
         <p className="mb-4 text-sm font-semibold uppercase tracking-[0.35em] text-cyan-400">
           Handheld Gaming Database
         </p>
@@ -21,7 +17,9 @@ export default function Home() {
 
         <div className="max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/80 p-3 shadow-2xl">
           <input
-            className="w-full rounded-xl bg-slate-950 px-5 py-4 text-white outline-none placeholder:text-slate-500"
+            type="search"
+            aria-label="Search HandheldAtlas"
+            className="w-full rounded-xl bg-slate-950 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-cyan-500"
             placeholder="Search Cyberpunk 2077, ROG Ally X, Steam Deck..."
           />
         </div>
