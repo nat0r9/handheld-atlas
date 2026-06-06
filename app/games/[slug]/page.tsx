@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import PresetCard from "../../../components/PresetCard";
 import { benchmarks } from "../../../data/benchmarks";
 import { games as legacyGames } from "../../../data/games";
-import { handhelds } from "../../../data/handhelds";
-import { presets } from "../../../data/presets";
+import { handhelds as legacyHandhelds } from "../../../data/handhelds";
 import { createClient } from "../../../lib/supabase/server";
 
 interface GamePageProps {
@@ -29,6 +27,46 @@ interface DatabaseGame {
   cover_image_url: string | null;
 }
 
+interface DatabaseSettingItem {
+  id: string;
+  label: string;
+  value: string;
+  note: string | null;
+  sort_order: number;
+}
+
+interface DatabaseSettingGroup {
+  id: string;
+  name: string;
+  sort_order: number;
+  preset_setting_items: DatabaseSettingItem[];
+}
+
+interface DatabasePreset {
+  id: string;
+  name: string;
+  preset_type:
+    | "Performance"
+    | "Balanced"
+    | "Battery"
+    | "Docked"
+    | "Custom";
+  resolution: string | null;
+  tdp: string | null;
+  fps_average: number | null;
+  one_percent_low: number | null;
+  upscaler: string | null;
+  battery_life: string | null;
+  community_rating: number | null;
+  summary: string | null;
+  handhelds: {
+    name: string;
+    slug: string;
+    manufacturer: string;
+  } | null;
+  preset_setting_groups: DatabaseSettingGroup[];
+}
+
 async function getGame(slug: string) {
   const supabase = await createClient();
 
@@ -47,6 +85,60 @@ async function getGame(slug: string) {
   }
 
   return data as DatabaseGame | null;
+}
+
+async function getGamePresets(gameId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("presets")
+    .select(`
+      id,
+      name,
+      preset_type,
+      resolution,
+      tdp,
+      fps_average,
+      one_percent_low,
+      upscaler,
+      battery_life,
+      community_rating,
+      summary,
+      handhelds (
+        name,
+        slug,
+        manufacturer
+      ),
+      preset_setting_groups (
+        id,
+        name,
+        sort_order,
+        preset_setting_items (
+          id,
+          label,
+          value,
+          note,
+          sort_order
+        )
+      )
+    `)
+    .eq("game_id", gameId)
+    .eq("status", "published")
+    .order("published_at", {
+      ascending: false,
+      nullsFirst: false,
+    });
+
+  if (error) {
+    console.error(
+      "Could not load game presets:",
+      error.message,
+    );
+
+    return [];
+  }
+
+  return (data ?? []) as unknown as DatabasePreset[];
 }
 
 export async function generateMetadata({
@@ -133,6 +225,27 @@ function getCompatibilityStyle(score: number | null) {
   };
 }
 
+function getPresetStyle(
+  type: DatabasePreset["preset_type"],
+) {
+  switch (type) {
+    case "Performance":
+      return "border-orange-500/30 bg-orange-500/15 text-orange-400";
+
+    case "Balanced":
+      return "border-cyan-500/30 bg-cyan-500/15 text-cyan-400";
+
+    case "Battery":
+      return "border-green-500/30 bg-green-500/15 text-green-400";
+
+    case "Docked":
+      return "border-red-500/30 bg-red-500/15 text-red-400";
+
+    case "Custom":
+      return "border-purple-500/30 bg-purple-500/15 text-purple-400";
+  }
+}
+
 export default async function GamePage({
   params,
 }: GamePageProps) {
@@ -143,12 +256,10 @@ export default async function GamePage({
     notFound();
   }
 
+  const gamePresets = await getGamePresets(game.id);
+
   const legacyGame = legacyGames.find(
     (item) => item.slug === game.slug,
-  );
-
-  const gamePresets = presets.filter(
-    (preset) => preset.gameSlug === game.slug,
   );
 
   const gameBenchmarks = benchmarks.filter(
@@ -189,9 +300,7 @@ export default async function GamePage({
         )}
 
         <div className="absolute inset-0 bg-slate-950/45" />
-
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/30" />
-
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/20" />
 
         <div className="relative mx-auto flex min-h-[34rem] max-w-7xl items-end px-6 py-14">
@@ -293,7 +402,7 @@ export default async function GamePage({
               />
 
               <OverviewRow
-                label="Available presets"
+                label="Published presets"
                 value={gamePresets.length.toString()}
               />
 
@@ -329,29 +438,241 @@ export default async function GamePage({
           {gamePresets.length === 0 ? (
             <EmptySection
               title="No presets available"
-              description="Detailed presets for this game will be added through the HandheldAtlas admin dashboard."
+              description="Published presets for this game will appear here automatically."
             />
           ) : (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-8 space-y-6">
               {gamePresets.map((preset) => {
-                const handheld = handhelds.find(
-                  (item) =>
-                    item.slug === preset.handheldSlug,
+                const sortedGroups = [
+                  ...(preset.preset_setting_groups ?? []),
+                ]
+                  .sort(
+                    (first, second) =>
+                      first.sort_order - second.sort_order,
+                  )
+                  .map((group) => ({
+                    ...group,
+                    preset_setting_items: [
+                      ...(group.preset_setting_items ?? []),
+                    ].sort(
+                      (first, second) =>
+                        first.sort_order -
+                        second.sort_order,
+                    ),
+                  }));
+
+                const settingsCount = sortedGroups.reduce(
+                  (total, group) =>
+                    total +
+                    group.preset_setting_items.length,
+                  0,
                 );
 
                 return (
-                  <PresetCard
+                  <details
                     key={preset.id}
-                    preset={preset}
-                    gameName={game.name}
-                    handheldName={
-                      handheld?.name ?? preset.handheldSlug
-                    }
-                    manufacturer={
-                      handheld?.manufacturer ??
-                      "Unknown manufacturer"
-                    }
-                  />
+                    className="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900"
+                  >
+                    <summary className="cursor-pointer list-none p-6 transition hover:bg-slate-800/40 md:p-8">
+                      <div className="flex flex-wrap items-start justify-between gap-5">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span
+                              className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getPresetStyle(
+                                preset.preset_type,
+                              )}`}
+                            >
+                              {preset.preset_type}
+                            </span>
+
+                            <span className="text-sm font-bold text-slate-500">
+                              {preset.handhelds?.manufacturer ??
+                                "Unknown manufacturer"}
+                            </span>
+                          </div>
+
+                          <h3 className="mt-5 text-3xl font-black">
+                            {preset.name}
+                          </h3>
+
+                          <p className="mt-2 text-lg text-slate-400">
+                            {preset.handhelds?.name ??
+                              "Unknown handheld"}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          {preset.community_rating !== null && (
+                            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-right">
+                              <p className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+                                Rating
+                              </p>
+
+                              <p className="mt-1 font-black text-yellow-300">
+                                ★{" "}
+                                {preset.community_rating.toFixed(
+                                  1,
+                                )}
+                              </p>
+                            </div>
+                          )}
+
+                          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-700 bg-slate-950 text-xl font-black text-cyan-400 transition group-open:rotate-45">
+                            +
+                          </span>
+                        </div>
+                      </div>
+
+                      {preset.summary && (
+                        <p className="mt-5 max-w-4xl leading-7 text-slate-400">
+                          {preset.summary}
+                        </p>
+                      )}
+
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+                        <PresetStat
+                          label="Resolution"
+                          value={
+                            preset.resolution ?? "Not set"
+                          }
+                        />
+
+                        <PresetStat
+                          label="TDP"
+                          value={preset.tdp ?? "Not set"}
+                        />
+
+                        <PresetStat
+                          label="Average FPS"
+                          value={
+                            preset.fps_average !== null
+                              ? `${preset.fps_average} FPS`
+                              : "Not set"
+                          }
+                          highlighted
+                        />
+
+                        <PresetStat
+                          label="1% Low"
+                          value={
+                            preset.one_percent_low !== null
+                              ? `${preset.one_percent_low} FPS`
+                              : "Not set"
+                          }
+                        />
+
+                        <PresetStat
+                          label="Upscaler"
+                          value={
+                            preset.upscaler ?? "Not set"
+                          }
+                        />
+
+                        <PresetStat
+                          label="Battery"
+                          value={
+                            preset.battery_life ?? "Not set"
+                          }
+                        />
+
+                        <PresetStat
+                          label="Settings"
+                          value={`${settingsCount} values`}
+                        />
+                      </div>
+                    </summary>
+
+                    <div className="border-t border-slate-800 bg-slate-950/70 p-6 md:p-8">
+                      <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
+                        Complete Configuration
+                      </p>
+
+                      <h4 className="mt-2 text-3xl font-black">
+                        Full settings
+                      </h4>
+
+                      {sortedGroups.length === 0 ? (
+                        <div className="mt-6 rounded-2xl border border-dashed border-slate-700 p-8 text-center">
+                          <p className="font-bold text-slate-300">
+                            No detailed settings available
+                          </p>
+
+                          <p className="mt-2 text-sm text-slate-500">
+                            This preset currently contains only
+                            basic performance information.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-7 grid gap-6 lg:grid-cols-2">
+                          {sortedGroups.map((group) => (
+                            <section
+                              key={group.id}
+                              className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
+                            >
+                              <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
+                                <h5 className="text-xl font-black">
+                                  {group.name}
+                                </h5>
+
+                                <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-600">
+                                  {
+                                    group
+                                      .preset_setting_items
+                                      .length
+                                  }{" "}
+                                  settings
+                                </p>
+                              </div>
+
+                              <dl>
+                                {group.preset_setting_items.map(
+                                  (item, itemIndex) => (
+                                    <div
+                                      key={item.id}
+                                      className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-start ${
+                                        itemIndex ===
+                                        group
+                                          .preset_setting_items
+                                          .length -
+                                          1
+                                          ? ""
+                                          : "border-b border-slate-800"
+                                      }`}
+                                    >
+                                      <div>
+                                        <dt className="font-semibold text-slate-300">
+                                          {item.label}
+                                        </dt>
+
+                                        {item.note && (
+                                          <p className="mt-1 text-sm leading-6 text-slate-500">
+                                            {item.note}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <dd className="font-black text-cyan-400 sm:text-right">
+                                        {item.value}
+                                      </dd>
+                                    </div>
+                                  ),
+                                )}
+                              </dl>
+                            </section>
+                          ))}
+                        </div>
+                      )}
+
+                      {preset.handhelds && (
+                        <Link
+                          href={`/handhelds/${preset.handhelds.slug}`}
+                          className="mt-7 inline-flex rounded-xl border border-purple-500/40 bg-purple-500/10 px-5 py-3 font-bold text-purple-400 transition hover:bg-purple-500 hover:text-white"
+                        >
+                          View {preset.handhelds.name} →
+                        </Link>
+                      )}
+                    </div>
+                  </details>
                 );
               })}
             </div>
@@ -400,11 +721,12 @@ export default async function GamePage({
 
                   <tbody>
                     {gameBenchmarks.map((benchmark) => {
-                      const handheld = handhelds.find(
-                        (item) =>
-                          item.slug ===
-                          benchmark.handheldSlug,
-                      );
+                      const handheld =
+                        legacyHandhelds.find(
+                          (item) =>
+                            item.slug ===
+                            benchmark.handheldSlug,
+                        );
 
                       return (
                         <tr
@@ -446,18 +768,6 @@ export default async function GamePage({
             </div>
           )}
         </section>
-
-        <div className="mt-10 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-5">
-          <p className="text-sm font-semibold text-yellow-300">
-            Preset migration in progress
-          </p>
-
-          <p className="mt-2 text-sm text-yellow-100/70">
-            Game profiles now load from Supabase. Existing presets and
-            benchmark results still use the legacy data files until
-            their admin modules are completed.
-          </p>
-        </div>
       </div>
     </main>
   );
@@ -519,8 +829,43 @@ function OverviewRow({
       }`}
     >
       <dt className="text-sm text-slate-500">{label}</dt>
-
       <dd className="text-right font-bold">{value}</dd>
+    </div>
+  );
+}
+
+interface PresetStatProps {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}
+
+function PresetStat({
+  label,
+  value,
+  highlighted = false,
+}: PresetStatProps) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        highlighted
+          ? "border-cyan-500/30 bg-cyan-500/10"
+          : "border-slate-800 bg-slate-950"
+      }`}
+    >
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 font-black ${
+          highlighted
+            ? "text-cyan-400"
+            : "text-slate-200"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
