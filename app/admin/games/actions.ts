@@ -76,7 +76,9 @@ export async function createGame(formData: FormData) {
   const slug = createSlug(manualSlug || name);
 
   if (!slug) {
-    redirect("/admin/games?error=Could%20not%20create%20a%20valid%20slug");
+    redirect(
+      "/admin/games?error=Could%20not%20create%20a%20valid%20slug",
+    );
   }
 
   const releaseYear = optionalNumber(formData, "releaseYear");
@@ -110,6 +112,91 @@ export async function createGame(formData: FormData) {
   revalidatePath("/games");
 
   redirect("/admin/games?success=Game%20created");
+}
+
+export async function updateGame(formData: FormData) {
+  const { supabase } = await requireAdmin();
+
+  const gameId = String(formData.get("gameId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const manualSlug = String(formData.get("slug") ?? "").trim();
+  const genre = String(formData.get("genre") ?? "").trim();
+  const status = String(formData.get("status") ?? "draft");
+
+  if (!gameId) {
+    redirect("/admin/games?error=Missing%20game%20ID");
+  }
+
+  if (!name || !genre) {
+    redirect(
+      `/admin/games/${gameId}/edit?error=Game%20name%20and%20genre%20are%20required`,
+    );
+  }
+
+  const slug = createSlug(manualSlug || name);
+
+  if (!slug) {
+    redirect(
+      `/admin/games/${gameId}/edit?error=Could%20not%20create%20a%20valid%20slug`,
+    );
+  }
+
+  const releaseYear = optionalNumber(formData, "releaseYear");
+  const atlasScore = optionalNumber(formData, "atlasScore");
+
+  const { data: currentGame, error: currentGameError } =
+    await supabase
+      .from("games")
+      .select("status, published_at")
+      .eq("id", gameId)
+      .single();
+
+  if (currentGameError || !currentGame) {
+    redirect(
+      `/admin/games/${gameId}/edit?error=Game%20not%20found`,
+    );
+  }
+
+  const publishedAt =
+    status === "published"
+      ? currentGame.published_at ?? new Date().toISOString()
+      : null;
+
+  const { error } = await supabase
+    .from("games")
+    .update({
+      name,
+      slug,
+      genre,
+      developer: optionalText(formData, "developer"),
+      release_year: releaseYear,
+      atlas_score: atlasScore,
+      best_handheld: optionalText(formData, "bestHandheld"),
+      recommended_tdp: optionalText(formData, "recommendedTdp"),
+      notes: optionalText(formData, "notes"),
+      cover_image_url: optionalText(formData, "coverImageUrl"),
+      status,
+      published_at: publishedAt,
+    })
+    .eq("id", gameId);
+
+  if (error) {
+    redirect(
+      `/admin/games/${gameId}/edit?error=${encodeURIComponent(
+        error.message,
+      )}`,
+    );
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/games");
+  revalidatePath(`/admin/games/${gameId}/edit`);
+  revalidatePath("/games");
+  revalidatePath(`/games/${slug}`);
+
+  redirect(
+    `/admin/games/${gameId}/edit?success=Game%20updated`,
+  );
 }
 
 export async function deleteGame(formData: FormData) {

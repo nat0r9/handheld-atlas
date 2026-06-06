@@ -334,14 +334,22 @@ export default async function AdminGamesPage({
                   </div>
 
                   <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-5">
-                    <button
-                      type="button"
-                      disabled
-                      className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-bold text-slate-500"
-                      title="Editing comes in the next step."
+                    <Link
+                      href={`/admin/games/${game.id}/edit`}
+                      className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
                     >
-                      Edit soon
-                    </button>
+                      Edit
+                    </Link>
+
+                    {game.status === "published" && (
+                      <Link
+                        href={`/games/${game.slug}`}
+                        target="_blank"
+                        className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
+                      >
+                        View public
+                      </Link>
+                    )}
 
                     <form action={deleteGame}>
                       <input
