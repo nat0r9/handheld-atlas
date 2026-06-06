@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { benchmarks } from "../../../data/benchmarks";
 import { games as legacyGames } from "../../../data/games";
-import { handhelds as legacyHandhelds } from "../../../data/handhelds";
 import { createClient } from "../../../lib/supabase/server";
 
 interface GamePageProps {
@@ -65,6 +63,25 @@ interface DatabasePreset {
     manufacturer: string;
   } | null;
   preset_setting_groups: DatabaseSettingGroup[];
+}
+
+interface DatabaseBenchmark {
+  id: string;
+  resolution: string | null;
+  tdp: string | null;
+  average_fps: number | null;
+  one_percent_low: number | null;
+  battery_life: string | null;
+  test_notes: string | null;
+  handhelds: {
+    name: string;
+    slug: string;
+    manufacturer: string;
+  } | null;
+  presets: {
+    name: string;
+    preset_type: string;
+  } | null;
 }
 
 async function getGame(slug: string) {
@@ -139,6 +156,48 @@ async function getGamePresets(gameId: string) {
   }
 
   return (data ?? []) as unknown as DatabasePreset[];
+}
+
+async function getGameBenchmarks(gameId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("benchmarks")
+    .select(`
+      id,
+      resolution,
+      tdp,
+      average_fps,
+      one_percent_low,
+      battery_life,
+      test_notes,
+      handhelds (
+        name,
+        slug,
+        manufacturer
+      ),
+      presets (
+        name,
+        preset_type
+      )
+    `)
+    .eq("game_id", gameId)
+    .eq("status", "published")
+    .order("average_fps", {
+      ascending: false,
+      nullsFirst: false,
+    });
+
+  if (error) {
+    console.error(
+      "Could not load game benchmarks:",
+      error.message,
+    );
+
+    return [];
+  }
+
+  return (data ?? []) as unknown as DatabaseBenchmark[];
 }
 
 export async function generateMetadata({
@@ -256,27 +315,23 @@ export default async function GamePage({
     notFound();
   }
 
-  const gamePresets = await getGamePresets(game.id);
+  const [gamePresets, gameBenchmarks] =
+    await Promise.all([
+      getGamePresets(game.id),
+      getGameBenchmarks(game.id),
+    ]);
 
   const legacyGame = legacyGames.find(
     (item) => item.slug === game.slug,
-  );
-
-  const gameBenchmarks = benchmarks.filter(
-    (benchmark) => benchmark.gameSlug === game.slug,
   );
 
   const compatibility = getCompatibilityStyle(
     game.atlas_score,
   );
 
-  const bestBenchmark =
-    gameBenchmarks.length > 0
-      ? [...gameBenchmarks].sort(
-          (first, second) =>
-            second.averageFps - first.averageFps,
-        )[0]
-      : undefined;
+  const bestBenchmark = gameBenchmarks.find(
+    (benchmark) => benchmark.average_fps !== null,
+  );
 
   const coverImage =
     game.cover_image_url ??
@@ -359,12 +414,13 @@ export default async function GamePage({
                 value={game.recommended_tdp ?? "Not set"}
               />
 
-              {bestBenchmark && (
-                <MetricCard
-                  label="Highest Tested FPS"
-                  value={`${bestBenchmark.averageFps} FPS`}
-                />
-              )}
+              {bestBenchmark?.average_fps !== null &&
+                bestBenchmark?.average_fps !== undefined && (
+                  <MetricCard
+                    label="Highest Tested FPS"
+                    value={`${bestBenchmark.average_fps} FPS`}
+                  />
+                )}
             </div>
           </div>
         </div>
@@ -407,7 +463,7 @@ export default async function GamePage({
               />
 
               <OverviewRow
-                label="Benchmarks"
+                label="Published benchmarks"
                 value={gameBenchmarks.length.toString()}
                 isLast
               />
@@ -596,11 +652,6 @@ export default async function GamePage({
                           <p className="font-bold text-slate-300">
                             No detailed settings available
                           </p>
-
-                          <p className="mt-2 text-sm text-slate-500">
-                            This preset currently contains only
-                            basic performance information.
-                          </p>
                         </div>
                       ) : (
                         <div className="mt-7 grid gap-6 lg:grid-cols-2">
@@ -613,15 +664,6 @@ export default async function GamePage({
                                 <h5 className="text-xl font-black">
                                   {group.name}
                                 </h5>
-
-                                <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-600">
-                                  {
-                                    group
-                                      .preset_setting_items
-                                      .length
-                                  }{" "}
-                                  settings
-                                </p>
                               </div>
 
                               <dl>
@@ -629,7 +671,7 @@ export default async function GamePage({
                                   (item, itemIndex) => (
                                     <div
                                       key={item.id}
-                                      className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-start ${
+                                      className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] ${
                                         itemIndex ===
                                         group
                                           .preset_setting_items
@@ -645,13 +687,13 @@ export default async function GamePage({
                                         </dt>
 
                                         {item.note && (
-                                          <p className="mt-1 text-sm leading-6 text-slate-500">
+                                          <p className="mt-1 text-sm text-slate-500">
                                             {item.note}
                                           </p>
                                         )}
                                       </div>
 
-                                      <dd className="font-black text-cyan-400 sm:text-right">
+                                      <dd className="font-black text-cyan-400">
                                         {item.value}
                                       </dd>
                                     </div>
@@ -661,15 +703,6 @@ export default async function GamePage({
                             </section>
                           ))}
                         </div>
-                      )}
-
-                      {preset.handhelds && (
-                        <Link
-                          href={`/handhelds/${preset.handhelds.slug}`}
-                          className="mt-7 inline-flex rounded-xl border border-purple-500/40 bg-purple-500/10 px-5 py-3 font-bold text-purple-400 transition hover:bg-purple-500 hover:text-white"
-                        >
-                          View {preset.handhelds.name} →
-                        </Link>
                       )}
                     </div>
                   </details>
@@ -702,7 +735,7 @@ export default async function GamePage({
           {gameBenchmarks.length === 0 ? (
             <EmptySection
               title="No benchmarks available"
-              description="Verified benchmark results for this game will be added later."
+              description="Published benchmark results for this game will appear here automatically."
             />
           ) : (
             <div className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
@@ -711,6 +744,7 @@ export default async function GamePage({
                   <thead className="border-b border-slate-800 bg-slate-950/60">
                     <tr>
                       <TableHeading label="Handheld" />
+                      <TableHeading label="Preset" />
                       <TableHeading label="Resolution" />
                       <TableHeading label="TDP" />
                       <TableHeading label="Average FPS" />
@@ -720,48 +754,57 @@ export default async function GamePage({
                   </thead>
 
                   <tbody>
-                    {gameBenchmarks.map((benchmark) => {
-                      const handheld =
-                        legacyHandhelds.find(
-                          (item) =>
-                            item.slug ===
-                            benchmark.handheldSlug,
-                        );
+                    {gameBenchmarks.map((benchmark) => (
+                      <tr
+                        key={benchmark.id}
+                        className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
+                      >
+                        <td className="px-6 py-5">
+                          {benchmark.handhelds ? (
+                            <Link
+                              href={`/handhelds/${benchmark.handhelds.slug}`}
+                              className="font-semibold transition hover:text-cyan-400"
+                            >
+                              {benchmark.handhelds.name}
+                            </Link>
+                          ) : (
+                            "Unknown handheld"
+                          )}
+                        </td>
 
-                      return (
-                        <tr
-                          key={benchmark.id}
-                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
-                        >
-                          <td className="px-6 py-5 font-semibold">
-                            {handheld?.name ??
-                              benchmark.handheldSlug}
-                          </td>
+                        <td className="px-6 py-5 text-slate-300">
+                          {benchmark.presets
+                            ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
+                            : "Not linked"}
+                        </td>
 
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.resolution}
-                          </td>
+                        <td className="px-6 py-5 text-slate-300">
+                          {benchmark.resolution ?? "Not set"}
+                        </td>
 
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.tdp}
-                          </td>
+                        <td className="px-6 py-5 text-slate-300">
+                          {benchmark.tdp ?? "Not set"}
+                        </td>
 
-                          <td className="px-6 py-5">
-                            <span className="rounded-full bg-cyan-500/20 px-3 py-1 font-bold text-cyan-400">
-                              {benchmark.averageFps}
-                            </span>
-                          </td>
+                        <td className="px-6 py-5">
+                          <span className="rounded-full bg-cyan-500/20 px-3 py-1 font-bold text-cyan-400">
+                            {benchmark.average_fps !== null
+                              ? `${benchmark.average_fps} FPS`
+                              : "Not set"}
+                          </span>
+                        </td>
 
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.onePercentLow}
-                          </td>
+                        <td className="px-6 py-5 text-slate-300">
+                          {benchmark.one_percent_low !== null
+                            ? `${benchmark.one_percent_low} FPS`
+                            : "Not set"}
+                        </td>
 
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.batteryLife}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        <td className="px-6 py-5 text-slate-300">
+                          {benchmark.battery_life ?? "Not set"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -792,13 +835,7 @@ function MetricCard({
           : "border border-white/10 bg-black/30"
       }`}
     >
-      <p
-        className={`text-xs font-bold uppercase tracking-[0.2em] ${
-          highlighted
-            ? "text-cyan-300"
-            : "text-slate-400"
-        }`}
-      >
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
         {label}
       </p>
 
@@ -823,9 +860,7 @@ function OverviewRow({
   return (
     <div
       className={`flex items-center justify-between gap-4 ${
-        isLast
-          ? ""
-          : "border-b border-slate-800 pb-4"
+        isLast ? "" : "border-b border-slate-800 pb-4"
       }`}
     >
       <dt className="text-sm text-slate-500">{label}</dt>
@@ -870,29 +905,24 @@ function PresetStat({
   );
 }
 
-interface EmptySectionProps {
-  title: string;
-  description: string;
-}
-
 function EmptySection({
   title,
   description,
-}: EmptySectionProps) {
+}: {
+  title: string;
+  description: string;
+}) {
   return (
     <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
       <h3 className="text-xl font-bold">{title}</h3>
-
-      <p className="mt-2 text-slate-400">
-        {description}
-      </p>
+      <p className="mt-2 text-slate-400">{description}</p>
     </div>
   );
 }
 
 function TableHeading({ label }: { label: string }) {
   return (
-    <th className="px-6 py-4 text-sm font-semibold text-slate-500">
+    <th className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-500">
       {label}
     </th>
   );

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { benchmarks } from "../../../data/benchmarks";
-import { games as legacyGames } from "../../../data/games";
 import { handhelds as legacyHandhelds } from "../../../data/handhelds";
 import { createClient } from "../../../lib/supabase/server";
 
@@ -69,6 +67,24 @@ interface DatabasePreset {
     slug: string;
   } | null;
   preset_setting_groups: DatabaseSettingGroup[];
+}
+
+interface DatabaseBenchmark {
+  id: string;
+  resolution: string | null;
+  tdp: string | null;
+  average_fps: number | null;
+  one_percent_low: number | null;
+  battery_life: string | null;
+  test_notes: string | null;
+  games: {
+    name: string;
+    slug: string;
+  } | null;
+  presets: {
+    name: string;
+    preset_type: string;
+  } | null;
 }
 
 async function getHandheld(slug: string) {
@@ -148,6 +164,49 @@ async function getHandheldPresets(
   }
 
   return (data ?? []) as unknown as DatabasePreset[];
+}
+
+async function getHandheldBenchmarks(
+  handheldId: string,
+) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("benchmarks")
+    .select(`
+      id,
+      resolution,
+      tdp,
+      average_fps,
+      one_percent_low,
+      battery_life,
+      test_notes,
+      games (
+        name,
+        slug
+      ),
+      presets (
+        name,
+        preset_type
+      )
+    `)
+    .eq("handheld_id", handheldId)
+    .eq("status", "published")
+    .order("average_fps", {
+      ascending: false,
+      nullsFirst: false,
+    });
+
+  if (error) {
+    console.error(
+      "Could not load handheld benchmarks:",
+      error.message,
+    );
+
+    return [];
+  }
+
+  return (data ?? []) as unknown as DatabaseBenchmark[];
 }
 
 export async function generateMetadata({
@@ -235,32 +294,28 @@ export default async function HandheldPage({
   params,
 }: HandheldPageProps) {
   const { slug } = await params;
-
   const handheld = await getHandheld(slug);
 
   if (!handheld) {
     notFound();
   }
 
-  const handheldPresets =
-    await getHandheldPresets(handheld.id);
+  const [
+    handheldPresets,
+    handheldBenchmarks,
+  ] = await Promise.all([
+    getHandheldPresets(handheld.id),
+    getHandheldBenchmarks(handheld.id),
+  ]);
 
   const legacyHandheld = legacyHandhelds.find(
     (item) => item.slug === handheld.slug,
   );
 
-  const handheldBenchmarks = benchmarks.filter(
+  const bestBenchmark = handheldBenchmarks.find(
     (benchmark) =>
-      benchmark.handheldSlug === handheld.slug,
+      benchmark.average_fps !== null,
   );
-
-  const bestBenchmark =
-    handheldBenchmarks.length > 0
-      ? [...handheldBenchmarks].sort(
-          (first, second) =>
-            second.averageFps - first.averageFps,
-        )[0]
-      : undefined;
 
   const handheldImage =
     handheld.image_url ??
@@ -325,15 +380,17 @@ export default async function HandheldPage({
               <MetricCard
                 label="Published Presets"
                 value={handheldPresets.length.toString()}
-                highlighted
               />
 
-              {bestBenchmark && (
-                <MetricCard
-                  label="Highest Tested FPS"
-                  value={`${bestBenchmark.averageFps} FPS`}
-                />
-              )}
+              {bestBenchmark?.average_fps !== null &&
+                bestBenchmark?.average_fps !==
+                  undefined && (
+                  <MetricCard
+                    label="Highest Tested FPS"
+                    value={`${bestBenchmark.average_fps} FPS`}
+                    highlighted
+                  />
+                )}
             </div>
           </div>
 
@@ -458,7 +515,8 @@ export default async function HandheldPage({
             <div className="mt-8 space-y-6">
               {handheldPresets.map((preset) => {
                 const sortedGroups = [
-                  ...(preset.preset_setting_groups ?? []),
+                  ...(preset.preset_setting_groups ??
+                    []),
                 ]
                   .sort(
                     (first, second) =>
@@ -514,12 +572,10 @@ export default async function HandheldPage({
                             {preset.name}
                           </h3>
 
-                          {preset.games && (
-                            <p className="mt-2 text-lg text-slate-400">
-                              Settings for{" "}
-                              {preset.games.name}
-                            </p>
-                          )}
+                          <p className="mt-2 text-lg text-slate-400">
+                            {preset.games?.name ??
+                              "Unknown game"}
+                          </p>
                         </div>
 
                         <div className="flex items-center gap-4">
@@ -625,12 +681,6 @@ export default async function HandheldPage({
                           <p className="font-bold text-slate-300">
                             No detailed settings available
                           </p>
-
-                          <p className="mt-2 text-sm text-slate-500">
-                            This preset currently contains
-                            only basic performance
-                            information.
-                          </p>
                         </div>
                       ) : (
                         <div className="mt-7 grid gap-6 lg:grid-cols-2">
@@ -643,15 +693,6 @@ export default async function HandheldPage({
                                 <h5 className="text-xl font-black">
                                   {group.name}
                                 </h5>
-
-                                <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-600">
-                                  {
-                                    group
-                                      .preset_setting_items
-                                      .length
-                                  }{" "}
-                                  settings
-                                </p>
                               </div>
 
                               <dl>
@@ -662,7 +703,7 @@ export default async function HandheldPage({
                                   ) => (
                                     <div
                                       key={item.id}
-                                      className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-start ${
+                                      className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] ${
                                         itemIndex ===
                                         group
                                           .preset_setting_items
@@ -678,13 +719,13 @@ export default async function HandheldPage({
                                         </dt>
 
                                         {item.note && (
-                                          <p className="mt-1 text-sm leading-6 text-slate-500">
+                                          <p className="mt-1 text-sm text-slate-500">
                                             {item.note}
                                           </p>
                                         )}
                                       </div>
 
-                                      <dd className="font-black text-cyan-400 sm:text-right">
+                                      <dd className="font-black text-cyan-400">
                                         {item.value}
                                       </dd>
                                     </div>
@@ -735,7 +776,7 @@ export default async function HandheldPage({
           {handheldBenchmarks.length === 0 ? (
             <EmptySection
               title="No benchmarks available"
-              description="Verified benchmark results for this handheld will be added later."
+              description="Published benchmark results for this handheld will appear here automatically."
             />
           ) : (
             <div className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
@@ -744,6 +785,7 @@ export default async function HandheldPage({
                   <thead className="border-b border-slate-800 bg-slate-950/60">
                     <tr>
                       <TableHeading label="Game" />
+                      <TableHeading label="Preset" />
                       <TableHeading label="Resolution" />
                       <TableHeading label="TDP" />
                       <TableHeading label="Average FPS" />
@@ -754,55 +796,62 @@ export default async function HandheldPage({
 
                   <tbody>
                     {handheldBenchmarks.map(
-                      (benchmark) => {
-                        const game = legacyGames.find(
-                          (item) =>
-                            item.slug ===
-                            benchmark.gameSlug,
-                        );
+                      (benchmark) => (
+                        <tr
+                          key={benchmark.id}
+                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
+                        >
+                          <td className="px-6 py-5">
+                            {benchmark.games ? (
+                              <Link
+                                href={`/games/${benchmark.games.slug}`}
+                                className="font-semibold transition hover:text-cyan-400"
+                              >
+                                {benchmark.games.name}
+                              </Link>
+                            ) : (
+                              "Unknown game"
+                            )}
+                          </td>
 
-                        return (
-                          <tr
-                            key={benchmark.id}
-                            className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
-                          >
-                            <td className="px-6 py-5 font-semibold">
-                              {game?.name ??
-                                benchmark.gameSlug}
-                            </td>
+                          <td className="px-6 py-5 text-slate-300">
+                            {benchmark.presets
+                              ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
+                              : "Not linked"}
+                          </td>
 
-                            <td className="px-6 py-5 text-slate-300">
-                              {
-                                benchmark.resolution
-                              }
-                            </td>
+                          <td className="px-6 py-5 text-slate-300">
+                            {benchmark.resolution ??
+                              "Not set"}
+                          </td>
 
-                            <td className="px-6 py-5 text-slate-300">
-                              {benchmark.tdp}
-                            </td>
+                          <td className="px-6 py-5 text-slate-300">
+                            {benchmark.tdp ??
+                              "Not set"}
+                          </td>
 
-                            <td className="px-6 py-5">
-                              <span className="rounded-full bg-cyan-500/20 px-3 py-1 font-bold text-cyan-400">
-                                {
-                                  benchmark.averageFps
-                                }
-                              </span>
-                            </td>
+                          <td className="px-6 py-5">
+                            <span className="rounded-full bg-cyan-500/20 px-3 py-1 font-bold text-cyan-400">
+                              {benchmark.average_fps !==
+                              null
+                                ? `${benchmark.average_fps} FPS`
+                                : "Not set"}
+                            </span>
+                          </td>
 
-                            <td className="px-6 py-5 text-slate-300">
-                              {
-                                benchmark.onePercentLow
-                              }
-                            </td>
+                          <td className="px-6 py-5 text-slate-300">
+                            {benchmark.one_percent_low !==
+                            null
+                              ? `${benchmark.one_percent_low} FPS`
+                              : "Not set"}
+                          </td>
 
-                            <td className="px-6 py-5 text-slate-300">
-                              {
-                                benchmark.batteryLife
-                              }
-                            </td>
-                          </tr>
-                        );
-                      },
+                          <td className="px-6 py-5 text-slate-300">
+                            {benchmark.battery_life ??
+                              "Not set"}
+                          </td>
+                        </tr>
+                      ),
                     )}
                   </tbody>
                 </table>
@@ -834,13 +883,7 @@ function MetricCard({
           : "border border-white/10 bg-white/5"
       }`}
     >
-      <p
-        className={`text-xs font-bold uppercase tracking-[0.2em] ${
-          highlighted
-            ? "text-cyan-300"
-            : "text-slate-500"
-        }`}
-      >
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
         {label}
       </p>
 
@@ -909,15 +952,13 @@ function PresetStat({
   );
 }
 
-interface EmptySectionProps {
-  title: string;
-  description: string;
-}
-
 function EmptySection({
   title,
   description,
-}: EmptySectionProps) {
+}: {
+  title: string;
+  description: string;
+}) {
   return (
     <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
       <h3 className="text-xl font-bold">
@@ -937,7 +978,7 @@ function TableHeading({
   label: string;
 }) {
   return (
-    <th className="px-6 py-4 text-sm font-semibold text-slate-500">
+    <th className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-500">
       {label}
     </th>
   );
