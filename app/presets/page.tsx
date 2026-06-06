@@ -1,208 +1,147 @@
-"use client";
+import PresetsCatalog, {
+  type PublicPreset,
+} from "../../components/PresetsCatalog";
+import { createClient } from "../../lib/supabase/server";
 
-import { useMemo, useState } from "react";
-import PresetCard from "../../components/PresetCard";
-import { games } from "../../data/games";
-import { handhelds } from "../../data/handhelds";
-import { presets } from "../../data/presets";
-import type { PresetType } from "../../types/presets";
-
-type PresetFilter = "All" | PresetType;
-
-const filters: PresetFilter[] = [
-  "All",
-  "Performance",
-  "Balanced",
-  "Battery",
-  "Docked",
-];
-
-function getFilterStyle(
-  filter: PresetFilter,
-  activeFilter: PresetFilter,
-) {
-  const isActive = filter === activeFilter;
-
-  if (!isActive) {
-    return "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white";
-  }
-
-  switch (filter) {
-    case "Performance":
-      return "border-orange-500 bg-orange-500/20 text-orange-400";
-
-    case "Balanced":
-      return "border-cyan-500 bg-cyan-500/20 text-cyan-400";
-
-    case "Battery":
-      return "border-green-500 bg-green-500/20 text-green-400";
-
-    case "Docked":
-      return "border-red-500 bg-red-500/20 text-red-400";
-
-    case "All":
-      return "border-white bg-white text-slate-950";
-  }
+interface DatabaseSettingItem {
+  id: string;
+  label: string;
+  value: string;
+  note: string | null;
+  sort_order: number;
 }
 
-export default function PresetsPage() {
-  const [activeFilter, setActiveFilter] =
-    useState<PresetFilter>("All");
+interface DatabaseSettingGroup {
+  id: string;
+  name: string;
+  sort_order: number;
+  preset_setting_items: DatabaseSettingItem[];
+}
 
-  const [searchQuery, setSearchQuery] = useState("");
+interface DatabasePreset {
+  id: string;
+  name: string;
+  preset_type:
+    | "Performance"
+    | "Balanced"
+    | "Battery"
+    | "Docked"
+    | "Custom";
+  resolution: string | null;
+  tdp: string | null;
+  fps_average: number | null;
+  one_percent_low: number | null;
+  upscaler: string | null;
+  battery_life: string | null;
+  community_rating: number | null;
+  summary: string | null;
+  published_at: string | null;
+  games: {
+    name: string;
+    slug: string;
+  } | null;
+  handhelds: {
+    name: string;
+    slug: string;
+    manufacturer: string;
+  } | null;
+  preset_setting_groups: DatabaseSettingGroup[];
+}
 
-  const filteredPresets = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
+export default async function PresetsPage() {
+  const supabase = await createClient();
 
-    return presets.filter((preset) => {
-      const game = games.find(
-        (item) => item.slug === preset.gameSlug,
-      );
-
-      const handheld = handhelds.find(
-        (item) => item.slug === preset.handheldSlug,
-      );
-
-      const matchesFilter =
-        activeFilter === "All" || preset.type === activeFilter;
-
-      const searchableText = [
-        preset.name,
-        preset.type,
-        preset.resolution,
-        preset.tdp,
-        preset.upscaler,
-        game?.name ?? "",
-        handheld?.name ?? "",
-        handheld?.manufacturer ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      const matchesSearch =
-        normalizedQuery.length === 0 ||
-        searchableText.includes(normalizedQuery);
-
-      return matchesFilter && matchesSearch;
+  const { data, error } = await supabase
+    .from("presets")
+    .select(`
+      id,
+      name,
+      preset_type,
+      resolution,
+      tdp,
+      fps_average,
+      one_percent_low,
+      upscaler,
+      battery_life,
+      community_rating,
+      summary,
+      published_at,
+      games (
+        name,
+        slug
+      ),
+      handhelds (
+        name,
+        slug,
+        manufacturer
+      ),
+      preset_setting_groups (
+        id,
+        name,
+        sort_order,
+        preset_setting_items (
+          id,
+          label,
+          value,
+          note,
+          sort_order
+        )
+      )
+    `)
+    .eq("status", "published")
+    .order("published_at", {
+      ascending: false,
+      nullsFirst: false,
     });
-  }, [activeFilter, searchQuery]);
 
-  function clearFilters() {
-    setActiveFilter("All");
-    setSearchQuery("");
-  }
+  const databasePresets =
+    (data ?? []) as unknown as DatabasePreset[];
+
+  const presets: PublicPreset[] = databasePresets.map(
+    (preset) => ({
+      id: preset.id,
+      name: preset.name,
+      type: preset.preset_type,
+      resolution: preset.resolution,
+      tdp: preset.tdp,
+      averageFps: preset.fps_average,
+      onePercentLow: preset.one_percent_low,
+      upscaler: preset.upscaler,
+      batteryLife: preset.battery_life,
+      communityRating: preset.community_rating,
+      summary: preset.summary,
+      publishedAt: preset.published_at,
+      game: preset.games,
+      handheld: preset.handhelds,
+      groups: [...(preset.preset_setting_groups ?? [])]
+        .sort(
+          (first, second) =>
+            first.sort_order - second.sort_order,
+        )
+        .map((group) => ({
+          id: group.id,
+          name: group.name,
+          items: [
+            ...(group.preset_setting_items ?? []),
+          ]
+            .sort(
+              (first, second) =>
+                first.sort_order - second.sort_order,
+            )
+            .map((item) => ({
+              id: item.id,
+              label: item.label,
+              value: item.value,
+              note: item.note,
+            })),
+        })),
+    }),
+  );
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
-          Performance Profiles
-        </p>
-
-        <h1 className="mt-3 text-5xl font-black">Presets</h1>
-
-        <p className="mt-4 max-w-2xl text-slate-400">
-          Browse performance, balanced, battery and docked settings
-          for supported handheld gaming devices.
-        </p>
-
-        <div className="mt-8 max-w-2xl">
-          <label
-            htmlFor="preset-search"
-            className="mb-2 block text-sm font-semibold text-slate-300"
-          >
-            Search presets
-          </label>
-
-          <input
-            id="preset-search"
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search Cyberpunk, ROG Ally X, 25W, FSR..."
-            className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-          />
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter(filter)}
-              className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${getFilterStyle(
-                filter,
-                activeFilter,
-              )}`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-slate-500">
-            Showing {filteredPresets.length}{" "}
-            {filteredPresets.length === 1 ? "preset" : "presets"}
-          </p>
-
-          {(activeFilter !== "All" || searchQuery.length > 0) && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        {filteredPresets.length === 0 ? (
-          <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-8">
-            <h2 className="text-xl font-bold">No presets found</h2>
-
-            <p className="mt-2 text-slate-400">
-              Try another game, handheld or preset mode.
-            </p>
-
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="mt-5 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400"
-            >
-              Reset search
-            </button>
-          </div>
-        ) : (
-          <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredPresets.map((preset) => {
-              const game = games.find(
-                (item) => item.slug === preset.gameSlug,
-              );
-
-              const handheld = handhelds.find(
-                (item) => item.slug === preset.handheldSlug,
-              );
-
-              return (
-                <PresetCard
-                  key={preset.id}
-                  preset={preset}
-                  gameName={game?.name ?? preset.gameSlug}
-                  handheldName={
-                    handheld?.name ?? preset.handheldSlug
-                  }
-                  manufacturer={
-                    handheld?.manufacturer ??
-                    "Unknown manufacturer"
-                  }
-                  showGameLink
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </main>
+    <PresetsCatalog
+      presets={presets}
+      databaseError={error?.message ?? null}
+    />
   );
 }
