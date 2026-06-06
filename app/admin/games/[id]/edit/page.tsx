@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../../lib/supabase/server";
 import { updateGame } from "../../actions";
+import GameCoverUpload from "@/components/admin/GameCoverUpload";
 
 interface EditGamePageProps {
   params: Promise<{
@@ -174,11 +175,9 @@ export default async function EditGamePage({
                 defaultValue={game.recommended_tdp ?? ""}
               />
 
-              <FormField
-                label="Cover image URL"
-                name="coverImageUrl"
-                defaultValue={game.cover_image_url ?? ""}
-              />
+              <GameCoverUpload
+  defaultUrl={game.cover_image_url ?? ""}
+/>
 
               <div>
                 <label

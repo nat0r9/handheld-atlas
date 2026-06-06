@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import GameCoverUpload from "../../../components/admin/GameCoverUpload";
 import { createClient } from "../../../lib/supabase/server";
 import { createGame, deleteGame } from "./actions";
 
@@ -92,13 +94,11 @@ export default async function AdminGamesPage({
               Content Management
             </p>
 
-            <h1 className="mt-3 text-5xl font-black">
-              Games
-            </h1>
+            <h1 className="mt-3 text-5xl font-black">Games</h1>
 
             <p className="mt-4 max-w-2xl text-slate-400">
-              Add games to the database and control whether they are
-              drafts, published or archived.
+              Add games to the database, upload cover images and control
+              whether they are drafts, published or archived.
             </p>
           </div>
 
@@ -107,9 +107,7 @@ export default async function AdminGamesPage({
               Database total
             </p>
 
-            <p className="mt-2 text-3xl font-black">
-              {games.length}
-            </p>
+            <p className="mt-2 text-3xl font-black">{games.length}</p>
           </div>
         </div>
 
@@ -130,9 +128,7 @@ export default async function AdminGamesPage({
             New Game
           </p>
 
-          <h2 className="mt-3 text-3xl font-black">
-            Add game
-          </h2>
+          <h2 className="mt-3 text-3xl font-black">Add game</h2>
 
           <form action={createGame} className="mt-8">
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -193,12 +189,6 @@ export default async function AdminGamesPage({
                 placeholder="25W"
               />
 
-              <FormField
-                label="Cover image URL"
-                name="coverImageUrl"
-                placeholder="https://..."
-              />
-
               <div>
                 <label
                   htmlFor="status"
@@ -220,7 +210,11 @@ export default async function AdminGamesPage({
               </div>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-6">
+              <GameCoverUpload />
+            </div>
+
+            <div className="mt-6">
               <label
                 htmlFor="notes"
                 className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
@@ -259,8 +253,7 @@ export default async function AdminGamesPage({
             </div>
 
             <p className="text-sm text-slate-500">
-              {games.length}{" "}
-              {games.length === 1 ? "game" : "games"}
+              {games.length} {games.length === 1 ? "game" : "games"}
             </p>
           </div>
 
@@ -279,92 +272,116 @@ export default async function AdminGamesPage({
               {games.map((game) => (
                 <article
                   key={game.id}
-                  className="rounded-3xl border border-slate-800 bg-slate-900 p-6"
+                  className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-500">
-                        {game.genre}
-                      </p>
+                  <div className="relative flex min-h-[24rem] items-center justify-center overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-6">
+                    <div className="pointer-events-none absolute h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
 
-                      <h3 className="mt-2 text-2xl font-black">
-                        {game.name}
-                      </h3>
+                    {game.cover_image_url ? (
+                      <div className="relative aspect-[3/4] h-80 max-h-[80vw] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl">
+                        <Image
+                          src={game.cover_image_url}
+                          alt={game.name}
+                          fill
+                          sizes="320px"
+                          className="object-contain object-center"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex aspect-[3/4] h-80 items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-950">
+                        <p className="px-6 text-center text-sm font-bold uppercase tracking-[0.2em] text-slate-700">
+                          No cover image
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
-                      <p className="mt-2 text-sm text-slate-500">
-                        /games/{game.slug}
-                      </p>
+                  <div className="p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-500">
+                          {game.genre}
+                        </p>
+
+                        <h3 className="mt-2 text-2xl font-black">
+                          {game.name}
+                        </h3>
+
+                        <p className="mt-2 text-sm text-slate-500">
+                          /games/{game.slug}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getStatusStyle(
+                          game.status,
+                        )}`}
+                      >
+                        {game.status}
+                      </span>
                     </div>
 
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getStatusStyle(
-                        game.status,
-                      )}`}
-                    >
-                      {game.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-2 gap-4">
-                    <GameStat
-                      label="Developer"
-                      value={game.developer ?? "Not set"}
-                    />
-
-                    <GameStat
-                      label="Release"
-                      value={
-                        game.release_year?.toString() ?? "Not set"
-                      }
-                    />
-
-                    <GameStat
-                      label="Atlas Score"
-                      value={
-                        game.atlas_score !== null
-                          ? `${game.atlas_score}/100`
-                          : "Not set"
-                      }
-                    />
-
-                    <GameStat
-                      label="Recommended TDP"
-                      value={game.recommended_tdp ?? "Not set"}
-                    />
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-5">
-                    <Link
-                      href={`/admin/games/${game.id}/edit`}
-                      className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
-                    >
-                      Edit
-                    </Link>
-
-                    {game.status === "published" && (
-                      <Link
-                        href={`/games/${game.slug}`}
-                        target="_blank"
-                        className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
-                      >
-                        View public
-                      </Link>
-                    )}
-
-                    <form action={deleteGame}>
-                      <input
-                        type="hidden"
-                        name="gameId"
-                        value={game.id}
+                    <div className="mt-6 grid grid-cols-2 gap-4">
+                      <GameStat
+                        label="Developer"
+                        value={game.developer ?? "Not set"}
                       />
 
-                      <button
-                        type="submit"
-                        className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-400 transition hover:bg-red-500 hover:text-white"
+                      <GameStat
+                        label="Release"
+                        value={
+                          game.release_year?.toString() ?? "Not set"
+                        }
+                      />
+
+                      <GameStat
+                        label="Atlas Score"
+                        value={
+                          game.atlas_score !== null
+                            ? `${game.atlas_score}/100`
+                            : "Not set"
+                        }
+                      />
+
+                      <GameStat
+                        label="Recommended TDP"
+                        value={game.recommended_tdp ?? "Not set"}
+                      />
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-5">
+                      <Link
+                        href={`/admin/games/${game.id}/edit`}
+                        className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
                       >
-                        Delete
-                      </button>
-                    </form>
+                        Edit
+                      </Link>
+
+                      {game.status === "published" && (
+                        <Link
+                          href={`/games/${game.slug}`}
+                          target="_blank"
+                          className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
+                        >
+                          View public
+                        </Link>
+                      )}
+
+                      <form action={deleteGame}>
+                        <input
+                          type="hidden"
+                          name="gameId"
+                          value={game.id}
+                        />
+
+                        <button
+                          type="submit"
+                          className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-400 transition hover:bg-red-500 hover:text-white"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -438,9 +455,7 @@ function GameStat({ label, value }: GameStatProps) {
         {label}
       </p>
 
-      <p className="mt-1 font-bold text-slate-200">
-        {value}
-      </p>
+      <p className="mt-1 font-bold text-slate-200">{value}</p>
     </div>
   );
 }
