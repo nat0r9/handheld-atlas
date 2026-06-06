@@ -162,10 +162,12 @@ export default async function AdminPresetsPage({
   ]);
 
   const games = gamesResult.data ?? [];
-  const handhelds = handheldsResult.data ?? [];
+  const handhelds =
+    handheldsResult.data ?? [];
 
   const presets =
-    (presetsResult.data ?? []) as unknown as DatabasePreset[];
+    (presetsResult.data ??
+      []) as unknown as DatabasePreset[];
 
   const databaseError =
     gamesResult.error?.message ??
@@ -194,9 +196,9 @@ export default async function AdminPresetsPage({
             </h1>
 
             <p className="mt-4 max-w-3xl text-slate-400">
-              Create detailed settings profiles with
-              completely flexible groups and game-specific
-              setting names.
+              Create and edit detailed settings profiles
+              with completely flexible game-specific
+              groups and values.
             </p>
           </div>
 
@@ -338,14 +340,18 @@ export default async function AdminPresetsPage({
 
                     <PresetStat
                       label="TDP"
-                      value={preset.tdp ?? "Not set"}
+                      value={
+                        preset.tdp ?? "Not set"
+                      }
                     />
 
                     <PresetStat
                       label="Average FPS"
                       value={
                         preset.fps_average !== null
-                          ? `${preset.fps_average}`
+                          ? String(
+                              preset.fps_average,
+                            )
                           : "Not set"
                       }
                     />
@@ -353,9 +359,10 @@ export default async function AdminPresetsPage({
                     <PresetStat
                       label="1% Low"
                       value={
-                        preset.one_percent_low !==
-                        null
-                          ? `${preset.one_percent_low}`
+                        preset.one_percent_low !== null
+                          ? String(
+                              preset.one_percent_low,
+                            )
                           : "Not set"
                       }
                     />
@@ -370,27 +377,39 @@ export default async function AdminPresetsPage({
 
                     <PresetStat
                       label="Settings groups"
-                      value={`${preset.preset_setting_groups.length}`}
+                      value={String(
+                        preset
+                          .preset_setting_groups
+                          .length,
+                      )}
                     />
                   </div>
 
                   <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-5">
-                    <button
-                      type="button"
-                      disabled
-                      title="Preset editing comes next."
-                      className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-bold text-slate-500"
+                    <Link
+                      href={`/admin/presets/${preset.id}/edit`}
+                      className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
                     >
-                      Edit soon
-                    </button>
+                      Edit
+                    </Link>
 
                     {preset.games?.slug && (
                       <Link
                         href={`/games/${preset.games.slug}`}
                         target="_blank"
-                        className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+                        className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
                       >
                         Open game
+                      </Link>
+                    )}
+
+                    {preset.handhelds?.slug && (
+                      <Link
+                        href={`/handhelds/${preset.handhelds.slug}`}
+                        target="_blank"
+                        className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-400 transition hover:bg-purple-500 hover:text-white"
+                      >
+                        Open handheld
                       </Link>
                     )}
 
