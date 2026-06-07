@@ -40,6 +40,38 @@ export const metadata: Metadata = {
     canonical: "/",
   },
 
+  manifest: "/manifest.webmanifest",
+
+  icons: {
+    icon: [
+      {
+        url: "/icon-192.png",
+        type: "image/png",
+        sizes: "192x192",
+      },
+      {
+        url: "/icon-512.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
+
+    apple: [
+      {
+        url: "/apple-touch-icon.png",
+        type: "image/png",
+        sizes: "180x180",
+      },
+    ],
+
+    shortcut: [
+      {
+        url: "/icon-192.png",
+        type: "image/png",
+      },
+    ],
+  },
+
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -49,6 +81,14 @@ export const metadata: Metadata = {
       "HandheldAtlas — Handheld Gaming Settings, Benchmarks and Guides",
     description:
       "Tested settings, real benchmarks, handheld profiles, guides and news without the usual filler.",
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "HandheldAtlas",
+      },
+    ],
   },
 
   twitter: {
@@ -57,6 +97,7 @@ export const metadata: Metadata = {
       "HandheldAtlas — Handheld Gaming Settings, Benchmarks and Guides",
     description:
       "Tested settings, real benchmarks, handheld profiles, guides and news without the usual filler.",
+    images: ["/icon-512.png"],
   },
 
   robots: {

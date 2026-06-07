@@ -1,12 +1,22 @@
 import type { MetadataRoute } from "next";
 
+const baseUrl = "https://handheldatlas.com";
+
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-    },
-    sitemap: "https://handheldatlas.com/sitemap.xml",
-    host: "https://handheldatlas.com",
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: [
+          "/admin/",
+          "/admin",
+          "/api/",
+        ],
+      },
+    ],
+
+    sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   };
 }

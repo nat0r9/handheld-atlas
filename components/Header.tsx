@@ -93,6 +93,9 @@ export default function Header() {
     );
   }
 
+  const isSearchActive =
+    isActiveRoute("/search");
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ${
@@ -102,7 +105,7 @@ export default function Header() {
       }`}
     >
       <nav className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="flex h-18 min-h-[4.5rem] items-center justify-between gap-4">
+        <div className="flex min-h-[4.5rem] items-center justify-between gap-4">
           <Link
             href="/"
             onClick={closeMenu}
@@ -151,15 +154,28 @@ export default function Header() {
                     <span className="absolute inset-x-3 -bottom-[1.13rem] h-0.5 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
                   )}
 
-                  {item.accent && !isActive && (
-                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]" />
-                  )}
+                  {item.accent &&
+                    !isActive && (
+                      <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]" />
+                    )}
                 </Link>
               );
             })}
           </div>
 
           <div className="hidden items-center gap-3 xl:flex">
+            <Link
+              href="/search"
+              aria-label="Search HandheldAtlas"
+              className={`flex h-10 w-10 items-center justify-center rounded-xl border transition ${
+                isSearchActive
+                  ? "border-cyan-500 bg-cyan-500 text-slate-950"
+                  : "border-slate-700 bg-slate-900 text-slate-300 hover:border-cyan-500 hover:text-cyan-400"
+              }`}
+            >
+              <SearchIcon />
+            </Link>
+
             <Link
               href="/presets"
               className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-black text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
@@ -168,57 +184,72 @@ export default function Header() {
             </Link>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              setIsMenuOpen(
-                (currentValue) =>
-                  !currentValue,
-              )
-            }
-            aria-expanded={isMenuOpen}
-            aria-controls="mobile-navigation"
-            aria-label={
-              isMenuOpen
-                ? "Close navigation menu"
-                : "Open navigation menu"
-            }
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition xl:hidden ${
-              isMenuOpen
-                ? "border-cyan-500 bg-cyan-500 text-slate-950"
-                : "border-slate-700 bg-slate-900 text-white hover:border-cyan-500 hover:text-cyan-400"
-            }`}
-          >
-            <span className="sr-only">
-              Toggle navigation
-            </span>
+          <div className="flex items-center gap-2 xl:hidden">
+            <Link
+              href="/search"
+              onClick={closeMenu}
+              aria-label="Search HandheldAtlas"
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${
+                isSearchActive
+                  ? "border-cyan-500 bg-cyan-500 text-slate-950"
+                  : "border-slate-700 bg-slate-900 text-white hover:border-cyan-500 hover:text-cyan-400"
+              }`}
+            >
+              <SearchIcon />
+            </Link>
 
-            <span className="relative block h-5 w-5">
-              <span
-                className={`absolute left-0 top-0.5 block h-0.5 w-5 rounded-full bg-current transition duration-300 ${
-                  isMenuOpen
-                    ? "translate-y-2 rotate-45"
-                    : ""
-                }`}
-              />
+            <button
+              type="button"
+              onClick={() =>
+                setIsMenuOpen(
+                  (currentValue) =>
+                    !currentValue,
+                )
+              }
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-navigation"
+              aria-label={
+                isMenuOpen
+                  ? "Close navigation menu"
+                  : "Open navigation menu"
+              }
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${
+                isMenuOpen
+                  ? "border-cyan-500 bg-cyan-500 text-slate-950"
+                  : "border-slate-700 bg-slate-900 text-white hover:border-cyan-500 hover:text-cyan-400"
+              }`}
+            >
+              <span className="sr-only">
+                Toggle navigation
+              </span>
 
-              <span
-                className={`absolute left-0 top-[0.56rem] block h-0.5 w-5 rounded-full bg-current transition duration-300 ${
-                  isMenuOpen
-                    ? "opacity-0"
-                    : ""
-                }`}
-              />
+              <span className="relative block h-5 w-5">
+                <span
+                  className={`absolute left-0 top-0.5 block h-0.5 w-5 rounded-full bg-current transition duration-300 ${
+                    isMenuOpen
+                      ? "translate-y-2 rotate-45"
+                      : ""
+                  }`}
+                />
 
-              <span
-                className={`absolute bottom-0.5 left-0 block h-0.5 w-5 rounded-full bg-current transition duration-300 ${
-                  isMenuOpen
-                    ? "-translate-y-2 -rotate-45"
-                    : ""
-                }`}
-              />
-            </span>
-          </button>
+                <span
+                  className={`absolute left-0 top-[0.56rem] block h-0.5 w-5 rounded-full bg-current transition duration-300 ${
+                    isMenuOpen
+                      ? "opacity-0"
+                      : ""
+                  }`}
+                />
+
+                <span
+                  className={`absolute bottom-0.5 left-0 block h-0.5 w-5 rounded-full bg-current transition duration-300 ${
+                    isMenuOpen
+                      ? "-translate-y-2 -rotate-45"
+                      : ""
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
         </div>
 
         <div
@@ -271,6 +302,23 @@ export default function Header() {
                 )}
               </div>
 
+              <Link
+                href="/search"
+                onClick={closeMenu}
+                className={`mt-3 flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm font-black transition ${
+                  isSearchActive
+                    ? "border-cyan-500 bg-cyan-500 text-slate-950"
+                    : "border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-slate-950"
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <SearchIcon />
+                  Search the Atlas
+                </span>
+
+                <span>→</span>
+              </Link>
+
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Link
                   href="/presets"
@@ -299,5 +347,28 @@ export default function Header() {
         </div>
       </nav>
     </header>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle
+        cx="11"
+        cy="11"
+        r="7"
+      />
+
+      <path d="m20 20-3.5-3.5" />
+    </svg>
   );
 }
