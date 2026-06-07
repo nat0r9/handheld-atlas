@@ -64,6 +64,11 @@ export default function CompareHandhelds({
   const [searchQuery, setSearchQuery] =
     useState("");
 
+  const [
+    manufacturerFilter,
+    setManufacturerFilter,
+  ] = useState("All");
+
   const selectedHandhelds = useMemo(
     () =>
       selectedSlugs
@@ -82,14 +87,25 @@ export default function CompareHandhelds({
     [handhelds, selectedSlugs],
   );
 
+  const manufacturerOptions = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(
+          handhelds.map(
+            (handheld) =>
+              handheld.manufacturer,
+          ),
+        ),
+      ).sort(),
+    ],
+    [handhelds],
+  );
+
   const filteredHandhelds = useMemo(() => {
     const normalizedQuery = searchQuery
       .trim()
       .toLowerCase();
-
-    if (!normalizedQuery) {
-      return handhelds;
-    }
 
     return handhelds.filter((handheld) => {
       const searchableText = [
@@ -97,15 +113,51 @@ export default function CompareHandhelds({
         handheld.manufacturer,
         handheld.processor ?? "",
         handheld.operatingSystem ?? "",
+        handheld.memory ?? "",
+        handheld.resolution ?? "",
       ]
         .join(" ")
         .toLowerCase();
 
-      return searchableText.includes(
-        normalizedQuery,
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        searchableText.includes(
+          normalizedQuery,
+        );
+
+      const matchesManufacturer =
+        manufacturerFilter === "All" ||
+        handheld.manufacturer ===
+          manufacturerFilter;
+
+      return (
+        matchesSearch &&
+        matchesManufacturer
       );
     });
-  }, [handhelds, searchQuery]);
+  }, [
+    handhelds,
+    searchQuery,
+    manufacturerFilter,
+  ]);
+
+  const selectedManufacturers =
+    new Set(
+      selectedHandhelds.map(
+        (handheld) =>
+          handheld.manufacturer,
+      ),
+    ).size;
+
+  const selectedOperatingSystems =
+    new Set(
+      selectedHandhelds
+        .map(
+          (handheld) =>
+            handheld.operatingSystem,
+        )
+        .filter(Boolean),
+    ).size;
 
   function toggleHandheld(slug: string) {
     setSelectedSlugs((currentSlugs) => {
@@ -134,110 +186,180 @@ export default function CompareHandhelds({
     setSelectedSlugs([]);
   }
 
+  function resetSelector() {
+    setSearchQuery("");
+    setManufacturerFilter("All");
+  }
+
+  const selectorHasFilters =
+    searchQuery.length > 0 ||
+    manufacturerFilter !== "All";
+
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <section className="overflow-hidden rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-7 md:p-10">
-          <p className="text-sm font-black uppercase tracking-[0.3em] text-cyan-400">
-            Device Comparison
-          </p>
-
-          <h1 className="mt-4 text-5xl font-black md:text-7xl">
-            Compare handhelds
-          </h1>
-
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-            Select up to three devices and compare
-            hardware, displays, battery capacity,
-            operating systems and physical specifications
-            side by side.
-          </p>
-
-          {databaseError && (
-            <div className="mt-7 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
-              <p className="font-black">
-                Could not load the handheld database.
+    <main className="atlas-page pb-14 text-white">
+      <section className="border-b border-white/[0.06]">
+        <div className="atlas-shell py-12">
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div>
+              <p className="atlas-section-label">
+                Device comparison
               </p>
 
-              <p className="mt-2 break-words text-sm">
-                {databaseError}
+              <h1 className="mt-4 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+                Put handhelds
+                <span className="block">
+                  head to{" "}
+                  <span className="atlas-text-red">
+                    head.
+                  </span>
+                </span>
+              </h1>
+
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
+                Select up to three devices and compare
+                hardware, displays, battery, operating
+                systems and physical specifications
+                side by side.
               </p>
             </div>
-          )}
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <SummaryCard
-              label="Available devices"
-              value={handhelds.length.toString()}
-            />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+              <HeroStat
+                label="Available"
+                value={handhelds.length.toString()}
+              />
 
-            <SummaryCard
-              label="Selected"
-              value={`${selectedSlugs.length}/${maximumComparedHandhelds}`}
-              highlighted
-            />
+              <HeroStat
+                label="Selected"
+                value={`${selectedSlugs.length}/${maximumComparedHandhelds}`}
+                highlighted
+              />
 
-            <SummaryCard
-              label="Comparison type"
-              value="Full specifications"
-            />
+              <HeroStat
+                label="Brands"
+                value={selectedManufacturers.toString()}
+              />
+
+              <HeroStat
+                label="Systems"
+                value={selectedOperatingSystems.toString()}
+              />
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex flex-wrap items-end justify-between gap-5">
+      <div className="atlas-shell pt-6">
+        {databaseError && (
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            <p className="font-black">
+              Could not load the handheld database.
+            </p>
+
+            <p className="mt-2 break-words">
+              {databaseError}
+            </p>
+          </div>
+        )}
+
+        <section className="atlas-panel p-4 md:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] pb-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-400">
+              <p className="atlas-section-label">
                 Device selector
               </p>
 
-              <h2 className="mt-2 text-2xl font-black">
-                Select handhelds
+              <h2 className="mt-1 text-xl font-black">
+                Choose up to three handhelds
               </h2>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Choose up to{" "}
-                {maximumComparedHandhelds} devices.
-              </p>
             </div>
 
-            {selectedSlugs.length > 0 && (
-              <button
-                type="button"
-                onClick={clearComparison}
-                className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm font-black text-red-400 transition hover:bg-red-500 hover:text-white"
-              >
-                Clear comparison
-              </button>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {selectorHasFilters && (
+                <button
+                  type="button"
+                  onClick={resetSelector}
+                  className="atlas-button-secondary"
+                >
+                  Reset selector
+                </button>
+              )}
+
+              {selectedSlugs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearComparison}
+                  className="atlas-button-primary"
+                >
+                  Clear comparison
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="mt-6">
-            <label
-              htmlFor="compare-search"
-              className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-            >
-              Search devices
-            </label>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.8fr]">
+            <div>
+              <FilterLabel
+                htmlFor="compare-search"
+                label="Search devices"
+              />
 
-            <input
-              id="compare-search"
-              type="search"
-              value={searchQuery}
-              onChange={(event) =>
-                setSearchQuery(event.target.value)
-              }
-              placeholder="Search by device, manufacturer or processor..."
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-            />
+              <div className="relative">
+                <input
+                  id="compare-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) =>
+                    setSearchQuery(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Search device, brand, processor or OS..."
+                  className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
+                />
+
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
+                  <SearchIcon />
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <FilterLabel
+                htmlFor="manufacturer-filter"
+                label="Manufacturer"
+              />
+
+              <select
+                id="manufacturer-filter"
+                value={manufacturerFilter}
+                onChange={(event) =>
+                  setManufacturerFilter(
+                    event.target.value,
+                  )
+                }
+                className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
+              >
+                {manufacturerOptions.map(
+                  (option) => (
+                    <option
+                      key={option}
+                      value={option}
+                    >
+                      {option}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
           </div>
 
           {filteredHandhelds.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-slate-700 p-7 text-center text-slate-500">
-              No handhelds match your search.
+            <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
+              No handhelds match your filters.
             </div>
           ) : (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filteredHandhelds.map(
                 (handheld) => {
                   const isSelected =
@@ -262,33 +384,54 @@ export default function CompareHandhelds({
                           handheld.slug,
                         )
                       }
-                      className={`flex items-center justify-between gap-4 rounded-2xl border p-4 text-left transition ${
+                      className={`group grid grid-cols-[4.25rem_1fr_auto] items-center gap-3 rounded-xl border p-3 text-left transition ${
                         isSelected
-                          ? "border-cyan-500 bg-cyan-500/10"
-                          : "border-slate-800 bg-slate-950 hover:border-slate-600"
-                      } disabled:cursor-not-allowed disabled:opacity-40`}
+                          ? "border-red-500/40 bg-red-500/[0.08]"
+                          : "border-white/[0.07] bg-black/20 hover:border-cyan-500/35 hover:bg-white/[0.02]"
+                      } disabled:cursor-not-allowed disabled:opacity-35`}
                     >
+                      <div className="relative h-16 overflow-hidden rounded-lg border border-white/[0.06] bg-gradient-to-br from-slate-900 to-black">
+                        {handheld.imageUrl ? (
+                          <Image
+                            src={handheld.imageUrl}
+                            alt={handheld.name}
+                            fill
+                            sizes="68px"
+                            className="object-contain p-1.5"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs font-black text-slate-700">
+                            HA
+                          </div>
+                        )}
+                      </div>
+
                       <div className="min-w-0">
                         <p
-                          className={`truncate font-black ${
+                          className={`truncate font-black transition ${
                             isSelected
-                              ? "text-cyan-400"
-                              : "text-slate-200"
+                              ? "text-red-400"
+                              : "text-slate-200 group-hover:text-cyan-400"
                           }`}
                         >
                           {handheld.name}
                         </p>
 
-                        <p className="mt-1 truncate text-xs font-bold uppercase tracking-[0.15em] text-slate-600">
+                        <p className="mt-1 truncate text-[0.58rem] font-black uppercase tracking-[0.12em] text-slate-600">
                           {handheld.manufacturer}
+                        </p>
+
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {handheld.processor ??
+                            "Processor not set"}
                         </p>
                       </div>
 
                       <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-black ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border font-black transition ${
                           isSelected
-                            ? "border-cyan-500 bg-cyan-500 text-slate-950"
-                            : "border-slate-700 text-slate-500"
+                            ? "border-red-500 bg-red-500 text-white"
+                            : "border-white/[0.08] bg-black/20 text-slate-500 group-hover:border-cyan-500/40 group-hover:text-cyan-400"
                         }`}
                       >
                         {isSelected ? "✓" : "+"}
@@ -302,20 +445,24 @@ export default function CompareHandhelds({
         </section>
 
         {selectedHandhelds.length === 0 ? (
-          <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-900 p-10 text-center">
-            <h2 className="text-3xl font-black">
+          <section className="atlas-panel mt-5 p-12 text-center">
+            <p className="atlas-section-label">
+              Comparison empty
+            </p>
+
+            <h2 className="mt-3 text-3xl font-black">
               No handhelds selected
             </h2>
 
-            <p className="mt-3 text-slate-400">
-              Select at least one device to begin the
-              comparison.
+            <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-400">
+              Select at least one device above to begin
+              building the comparison.
             </p>
           </section>
         ) : (
           <>
             <section
-              className={`mt-10 grid gap-6 ${
+              className={`mt-5 grid gap-4 ${
                 selectedHandhelds.length === 1
                   ? "md:grid-cols-1"
                   : selectedHandhelds.length === 2
@@ -324,61 +471,66 @@ export default function CompareHandhelds({
               }`}
             >
               {selectedHandhelds.map(
-                (handheld) => (
+                (handheld, index) => (
                   <article
                     key={handheld.id}
-                    className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900"
+                    className="atlas-card atlas-card-hover atlas-card-cyan"
                   >
-                    <div className="relative flex min-h-64 items-center justify-center overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-6">
-                      <div className="absolute h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
+                    <div className="relative min-h-64 overflow-hidden border-b border-white/[0.07] bg-[radial-gradient(circle_at_50%_65%,rgba(24,215,255,0.12),transparent_38%),linear-gradient(135deg,#0b101b,#05070d)]">
+                      <div className="absolute left-4 top-4 z-10">
+                        <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-400 backdrop-blur">
+                          Device {index + 1}
+                        </span>
+                      </div>
 
-                      <span
-                        className={`absolute right-4 top-4 z-10 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getDeviceStatusStyle(
-                          handheld.deviceStatus,
-                        )}`}
-                      >
-                        {handheld.deviceStatus}
-                      </span>
+                      <div className="absolute right-4 top-4 z-10">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] backdrop-blur ${getDeviceStatusStyle(
+                            handheld.deviceStatus,
+                          )}`}
+                        >
+                          {handheld.deviceStatus}
+                        </span>
+                      </div>
 
                       {handheld.imageUrl ? (
-                        <div className="relative h-52 w-full">
+                        <div className="relative h-64 w-full">
                           <Image
-                            src={
-                              handheld.imageUrl
-                            }
+                            src={handheld.imageUrl}
                             alt={handheld.name}
                             fill
                             sizes="(max-width: 768px) 100vw, 33vw"
-                            className="object-contain object-center drop-shadow-[0_25px_35px_rgba(0,0,0,0.7)]"
+                            className="object-contain object-center p-7 drop-shadow-[0_30px_40px_rgba(0,0,0,0.75)]"
                           />
                         </div>
                       ) : (
-                        <p className="relative font-black text-slate-600">
+                        <div className="flex h-64 items-center justify-center text-xs font-black uppercase tracking-[0.15em] text-slate-700">
                           Device image coming soon
-                        </p>
+                        </div>
                       )}
                     </div>
 
-                    <div className="p-6">
-                      <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-400">
+                    <div className="p-5">
+                      <p className="text-[0.58rem] font-black uppercase tracking-[0.15em] text-cyan-400">
                         {handheld.manufacturer}
                       </p>
 
-                      <h2 className="mt-2 text-3xl font-black">
+                      <h2 className="mt-2 text-2xl font-black">
                         {handheld.name}
                       </h2>
 
-                      <p className="mt-3 min-h-14 leading-7 text-slate-400">
+                      <p className="mt-3 line-clamp-2 min-h-12 text-sm leading-6 text-slate-500">
                         {handheld.tagline ??
                           "Complete hardware profile and handheld performance information."}
                       </p>
 
-                      <div className="mt-6 grid grid-cols-2 gap-4">
+                      <div className="mt-5 grid grid-cols-2 gap-2">
                         <QuickStat
                           label="Processor"
                           value={safeValue(
                             handheld.processor,
                           )}
+                          highlighted
                         />
 
                         <QuickStat
@@ -403,24 +555,54 @@ export default function CompareHandhelds({
                         />
                       </div>
 
-                      <Link
-                        href={`/handhelds/${handheld.slug}`}
-                        className="mt-7 inline-flex rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2.5 text-sm font-black text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
-                      >
-                        View full profile →
-                      </Link>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        <Link
+                          href={`/handhelds/${handheld.slug}`}
+                          className="atlas-button-secondary"
+                        >
+                          View profile
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleHandheld(
+                              handheld.slug,
+                            )
+                          }
+                          className="rounded-lg border border-red-500/25 bg-red-500/[0.07] px-4 py-2.5 text-xs font-black text-red-400 transition hover:bg-red-500 hover:text-white"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </article>
                 ),
               )}
             </section>
 
-            <section className="mt-10 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
+            <section className="atlas-panel mt-5 overflow-hidden">
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] px-5 py-4">
+                <div>
+                  <p className="atlas-section-label">
+                    Specification wall
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-black">
+                    Side-by-side comparison
+                  </h2>
+                </div>
+
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
+                  {selectedHandhelds.length} devices selected
+                </p>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
-                  <thead className="border-b border-slate-800 bg-slate-950/70">
+                  <thead className="bg-black/30">
                     <tr>
-                      <th className="min-w-48 px-6 py-5 text-sm font-black uppercase tracking-[0.15em] text-slate-500">
+                      <th className="min-w-48 px-5 py-4 text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
                         Specification
                       </th>
 
@@ -428,17 +610,15 @@ export default function CompareHandhelds({
                         (handheld) => (
                           <th
                             key={handheld.id}
-                            className="min-w-64 px-6 py-5"
+                            className="min-w-64 px-5 py-4"
                           >
-                            <p className="text-xs font-black uppercase tracking-[0.15em] text-cyan-400">
-                              {
-                                handheld.manufacturer
-                              }
+                            <p className="text-[0.56rem] font-black uppercase tracking-[0.14em] text-cyan-400">
+                              {handheld.manufacturer}
                             </p>
 
-                            <h2 className="mt-1 text-xl font-black">
+                            <h3 className="mt-1 text-lg font-black">
                               {handheld.name}
-                            </h2>
+                            </h3>
                           </th>
                         ),
                       )}
@@ -464,6 +644,7 @@ export default function CompareHandhelds({
                             handheld.processor,
                           ),
                       )}
+                      highlighted
                     />
 
                     <ComparisonRow
@@ -524,6 +705,7 @@ export default function CompareHandhelds({
                             handheld.battery,
                           ),
                       )}
+                      highlighted
                     />
 
                     <ComparisonRow
@@ -543,50 +725,53 @@ export default function CompareHandhelds({
           </>
         )}
 
-        <div className="mt-8 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
-          <p className="text-sm font-black text-cyan-300">
-            Live database comparison
+        <section className="atlas-panel mt-5 p-5">
+          <p className="atlas-section-label">
+            Live comparison
           </p>
 
-          <p className="mt-2 text-sm leading-7 text-slate-400">
-            Specifications shown here are loaded directly
-            from published HandheldAtlas device profiles.
-            Values can be updated through the admin dashboard
-            without changing the website code.
+          <h2 className="mt-1 text-xl font-black">
+            Powered by the Atlas database
+          </h2>
+
+          <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-500">
+            Every value shown here is loaded directly
+            from published handheld profiles. Update a
+            device in the admin dashboard and the
+            comparison changes automatically. No dusty
+            static tables, no archaeological bullshit.
           </p>
-        </div>
+        </section>
       </div>
     </main>
   );
 }
 
-interface SummaryCardProps {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}
-
-function SummaryCard({
+function HeroStat({
   label,
   value,
   highlighted = false,
-}: SummaryCardProps) {
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
   return (
     <article
-      className={`rounded-2xl border p-5 ${
+      className={`rounded-xl border p-4 ${
         highlighted
-          ? "border-cyan-500/30 bg-cyan-500/10"
-          : "border-slate-800 bg-slate-950/70"
+          ? "border-red-500/30 bg-red-500/10"
+          : "border-white/[0.08] bg-black/20"
       }`}
     >
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
         {label}
       </p>
 
       <p
         className={`mt-2 text-3xl font-black ${
           highlighted
-            ? "text-cyan-400"
+            ? "text-red-400"
             : "text-white"
         }`}
       >
@@ -596,59 +781,119 @@ function SummaryCard({
   );
 }
 
-interface QuickStatProps {
+function FilterLabel({
+  htmlFor,
+  label,
+}: {
+  htmlFor: string;
   label: string;
-  value: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-2 block text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600"
+    >
+      {label}
+    </label>
+  );
 }
 
 function QuickStat({
   label,
   value,
-}: QuickStatProps) {
+  highlighted = false,
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
   return (
-    <div>
-      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-600">
+    <div
+      className={`rounded-lg border p-3 ${
+        highlighted
+          ? "border-cyan-500/25 bg-cyan-500/[0.06]"
+          : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
         {label}
       </p>
 
-      <p className="mt-1 break-words font-bold text-slate-200">
+      <p
+        className={`mt-1 break-words text-xs font-black leading-5 ${
+          highlighted
+            ? "text-cyan-400"
+            : "text-slate-300"
+        }`}
+      >
         {value}
       </p>
     </div>
   );
 }
 
-interface ComparisonRowProps {
-  label: string;
-  values: string[];
-  isLast?: boolean;
-}
-
 function ComparisonRow({
   label,
   values,
+  highlighted = false,
   isLast = false,
-}: ComparisonRowProps) {
+}: {
+  label: string;
+  values: string[];
+  highlighted?: boolean;
+  isLast?: boolean;
+}) {
   return (
     <tr
-      className={
+      className={`transition hover:bg-white/[0.025] ${
         isLast
-          ? "hover:bg-slate-800/40"
-          : "border-b border-slate-800 hover:bg-slate-800/40"
-      }
+          ? ""
+          : "border-b border-white/[0.06]"
+      }`}
     >
-      <th className="px-6 py-5 text-sm font-black text-slate-500">
+      <th className="px-5 py-4 text-sm font-black text-slate-500">
         {label}
       </th>
 
       {values.map((value, index) => (
         <td
           key={`${label}-${index}`}
-          className="px-6 py-5 leading-7 text-slate-300"
+          className="px-5 py-4"
         >
-          {value}
+          <span
+            className={`inline-flex rounded-lg border px-3 py-2 text-sm font-bold leading-6 ${
+              highlighted
+                ? "border-red-500/25 bg-red-500/[0.06] text-red-300"
+                : "border-transparent text-slate-300"
+            }`}
+          >
+            {value}
+          </span>
         </td>
       ))}
     </tr>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle
+        cx="11"
+        cy="11"
+        r="7"
+      />
+
+      <path d="m20 20-3.5-3.5" />
+    </svg>
   );
 }

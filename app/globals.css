@@ -1,26 +1,743 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #05070d;
+  --foreground: #f8fafc;
+
+  --surface-950: #05070d;
+  --surface-900: #090d16;
+  --surface-850: #0c111d;
+  --surface-800: #111827;
+  --surface-750: #151d2b;
+
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.24);
+
+  --accent-red: #ef233c;
+  --accent-red-bright: #ff3048;
+  --accent-cyan: #18d7ff;
+  --accent-blue: #3b82f6;
+  --accent-purple: #7c3aed;
+  --accent-green: #22c55e;
+  --accent-yellow: #facc15;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #a7b0c0;
+  --text-muted: #687386;
+
+  --shadow-panel:
+    0 18px 50px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+
+  --shadow-red:
+    0 0 30px rgba(239, 35, 60, 0.16);
+
+  --shadow-cyan:
+    0 0 30px rgba(24, 215, 255, 0.14);
+
+  --radius-panel: 1rem;
+  --radius-card: 0.85rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --font-sans:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  --font-mono:
+    "Courier New",
+    Courier,
+    monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      circle at 15% 0%,
+      rgba(59, 130, 246, 0.08),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 85% 5%,
+      rgba(239, 35, 60, 0.07),
+      transparent 30rem
+    ),
+    linear-gradient(
+      180deg,
+      #05070d 0%,
+      #070a12 48%,
+      #05070d 100%
+    );
+
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  content: "";
+
+  background-image:
+    linear-gradient(
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px
+    );
+
+  background-size: 72px 72px;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.7),
+      transparent 75%
+    );
+}
+
+body::after {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.012),
+      transparent
+    );
+
+  opacity: 0.7;
+}
+
+::selection {
+  background: rgba(239, 35, 60, 0.35);
+  color: #ffffff;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+img {
+  user-select: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+}
+
+p {
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid var(--border-subtle);
+  background: rgba(5, 7, 13, 0.84);
+  color: var(--text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #556074;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(24, 215, 255, 0.72);
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(24, 215, 255, 0.08),
+    0 0 24px rgba(24, 215, 255, 0.08);
+}
+
+option {
+  background: #090d16;
+  color: #f8fafc;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary {
+  list-style: none;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+hr {
+  border-color: var(--border-subtle);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #05070d;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid #05070d;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(239, 35, 60, 0.8),
+      rgba(124, 58, 237, 0.72)
+    );
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(
+      180deg,
+      #ff3048,
+      #8b5cf6
+    );
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color:
+    rgba(239, 35, 60, 0.72)
+    #05070d;
+}
+
+.atlas-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(59, 130, 246, 0.07),
+      transparent 25rem
+    ),
+    radial-gradient(
+      circle at 88% 0%,
+      rgba(239, 35, 60, 0.07),
+      transparent 25rem
+    );
+}
+
+.atlas-shell {
+  width: min(100% - 2rem, 96rem);
+  margin-inline: auto;
+}
+
+.atlas-panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(13, 18, 30, 0.96),
+      rgba(7, 10, 18, 0.98)
+    );
+
+  box-shadow: var(--shadow-panel);
+}
+
+.atlas-panel-soft {
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: var(--radius-panel);
+  background: rgba(9, 13, 22, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.atlas-card {
+  position: relative;
+  overflow: hidden;
+
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: var(--radius-card);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(17, 24, 39, 0.98),
+      rgba(7, 10, 18, 0.98)
+    );
+
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.25);
+}
+
+.atlas-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03),
+      transparent 35%
+    );
+}
+
+.atlas-card-hover {
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.atlas-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(239, 35, 60, 0.46);
+
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(239, 35, 60, 0.08);
+}
+
+.atlas-card-cyan:hover {
+  border-color: rgba(24, 215, 255, 0.46);
+
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(24, 215, 255, 0.08);
+}
+
+.atlas-section-label {
+  color: var(--accent-red);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.atlas-section-title {
+  color: #ffffff;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+}
+
+.atlas-muted {
+  color: var(--text-muted);
+}
+
+.atlas-secondary {
+  color: var(--text-secondary);
+}
+
+.atlas-divider {
+  border-color: var(--border-subtle);
+}
+
+.atlas-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+
+  border: 1px solid rgba(255, 48, 72, 0.72);
+  border-radius: 0.65rem;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ff3048,
+      #d71934
+    );
+
+  padding: 0.78rem 1.15rem;
+
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+
+  box-shadow:
+    0 10px 30px rgba(239, 35, 60, 0.22);
+
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.atlas-button-primary:hover {
+  transform: translateY(-1px);
+
+  background:
+    linear-gradient(
+      180deg,
+      #ff455b,
+      #ef233c
+    );
+
+  box-shadow:
+    0 12px 36px rgba(239, 35, 60, 0.34);
+}
+
+.atlas-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(17, 24, 39, 0.95),
+      rgba(9, 13, 22, 0.95)
+    );
+
+  padding: 0.78rem 1.15rem;
+
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-weight: 900;
+
+  transition:
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.atlas-button-secondary:hover {
+  transform: translateY(-1px);
+  border-color: rgba(24, 215, 255, 0.5);
+  color: var(--accent-cyan);
+}
+
+.atlas-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+
+  background: rgba(9, 13, 22, 0.8);
+
+  padding: 0.34rem 0.68rem;
+
+  color: #a7b0c0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.atlas-chip-red {
+  border-color: rgba(239, 35, 60, 0.3);
+  background: rgba(239, 35, 60, 0.1);
+  color: #ff5a70;
+}
+
+.atlas-chip-cyan {
+  border-color: rgba(24, 215, 255, 0.3);
+  background: rgba(24, 215, 255, 0.1);
+  color: var(--accent-cyan);
+}
+
+.atlas-chip-green {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+}
+
+.atlas-chip-yellow {
+  border-color: rgba(250, 204, 21, 0.3);
+  background: rgba(250, 204, 21, 0.1);
+  color: #fde047;
+}
+
+.atlas-score {
+  display: inline-flex;
+  min-width: 3.2rem;
+  min-height: 3.2rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid rgba(239, 35, 60, 0.36);
+  border-radius: 0.85rem;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(239, 35, 60, 0.18),
+      rgba(9, 13, 22, 0.94)
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 0 24px rgba(239, 35, 60, 0.1);
+}
+
+.atlas-score strong {
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.atlas-score span {
+  margin-bottom: 0.16rem;
+  color: #ff5a70;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.atlas-stat-strip {
+  display: grid;
+  overflow: hidden;
+
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.85rem;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(9, 13, 22, 0.95),
+      rgba(13, 18, 30, 0.95)
+    );
+}
+
+.atlas-stat-strip > * {
+  position: relative;
+}
+
+.atlas-stat-strip > *:not(:last-child)::after {
+  position: absolute;
+  top: 18%;
+  right: 0;
+  bottom: 18%;
+
+  width: 1px;
+  content: "";
+
+  background: var(--border-subtle);
+}
+
+.atlas-glow-red {
+  box-shadow: var(--shadow-red);
+}
+
+.atlas-glow-cyan {
+  box-shadow: var(--shadow-cyan);
+}
+
+.atlas-text-red {
+  color: var(--accent-red-bright);
+}
+
+.atlas-text-cyan {
+  color: var(--accent-cyan);
+}
+
+.atlas-gradient-text {
+  background:
+    linear-gradient(
+      90deg,
+      #ffffff,
+      #ff3048 55%,
+      #18d7ff
+    );
+
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.atlas-noise {
+  position: relative;
+}
+
+.atlas-noise::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='.06'/%3E%3C/svg%3E");
+
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@keyframes atlasPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes atlasFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes atlasScan {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.atlas-pulse {
+  animation: atlasPulse 2.4s ease-in-out infinite;
+}
+
+.atlas-float {
+  animation: atlasFloat 5s ease-in-out infinite;
+}
+
+.atlas-scan {
+  position: relative;
+  overflow: hidden;
+}
+
+.atlas-scan::after {
+  position: absolute;
+  inset-block: 0;
+  left: -35%;
+
+  width: 18%;
+  content: "";
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.08),
+      transparent
+    );
+
+  transform: skewX(-18deg);
+  animation: atlasScan 5s ease-in-out infinite;
+}
+
+@media (max-width: 767px) {
+  .atlas-shell {
+    width: min(100% - 1.25rem, 96rem);
+  }
+
+  .atlas-stat-strip > *::after {
+    display: none;
+  }
+
+  .atlas-section-title {
+    line-height: 1.05;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

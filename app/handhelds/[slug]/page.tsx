@@ -259,16 +259,16 @@ export async function generateMetadata({
 function getDeviceStatusStyle(status: string) {
   switch (status.toLowerCase()) {
     case "current":
-      return "border-green-400/30 bg-green-500/15 text-green-400";
+      return "border-green-500/30 bg-green-500/10 text-green-400";
 
     case "upcoming":
-      return "border-orange-400/30 bg-orange-500/15 text-orange-400";
+      return "border-orange-500/30 bg-orange-500/10 text-orange-400";
 
     case "discontinued":
-      return "border-red-400/30 bg-red-500/15 text-red-400";
+      return "border-red-500/30 bg-red-500/10 text-red-400";
 
     default:
-      return "border-slate-500/30 bg-slate-500/15 text-slate-300";
+      return "border-slate-500/30 bg-slate-500/10 text-slate-300";
   }
 }
 
@@ -277,19 +277,19 @@ function getPresetStyle(
 ) {
   switch (type) {
     case "Performance":
-      return "border-orange-500/30 bg-orange-500/15 text-orange-400";
+      return "border-red-500/30 bg-red-500/10 text-red-400";
 
     case "Balanced":
-      return "border-cyan-500/30 bg-cyan-500/15 text-cyan-400";
+      return "border-cyan-500/30 bg-cyan-500/10 text-cyan-400";
 
     case "Battery":
-      return "border-green-500/30 bg-green-500/15 text-green-400";
+      return "border-green-500/30 bg-green-500/10 text-green-400";
 
     case "Docked":
-      return "border-red-500/30 bg-red-500/15 text-red-400";
+      return "border-blue-500/30 bg-blue-500/10 text-blue-400";
 
     default:
-      return "border-purple-500/30 bg-purple-500/15 text-purple-400";
+      return "border-purple-500/30 bg-purple-500/10 text-purple-400";
   }
 }
 
@@ -311,140 +311,161 @@ export default async function HandheldPage({
     getHandheldBenchmarks(handheld.id),
   ]);
 
-  const bestBenchmark =
-    handheldBenchmarks.find(
-      (benchmark) =>
-        benchmark.average_fps !== null,
-    );
+  const benchmarkScores =
+    handheldBenchmarks
+      .map(
+        (benchmark) =>
+          benchmark.average_fps,
+      )
+      .filter(
+        (value): value is number =>
+          value !== null,
+      );
+
+  const bestAverageFps =
+    benchmarkScores.length > 0
+      ? Math.max(...benchmarkScores)
+      : null;
+
+  const averageBenchmarkFps =
+    benchmarkScores.length > 0
+      ? Math.round(
+          benchmarkScores.reduce(
+            (total, value) =>
+              total + value,
+            0,
+          ) /
+            benchmarkScores.length,
+        )
+      : null;
 
   const handheldImage =
     handheld.image_url;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="relative overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(6,182,212,0.16),transparent_35%)]" />
+    <main className="atlas-page pb-14 text-white">
+      <section className="relative overflow-hidden border-b border-white/[0.06]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(24,215,255,0.14),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.13),transparent_26%),linear-gradient(135deg,#05070d,#090d16_55%,#120810)]" />
 
-        <div className="relative mx-auto grid min-h-[34rem] max-w-7xl items-center gap-10 px-6 py-14 lg:grid-cols-[1fr_1.2fr]">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/92 to-transparent" />
+
+        <div className="atlas-shell relative grid min-h-[35rem] items-center gap-10 py-12 lg:grid-cols-[1fr_1.1fr]">
           <div>
             <Link
               href="/handhelds"
-              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+              className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
             >
               ← Back to handhelds
             </Link>
 
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-2">
               <span
-                className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getDeviceStatusStyle(
+                className={`rounded-full border px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] ${getDeviceStatusStyle(
                   handheld.device_status,
                 )}`}
               >
                 {handheld.device_status}
               </span>
 
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 backdrop-blur">
+              <span className="atlas-chip">
                 {handheld.manufacturer}
               </span>
             </div>
 
-            <h1 className="mt-5 text-5xl font-black leading-tight md:text-7xl">
+            <h1 className="mt-5 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
               {handheld.name}
             </h1>
 
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
               {handheld.tagline ??
-                "Detailed information about this handheld will be added soon."}
+                "Detailed handheld specifications, presets and performance data."}
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-4">
-              <MetricCard
-                label="Processor"
-                value={
-                  handheld.processor ??
-                  "Not set"
-                }
-              />
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/presets"
+                className="atlas-button-primary"
+              >
+                Browse presets
+              </Link>
 
-              <MetricCard
-                label="Memory"
-                value={
-                  handheld.memory ??
-                  "Not set"
-                }
-              />
+              <Link
+                href="/compare"
+                className="atlas-button-secondary"
+              >
+                Compare devices
+              </Link>
+            </div>
 
-              <MetricCard
-                label="Battery"
-                value={
-                  handheld.battery ??
-                  "Not set"
-                }
-              />
-
-              <MetricCard
-                label="Published Presets"
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <HeroMetric
+                label="Presets"
                 value={handheldPresets.length.toString()}
               />
 
-              {bestBenchmark?.average_fps !==
-                null &&
-                bestBenchmark?.average_fps !==
-                  undefined && (
-                  <MetricCard
-                    label="Highest Tested FPS"
-                    value={`${bestBenchmark.average_fps} FPS`}
-                    highlighted
-                  />
-                )}
+              <HeroMetric
+                label="Benchmarks"
+                value={handheldBenchmarks.length.toString()}
+              />
+
+              <HeroMetric
+                label="Best FPS"
+                value={
+                  bestAverageFps !== null
+                    ? bestAverageFps.toString()
+                    : "—"
+                }
+                highlighted
+              />
+
+              <HeroMetric
+                label="Avg FPS"
+                value={
+                  averageBenchmarkFps !== null
+                    ? averageBenchmarkFps.toString()
+                    : "—"
+                }
+              />
             </div>
           </div>
 
-          <div className="relative flex min-h-[24rem] items-center justify-center">
-            <div className="absolute h-52 w-52 rounded-full bg-cyan-500/20 blur-3xl" />
+          <div className="relative flex min-h-[25rem] items-center justify-center">
+            <div className="absolute h-64 w-64 rounded-full bg-cyan-500/15 blur-[90px]" />
+
+            <div className="absolute h-44 w-44 translate-x-24 translate-y-12 rounded-full bg-red-500/12 blur-[80px]" />
 
             {handheldImage ? (
-              <div className="relative h-72 w-full max-w-2xl md:h-96">
+              <div className="relative h-80 w-full max-w-3xl atlas-float md:h-[26rem]">
                 <Image
                   src={handheldImage}
                   alt={handheld.name}
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-contain object-center drop-shadow-[0_35px_45px_rgba(0,0,0,0.75)]"
+                  className="object-contain object-center drop-shadow-[0_40px_55px_rgba(0,0,0,0.8)]"
                 />
               </div>
             ) : (
-              <div className="flex h-72 w-full max-w-2xl items-center justify-center rounded-3xl border border-dashed border-slate-700 bg-slate-900/50">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+              <div className="atlas-panel-soft flex h-72 w-full max-w-2xl items-center justify-center">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">
                   Device image coming soon
                 </p>
               </div>
             )}
           </div>
         </div>
-      </section>
 
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <section>
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-            Hardware
-          </p>
-
-          <h2 className="mt-2 text-4xl font-black">
-            Specifications
-          </h2>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <SpecCard
-              label="Operating System"
+        <div className="atlas-shell relative pb-8">
+          <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+            <StripStat
+              label="Operating system"
               value={
                 handheld.operating_system ??
                 "Not set"
               }
             />
 
-            <SpecCard
+            <StripStat
               label="Processor"
               value={
                 handheld.processor ??
@@ -452,7 +473,7 @@ export default async function HandheldPage({
               }
             />
 
-            <SpecCard
+            <StripStat
               label="Memory"
               value={
                 handheld.memory ??
@@ -460,15 +481,7 @@ export default async function HandheldPage({
               }
             />
 
-            <SpecCard
-              label="Storage"
-              value={
-                handheld.storage ??
-                "Not set"
-              }
-            />
-
-            <SpecCard
+            <StripStat
               label="Display"
               value={
                 handheld.display_size ??
@@ -476,23 +489,7 @@ export default async function HandheldPage({
               }
             />
 
-            <SpecCard
-              label="Resolution"
-              value={
-                handheld.resolution ??
-                "Not set"
-              }
-            />
-
-            <SpecCard
-              label="Refresh Rate"
-              value={
-                handheld.refresh_rate ??
-                "Not set"
-              }
-            />
-
-            <SpecCard
+            <StripStat
               label="Battery"
               value={
                 handheld.battery ??
@@ -500,7 +497,7 @@ export default async function HandheldPage({
               }
             />
 
-            <SpecCard
+            <StripStat
               label="Weight"
               value={
                 handheld.weight ??
@@ -508,315 +505,421 @@ export default async function HandheldPage({
               }
             />
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mt-16">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-                Recommended Settings
+      <div className="atlas-shell pt-6">
+        <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="atlas-panel p-5">
+            <SectionHeader
+              title="Technical specifications"
+              eyebrow="Hardware"
+            />
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <SpecCard
+                label="Operating system"
+                value={
+                  handheld.operating_system ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Processor"
+                value={
+                  handheld.processor ??
+                  "Not set"
+                }
+                highlighted
+              />
+
+              <SpecCard
+                label="Memory"
+                value={
+                  handheld.memory ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Storage"
+                value={
+                  handheld.storage ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Display size"
+                value={
+                  handheld.display_size ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Resolution"
+                value={
+                  handheld.resolution ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Refresh rate"
+                value={
+                  handheld.refresh_rate ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Battery"
+                value={
+                  handheld.battery ??
+                  "Not set"
+                }
+              />
+
+              <SpecCard
+                label="Weight"
+                value={
+                  handheld.weight ??
+                  "Not set"
+                }
+              />
+            </div>
+          </div>
+
+          <div className="atlas-panel p-5">
+            <SectionHeader
+              title="Performance overview"
+              eyebrow="Atlas data"
+            />
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <PerformanceCard
+                label="Highest tested"
+                value={
+                  bestAverageFps !== null
+                    ? `${bestAverageFps} FPS`
+                    : "No data"
+                }
+                accent="red"
+              />
+
+              <PerformanceCard
+                label="Average tested"
+                value={
+                  averageBenchmarkFps !== null
+                    ? `${averageBenchmarkFps} FPS`
+                    : "No data"
+                }
+                accent="cyan"
+              />
+
+              <PerformanceCard
+                label="Published presets"
+                value={handheldPresets.length.toString()}
+              />
+
+              <PerformanceCard
+                label="Published benchmarks"
+                value={handheldBenchmarks.length.toString()}
+              />
+            </div>
+
+            <div className="mt-5 rounded-xl border border-white/[0.07] bg-black/20 p-4">
+              <p className="text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600">
+                Device profile
               </p>
 
-              <h2 className="mt-2 text-4xl font-black">
-                Presets
-              </h2>
+              <p className="mt-2 text-sm leading-7 text-slate-400">
+                Performance data and presets shown below
+                are loaded directly from the live
+                HandheldAtlas database.
+              </p>
             </div>
+          </div>
+        </section>
+
+        <section className="atlas-panel mt-5 p-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <SectionHeader
+              title="Recommended presets"
+              eyebrow="Game settings"
+              noBorder
+            />
 
             <Link
               href="/presets"
-              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+              className="text-xs font-black text-cyan-400 transition hover:text-white"
             >
-              Browse all presets →
+              View all presets →
             </Link>
           </div>
 
           {handheldPresets.length === 0 ? (
-            <EmptySection
-              title="No presets available"
-              description="Published presets for this handheld will appear here automatically."
-            />
+            <EmptyState text="No published presets available for this handheld." />
           ) : (
-            <div className="mt-8 space-y-6">
-              {handheldPresets.map((preset) => {
-                const sortedGroups = [
-                  ...(preset.preset_setting_groups ??
-                    []),
-                ]
-                  .sort(
-                    (first, second) =>
-                      first.sort_order -
-                      second.sort_order,
-                  )
-                  .map((group) => ({
-                    ...group,
-
-                    preset_setting_items: [
-                      ...(group.preset_setting_items ??
-                        []),
-                    ].sort(
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {handheldPresets.map(
+                (preset) => {
+                  const sortedGroups = [
+                    ...(preset.preset_setting_groups ??
+                      []),
+                  ]
+                    .sort(
                       (first, second) =>
                         first.sort_order -
                         second.sort_order,
-                    ),
-                  }));
+                    )
+                    .map((group) => ({
+                      ...group,
 
-                const settingsCount =
-                  sortedGroups.reduce(
-                    (total, group) =>
-                      total +
-                      group
-                        .preset_setting_items
-                        .length,
-                    0,
-                  );
+                      preset_setting_items: [
+                        ...(group.preset_setting_items ??
+                          []),
+                      ].sort(
+                        (first, second) =>
+                          first.sort_order -
+                          second.sort_order,
+                      ),
+                    }));
 
-                return (
-                  <details
-                    key={preset.id}
-                    className="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900"
-                  >
-                    <summary className="cursor-pointer list-none p-6 transition hover:bg-slate-800/40 md:p-8">
-                      <div className="flex flex-wrap items-start justify-between gap-5">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <span
-                              className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getPresetStyle(
-                                preset.preset_type,
-                              )}`}
-                            >
-                              {preset.preset_type}
-                            </span>
+                  const settingsCount =
+                    sortedGroups.reduce(
+                      (total, group) =>
+                        total +
+                        group
+                          .preset_setting_items
+                          .length,
+                      0,
+                    );
 
-                            <span className="text-sm font-bold text-cyan-400">
-                              {preset.games?.name ??
-                                "Unknown game"}
-                            </span>
+                  return (
+                    <details
+                      key={preset.id}
+                      className="group atlas-card atlas-card-hover"
+                    >
+                      <summary className="cursor-pointer list-none p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] ${getPresetStyle(
+                                  preset.preset_type,
+                                )}`}
+                              >
+                                {preset.preset_type}
+                              </span>
+
+                              <span className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-400">
+                                {preset.games?.name ??
+                                  "Unknown game"}
+                              </span>
+                            </div>
+
+                            <h3 className="mt-3 text-xl font-black">
+                              {preset.name}
+                            </h3>
+
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                              {preset.summary ??
+                                "Detailed recommended settings for this handheld."}
+                            </p>
                           </div>
 
-                          <h3 className="mt-5 text-3xl font-black">
-                            {preset.name}
-                          </h3>
-
-                          <p className="mt-2 text-lg text-slate-400">
-                            {preset.games?.name ??
-                              "Unknown game"}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          {preset.community_rating !==
-                            null && (
-                            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-right">
-                              <p className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
-                                Rating
-                              </p>
-
-                              <p className="mt-1 font-black text-yellow-300">
-                                ★{" "}
-                                {preset.community_rating.toFixed(
-                                  1,
-                                )}
-                              </p>
-                            </div>
-                          )}
-
-                          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-700 bg-slate-950 text-xl font-black text-cyan-400 transition group-open:rotate-45">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-black/20 text-lg font-black text-cyan-400 transition group-open:rotate-45">
                             +
                           </span>
                         </div>
-                      </div>
 
-                      {preset.summary && (
-                        <p className="mt-5 max-w-4xl leading-7 text-slate-400">
-                          {preset.summary}
-                        </p>
-                      )}
+                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <PresetStat
+                            label="Resolution"
+                            value={
+                              preset.resolution ??
+                              "Not set"
+                            }
+                          />
 
-                      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-                        <PresetStat
-                          label="Resolution"
-                          value={
-                            preset.resolution ??
-                            "Not set"
-                          }
-                        />
+                          <PresetStat
+                            label="TDP"
+                            value={
+                              preset.tdp ??
+                              "Not set"
+                            }
+                          />
 
-                        <PresetStat
-                          label="TDP"
-                          value={
-                            preset.tdp ??
-                            "Not set"
-                          }
-                        />
+                          <PresetStat
+                            label="Average"
+                            value={
+                              preset.fps_average !==
+                              null
+                                ? `${preset.fps_average} FPS`
+                                : "Not set"
+                            }
+                            highlighted
+                          />
 
-                        <PresetStat
-                          label="Average FPS"
-                          value={
-                            preset.fps_average !==
-                            null
-                              ? `${preset.fps_average} FPS`
-                              : "Not set"
-                          }
-                          highlighted
-                        />
+                          <PresetStat
+                            label="1% Low"
+                            value={
+                              preset.one_percent_low !==
+                              null
+                                ? `${preset.one_percent_low} FPS`
+                                : "Not set"
+                            }
+                          />
+                        </div>
 
-                        <PresetStat
-                          label="1% Low"
-                          value={
-                            preset.one_percent_low !==
-                            null
-                              ? `${preset.one_percent_low} FPS`
-                              : "Not set"
-                          }
-                        />
+                        <div className="mt-3 flex flex-wrap gap-2 text-[0.62rem] text-slate-600">
+                          <span>
+                            Upscaler:{" "}
+                            <strong className="text-slate-300">
+                              {preset.upscaler ??
+                                "Not set"}
+                            </strong>
+                          </span>
 
-                        <PresetStat
-                          label="Upscaler"
-                          value={
-                            preset.upscaler ??
-                            "Not set"
-                          }
-                        />
+                          <span>•</span>
 
-                        <PresetStat
-                          label="Battery"
-                          value={
-                            preset.battery_life ??
-                            "Not set"
-                          }
-                        />
+                          <span>
+                            Battery:{" "}
+                            <strong className="text-slate-300">
+                              {preset.battery_life ??
+                                "Not set"}
+                            </strong>
+                          </span>
 
-                        <PresetStat
-                          label="Settings"
-                          value={`${settingsCount} values`}
-                        />
-                      </div>
-                    </summary>
+                          <span>•</span>
 
-                    <div className="border-t border-slate-800 bg-slate-950/70 p-6 md:p-8">
-                      <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-                        Complete Configuration
-                      </p>
+                          <span>
+                            {settingsCount} settings
+                          </span>
+                        </div>
+                      </summary>
 
-                      <h4 className="mt-2 text-3xl font-black">
-                        Full settings
-                      </h4>
-
-                      {sortedGroups.length === 0 ? (
-                        <div className="mt-6 rounded-2xl border border-dashed border-slate-700 p-8 text-center">
-                          <p className="font-bold text-slate-300">
-                            No detailed settings available
+                      <div className="border-t border-white/[0.07] bg-black/20 p-4">
+                        {sortedGroups.length ===
+                        0 ? (
+                          <p className="text-sm text-slate-500">
+                            No detailed settings
+                            available.
                           </p>
-                        </div>
-                      ) : (
-                        <div className="mt-7 grid gap-6 lg:grid-cols-2">
-                          {sortedGroups.map(
-                            (group) => (
-                              <section
-                                key={group.id}
-                                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
-                              >
-                                <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
-                                  <h5 className="text-xl font-black">
-                                    {group.name}
-                                  </h5>
-                                </div>
+                        ) : (
+                          <div className="grid gap-4 md:grid-cols-2">
+                            {sortedGroups.map(
+                              (group) => (
+                                <section
+                                  key={group.id}
+                                  className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
+                                >
+                                  <div className="border-b border-white/[0.07] px-4 py-3">
+                                    <h4 className="text-sm font-black">
+                                      {group.name}
+                                    </h4>
+                                  </div>
 
-                                <dl>
-                                  {group.preset_setting_items.map(
-                                    (
-                                      item,
-                                      itemIndex,
-                                    ) => (
-                                      <div
-                                        key={item.id}
-                                        className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] ${
-                                          itemIndex ===
-                                          group
-                                            .preset_setting_items
-                                            .length -
-                                            1
-                                            ? ""
-                                            : "border-b border-slate-800"
-                                        }`}
-                                      >
-                                        <div>
-                                          <dt className="font-semibold text-slate-300">
-                                            {item.label}
-                                          </dt>
+                                  <dl>
+                                    {group.preset_setting_items.map(
+                                      (
+                                        item,
+                                        index,
+                                      ) => (
+                                        <div
+                                          key={
+                                            item.id
+                                          }
+                                          className={`grid grid-cols-[1fr_auto] gap-3 px-4 py-3 text-sm ${
+                                            index ===
+                                            group
+                                              .preset_setting_items
+                                              .length -
+                                              1
+                                              ? ""
+                                              : "border-b border-white/[0.06]"
+                                          }`}
+                                        >
+                                          <div>
+                                            <dt className="font-bold text-slate-300">
+                                              {
+                                                item.label
+                                              }
+                                            </dt>
 
-                                          {item.note && (
-                                            <p className="mt-1 text-sm text-slate-500">
-                                              {item.note}
-                                            </p>
-                                          )}
+                                            {item.note && (
+                                              <p className="mt-1 text-xs text-slate-600">
+                                                {
+                                                  item.note
+                                                }
+                                              </p>
+                                            )}
+                                          </div>
+
+                                          <dd className="font-black text-cyan-400">
+                                            {
+                                              item.value
+                                            }
+                                          </dd>
                                         </div>
+                                      ),
+                                    )}
+                                  </dl>
+                                </section>
+                              ),
+                            )}
+                          </div>
+                        )}
 
-                                        <dd className="font-black text-cyan-400">
-                                          {item.value}
-                                        </dd>
-                                      </div>
-                                    ),
-                                  )}
-                                </dl>
-                              </section>
-                            ),
-                          )}
-                        </div>
-                      )}
-
-                      {preset.games && (
-                        <Link
-                          href={`/games/${preset.games.slug}`}
-                          className="mt-7 inline-flex rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-5 py-3 font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
-                        >
-                          View {preset.games.name} →
-                        </Link>
-                      )}
-                    </div>
-                  </details>
-                );
-              })}
+                        {preset.games && (
+                          <Link
+                            href={`/games/${preset.games.slug}`}
+                            className="atlas-button-secondary mt-4"
+                          >
+                            Open game profile
+                          </Link>
+                        )}
+                      </div>
+                    </details>
+                  );
+                },
+              )}
             </div>
           )}
         </section>
 
-        <section className="mt-16">
+        <section className="atlas-panel mt-5 p-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-                Performance Data
-              </p>
-
-              <h2 className="mt-2 text-4xl font-black">
-                Benchmarks
-              </h2>
-            </div>
+            <SectionHeader
+              title="Benchmark wall"
+              eyebrow="Performance data"
+              noBorder
+            />
 
             <Link
               href="/benchmarks"
-              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+              className="text-xs font-black text-cyan-400 transition hover:text-white"
             >
-              Browse all benchmarks →
+              View all benchmarks →
             </Link>
           </div>
 
           {handheldBenchmarks.length === 0 ? (
-            <EmptySection
-              title="No benchmarks available"
-              description="Published benchmark results for this handheld will appear here automatically."
-            />
+            <EmptyState text="No published benchmarks available for this handheld." />
           ) : (
-            <div className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
+            <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07]">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
-                  <thead className="border-b border-slate-800 bg-slate-950/60">
+                  <thead className="bg-black/30">
                     <tr>
                       <TableHeading label="Game" />
                       <TableHeading label="Preset" />
                       <TableHeading label="Resolution" />
                       <TableHeading label="TDP" />
-                      <TableHeading label="Average FPS" />
+                      <TableHeading label="Average" />
                       <TableHeading label="1% Low" />
                       <TableHeading label="Battery" />
                     </tr>
@@ -827,54 +930,56 @@ export default async function HandheldPage({
                       (benchmark) => (
                         <tr
                           key={benchmark.id}
-                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
+                          className="border-t border-white/[0.06] transition hover:bg-white/[0.025]"
                         >
-                          <td className="px-6 py-5">
+                          <td className="px-4 py-4">
                             {benchmark.games ? (
                               <Link
                                 href={`/games/${benchmark.games.slug}`}
-                                className="font-semibold transition hover:text-cyan-400"
+                                className="font-black text-slate-200 transition hover:text-cyan-400"
                               >
                                 {benchmark.games.name}
                               </Link>
                             ) : (
-                              "Unknown game"
+                              <span className="text-slate-500">
+                                Unknown game
+                              </span>
                             )}
                           </td>
 
-                          <td className="px-6 py-5 text-slate-300">
+                          <td className="px-4 py-4 text-sm text-slate-400">
                             {benchmark.presets
                               ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
-                              : "Not linked"}
+                              : "Custom"}
                           </td>
 
-                          <td className="px-6 py-5 text-slate-300">
+                          <td className="px-4 py-4 text-sm text-slate-400">
                             {benchmark.resolution ??
                               "Not set"}
                           </td>
 
-                          <td className="px-6 py-5 text-slate-300">
+                          <td className="px-4 py-4 text-sm text-slate-400">
                             {benchmark.tdp ??
                               "Not set"}
                           </td>
 
-                          <td className="px-6 py-5">
-                            <span className="rounded-full bg-cyan-500/20 px-3 py-1 font-bold text-cyan-400">
+                          <td className="px-4 py-4">
+                            <span className="rounded-lg border border-red-500/25 bg-red-500/[0.07] px-3 py-1.5 font-black text-red-400">
                               {benchmark.average_fps !==
                               null
                                 ? `${benchmark.average_fps} FPS`
-                                : "Not set"}
+                                : "—"}
                             </span>
                           </td>
 
-                          <td className="px-6 py-5 text-slate-300">
+                          <td className="px-4 py-4 font-black text-slate-300">
                             {benchmark.one_percent_low !==
                             null
                               ? `${benchmark.one_percent_low} FPS`
-                              : "Not set"}
+                              : "—"}
                           </td>
 
-                          <td className="px-6 py-5 text-slate-300">
+                          <td className="px-4 py-4 text-sm text-slate-400">
                             {benchmark.battery_life ??
                               "Not set"}
                           </td>
@@ -892,86 +997,186 @@ export default async function HandheldPage({
   );
 }
 
-interface MetricCardProps {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}
-
-function MetricCard({
+function HeroMetric({
   label,
   value,
   highlighted = false,
-}: MetricCardProps) {
-  return (
-    <div
-      className={`rounded-2xl px-5 py-4 backdrop-blur ${
-        highlighted
-          ? "border border-cyan-500/30 bg-cyan-500/15"
-          : "border border-white/10 bg-white/5"
-      }`}
-    >
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-        {label}
-      </p>
-
-      <p className="mt-1 text-lg font-black text-white">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-interface SpecCardProps {
+}: {
   label: string;
   value: string;
-}
-
-function SpecCard({
-  label,
-  value,
-}: SpecCardProps) {
+  highlighted?: boolean;
+}) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-cyan-500/50">
-      <p className="text-sm text-slate-500">
+    <article
+      className={`rounded-xl border p-3 ${
+        highlighted
+          ? "border-red-500/30 bg-red-500/10"
+          : "border-white/[0.08] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
         {label}
       </p>
 
-      <p className="mt-2 text-lg font-bold text-slate-100">
+      <p
+        className={`mt-1 text-2xl font-black ${
+          highlighted
+            ? "text-red-400"
+            : "text-white"
+        }`}
+      >
         {value}
       </p>
     </article>
   );
 }
 
-interface PresetStatProps {
+function StripStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 px-4 py-4">
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-sm font-black text-slate-200">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  eyebrow,
+  noBorder = false,
+}: {
+  title: string;
+  eyebrow: string;
+  noBorder?: boolean;
+}) {
+  return (
+    <div
+      className={
+        noBorder
+          ? ""
+          : "border-b border-white/[0.07] pb-3"
+      }
+    >
+      <p className="atlas-section-label">
+        {eyebrow}
+      </p>
+
+      <h2 className="mt-1 text-xl font-black">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function SpecCard({
+  label,
+  value,
+  highlighted = false,
+}: {
   label: string;
   value: string;
   highlighted?: boolean;
+}) {
+  return (
+    <article
+      className={`rounded-xl border p-4 ${
+        highlighted
+          ? "border-cyan-500/25 bg-cyan-500/[0.06]"
+          : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 text-sm font-black leading-6 ${
+          highlighted
+            ? "text-cyan-400"
+            : "text-slate-200"
+        }`}
+      >
+        {value}
+      </p>
+    </article>
+  );
+}
+
+function PerformanceCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: "red" | "cyan";
+}) {
+  return (
+    <article
+      className={`rounded-xl border p-4 ${
+        accent === "red"
+          ? "border-red-500/25 bg-red-500/[0.06]"
+          : accent === "cyan"
+            ? "border-cyan-500/25 bg-cyan-500/[0.06]"
+            : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 text-2xl font-black ${
+          accent === "red"
+            ? "text-red-400"
+            : accent === "cyan"
+              ? "text-cyan-400"
+              : "text-white"
+        }`}
+      >
+        {value}
+      </p>
+    </article>
+  );
 }
 
 function PresetStat({
   label,
   value,
   highlighted = false,
-}: PresetStatProps) {
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
   return (
     <div
-      className={`rounded-2xl border p-4 ${
+      className={`rounded-lg border p-3 ${
         highlighted
-          ? "border-cyan-500/30 bg-cyan-500/10"
-          : "border-slate-800 bg-slate-950"
+          ? "border-red-500/25 bg-red-500/[0.07]"
+          : "border-white/[0.07] bg-black/20"
       }`}
     >
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
+      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
         {label}
       </p>
 
       <p
-        className={`mt-2 font-black ${
+        className={`mt-1 text-xs font-black ${
           highlighted
-            ? "text-cyan-400"
-            : "text-slate-200"
+            ? "text-red-400"
+            : "text-slate-300"
         }`}
       >
         {value}
@@ -980,22 +1185,14 @@ function PresetStat({
   );
 }
 
-function EmptySection({
-  title,
-  description,
+function EmptyState({
+  text,
 }: {
-  title: string;
-  description: string;
+  text: string;
 }) {
   return (
-    <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
-      <h3 className="text-xl font-bold">
-        {title}
-      </h3>
-
-      <p className="mt-2 text-slate-400">
-        {description}
-      </p>
+    <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
+      {text}
     </div>
   );
 }
@@ -1006,7 +1203,7 @@ function TableHeading({
   label: string;
 }) {
   return (
-    <th className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-500">
+    <th className="whitespace-nowrap px-4 py-3 text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
       {label}
     </th>
   );

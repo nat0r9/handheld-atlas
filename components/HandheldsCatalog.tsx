@@ -10,19 +10,24 @@ interface HandheldsCatalogProps {
   databaseError: string | null;
 }
 
+type SortOption =
+  | "Name"
+  | "Manufacturer"
+  | "Status";
+
 function getDeviceStatusStyle(status: string) {
   switch (status.toLowerCase()) {
     case "current":
-      return "border-green-400/30 bg-green-500/15 text-green-400";
+      return "border-green-500/30 bg-green-500/10 text-green-400";
 
     case "upcoming":
-      return "border-orange-400/30 bg-orange-500/15 text-orange-400";
+      return "border-orange-500/30 bg-orange-500/10 text-orange-400";
 
     case "discontinued":
-      return "border-red-400/30 bg-red-500/15 text-red-400";
+      return "border-red-500/30 bg-red-500/10 text-red-400";
 
     default:
-      return "border-slate-500/30 bg-slate-500/15 text-slate-300";
+      return "border-slate-500/30 bg-slate-500/10 text-slate-300";
   }
 }
 
@@ -30,13 +35,27 @@ export default function HandheldsCatalog({
   handhelds,
   databaseError,
 }: HandheldsCatalogProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [manufacturerFilter, setManufacturerFilter] =
+  const [searchQuery, setSearchQuery] =
+    useState("");
+
+  const [
+    manufacturerFilter,
+    setManufacturerFilter,
+  ] = useState("All");
+
+  const [statusFilter, setStatusFilter] =
     useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [processorFilter, setProcessorFilter] =
+
+  const [
+    processorFilter,
+    setProcessorFilter,
+  ] = useState("All");
+
+  const [osFilter, setOsFilter] =
     useState("All");
-  const [osFilter, setOsFilter] = useState("All");
+
+  const [sortOption, setSortOption] =
+    useState<SortOption>("Name");
 
   const manufacturerOptions = useMemo(
     () => [
@@ -44,7 +63,8 @@ export default function HandheldsCatalog({
       ...Array.from(
         new Set(
           handhelds.map(
-            (handheld) => handheld.manufacturer,
+            (handheld) =>
+              handheld.manufacturer,
           ),
         ),
       ).sort(),
@@ -58,7 +78,8 @@ export default function HandheldsCatalog({
       ...Array.from(
         new Set(
           handhelds.map(
-            (handheld) => handheld.deviceStatus,
+            (handheld) =>
+              handheld.deviceStatus,
           ),
         ),
       ).sort(),
@@ -72,9 +93,14 @@ export default function HandheldsCatalog({
       ...Array.from(
         new Set(
           handhelds
-            .map((handheld) => handheld.processor)
+            .map(
+              (handheld) =>
+                handheld.processor,
+            )
             .filter(
-              (value): value is string =>
+              (
+                value,
+              ): value is string =>
                 typeof value === "string" &&
                 value.length > 0,
             ),
@@ -90,9 +116,14 @@ export default function HandheldsCatalog({
       ...Array.from(
         new Set(
           handhelds
-            .map((handheld) => handheld.operatingSystem)
+            .map(
+              (handheld) =>
+                handheld.operatingSystem,
+            )
             .filter(
-              (value): value is string =>
+              (
+                value,
+              ): value is string =>
                 typeof value === "string" &&
                 value.length > 0,
             ),
@@ -107,52 +138,81 @@ export default function HandheldsCatalog({
       .trim()
       .toLowerCase();
 
-    return handhelds.filter((handheld) => {
-      const searchableText = [
-        handheld.name,
-        handheld.manufacturer,
-        handheld.deviceStatus,
-        handheld.operatingSystem ?? "",
-        handheld.processor ?? "",
-        handheld.memory ?? "",
-        handheld.storage ?? "",
-        handheld.displaySize ?? "",
-        handheld.resolution ?? "",
-        handheld.refreshRate ?? "",
-        handheld.battery ?? "",
-        handheld.tagline ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
+    const matchingHandhelds =
+      handhelds.filter((handheld) => {
+        const searchableText = [
+          handheld.name,
+          handheld.manufacturer,
+          handheld.deviceStatus,
+          handheld.operatingSystem ?? "",
+          handheld.processor ?? "",
+          handheld.memory ?? "",
+          handheld.storage ?? "",
+          handheld.displaySize ?? "",
+          handheld.resolution ?? "",
+          handheld.refreshRate ?? "",
+          handheld.battery ?? "",
+          handheld.weight ?? "",
+          handheld.tagline ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
 
-      const matchesSearch =
-        normalizedQuery.length === 0 ||
-        searchableText.includes(normalizedQuery);
+        const matchesSearch =
+          normalizedQuery.length === 0 ||
+          searchableText.includes(
+            normalizedQuery,
+          );
 
-      const matchesManufacturer =
-        manufacturerFilter === "All" ||
-        handheld.manufacturer === manufacturerFilter;
+        const matchesManufacturer =
+          manufacturerFilter === "All" ||
+          handheld.manufacturer ===
+            manufacturerFilter;
 
-      const matchesStatus =
-        statusFilter === "All" ||
-        handheld.deviceStatus === statusFilter;
+        const matchesStatus =
+          statusFilter === "All" ||
+          handheld.deviceStatus ===
+            statusFilter;
 
-      const matchesProcessor =
-        processorFilter === "All" ||
-        handheld.processor === processorFilter;
+        const matchesProcessor =
+          processorFilter === "All" ||
+          handheld.processor ===
+            processorFilter;
 
-      const matchesOs =
-        osFilter === "All" ||
-        handheld.operatingSystem === osFilter;
+        const matchesOs =
+          osFilter === "All" ||
+          handheld.operatingSystem ===
+            osFilter;
 
-      return (
-        matchesSearch &&
-        matchesManufacturer &&
-        matchesStatus &&
-        matchesProcessor &&
-        matchesOs
-      );
-    });
+        return (
+          matchesSearch &&
+          matchesManufacturer &&
+          matchesStatus &&
+          matchesProcessor &&
+          matchesOs
+        );
+      });
+
+    return [...matchingHandhelds].sort(
+      (first, second) => {
+        switch (sortOption) {
+          case "Manufacturer":
+            return first.manufacturer.localeCompare(
+              second.manufacturer,
+            );
+
+          case "Status":
+            return first.deviceStatus.localeCompare(
+              second.deviceStatus,
+            );
+
+          default:
+            return first.name.localeCompare(
+              second.name,
+            );
+        }
+      },
+    );
   }, [
     handhelds,
     searchQuery,
@@ -160,14 +220,38 @@ export default function HandheldsCatalog({
     statusFilter,
     processorFilter,
     osFilter,
+    sortOption,
   ]);
+
+  const currentDevices =
+    handhelds.filter(
+      (handheld) =>
+        handheld.deviceStatus.toLowerCase() ===
+        "current",
+    ).length;
+
+  const upcomingDevices =
+    handhelds.filter(
+      (handheld) =>
+        handheld.deviceStatus.toLowerCase() ===
+        "upcoming",
+    ).length;
+
+  const manufacturerCount =
+    new Set(
+      handhelds.map(
+        (handheld) =>
+          handheld.manufacturer,
+      ),
+    ).size;
 
   const hasActiveFilters =
     searchQuery.length > 0 ||
     manufacturerFilter !== "All" ||
     statusFilter !== "All" ||
     processorFilter !== "All" ||
-    osFilter !== "All";
+    osFilter !== "All" ||
+    sortOption !== "Name";
 
   function resetFilters() {
     setSearchQuery("");
@@ -175,243 +259,399 @@ export default function HandheldsCatalog({
     setStatusFilter("All");
     setProcessorFilter("All");
     setOsFilter("All");
+    setSortOption("Name");
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="rounded-[2rem] border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-6 shadow-2xl md:p-8">
-          <p className="text-center text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
-            Handheld Gaming Devices
-          </p>
-
-          <h1 className="mt-4 text-center text-4xl font-black md:text-5xl">
-            Handhelds
-          </h1>
-
-          <p className="mx-auto mt-4 max-w-2xl text-center text-slate-400">
-            Explore published handheld gaming devices,
-            specifications, presets and performance data.
-          </p>
-
-          {databaseError && (
-            <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
-              <p className="font-black">
-                Could not load the handheld database.
+    <main className="atlas-page pb-14 text-white">
+      <section className="border-b border-white/[0.06]">
+        <div className="atlas-shell py-12">
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div>
+              <p className="atlas-section-label">
+                Handheld database
               </p>
 
-              <p className="mt-2 break-words text-sm">
-                {databaseError}
+              <h1 className="mt-4 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+                Every device.
+                <span className="block">
+                  One{" "}
+                  <span className="atlas-text-red">
+                    atlas.
+                  </span>
+                </span>
+              </h1>
+
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
+                Explore published handhelds,
+                compare hardware specifications
+                and jump straight into presets
+                and benchmarks built around each
+                device.
               </p>
             </div>
-          )}
 
-          <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
-            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
-              <div className="xl:col-span-2">
-                <label
-                  htmlFor="handheld-search"
-                  className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-                >
-                  Search
-                </label>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+              <HeroStat
+                label="Published"
+                value={handhelds.length.toString()}
+              />
 
+              <HeroStat
+                label="Current"
+                value={currentDevices.toString()}
+                highlighted
+              />
+
+              <HeroStat
+                label="Upcoming"
+                value={upcomingDevices.toString()}
+              />
+
+              <HeroStat
+                label="Brands"
+                value={manufacturerCount.toString()}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="atlas-shell pt-6">
+        {databaseError && (
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            <p className="font-black">
+              Could not load the handheld
+              database.
+            </p>
+
+            <p className="mt-2 break-words">
+              {databaseError}
+            </p>
+          </div>
+        )}
+
+        <section className="atlas-panel p-4 md:p-5">
+          <div className="grid gap-4 xl:grid-cols-[1.8fr_repeat(5,minmax(0,1fr))_auto]">
+            <div>
+              <FilterLabel
+                htmlFor="handheld-search"
+                label="Search"
+              />
+
+              <div className="relative">
                 <input
                   id="handheld-search"
                   type="search"
                   value={searchQuery}
                   onChange={(event) =>
-                    setSearchQuery(event.target.value)
+                    setSearchQuery(
+                      event.target.value,
+                    )
                   }
                   placeholder="Search ASUS, Steam Deck, Z1 Extreme..."
-                  className="w-full rounded-xl border border-slate-800 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
+                  className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
                 />
+
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
+                  <SearchIcon />
+                </span>
               </div>
-
-              <FilterSelect
-                label="Manufacturer"
-                value={manufacturerFilter}
-                options={manufacturerOptions}
-                onChange={setManufacturerFilter}
-              />
-
-              <FilterSelect
-                label="Status"
-                value={statusFilter}
-                options={statusOptions}
-                onChange={setStatusFilter}
-              />
-
-              <FilterSelect
-                label="Processor"
-                value={processorFilter}
-                options={processorOptions}
-                onChange={setProcessorFilter}
-              />
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto]">
-              <FilterSelect
-                label="Operating System"
-                value={osFilter}
-                options={osOptions}
-                onChange={setOsFilter}
-              />
+            <FilterSelect
+              label="Manufacturer"
+              value={manufacturerFilter}
+              options={manufacturerOptions}
+              onChange={
+                setManufacturerFilter
+              }
+            />
 
-              <button
-                type="button"
-                onClick={resetFilters}
-                disabled={!hasActiveFilters}
-                className="self-end rounded-xl bg-red-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Reset Filters
-              </button>
+            <FilterSelect
+              label="Status"
+              value={statusFilter}
+              options={statusOptions}
+              onChange={setStatusFilter}
+            />
+
+            <FilterSelect
+              label="Processor"
+              value={processorFilter}
+              options={processorOptions}
+              onChange={setProcessorFilter}
+            />
+
+            <FilterSelect
+              label="Operating system"
+              value={osFilter}
+              options={osOptions}
+              onChange={setOsFilter}
+            />
+
+            <FilterSelect
+              label="Sort"
+              value={sortOption}
+              options={[
+                "Name",
+                "Manufacturer",
+                "Status",
+              ]}
+              onChange={(value) =>
+                setSortOption(
+                  value as SortOption,
+                )
+              }
+            />
+
+            <button
+              type="button"
+              onClick={resetFilters}
+              disabled={!hasActiveFilters}
+              className="atlas-button-primary self-end whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              Reset
+            </button>
+          </div>
+        </section>
+
+        <section className="mt-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] pb-3">
+            <div>
+              <p className="atlas-section-label">
+                Device library
+              </p>
+
+              <h2 className="mt-1 text-xl font-black">
+                {filteredHandhelds.length}{" "}
+                {filteredHandhelds.length === 1
+                  ? "device"
+                  : "devices"}
+              </h2>
             </div>
-          </section>
-
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <h2 className="rounded-full border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-black uppercase tracking-[0.18em]">
-              {filteredHandhelds.length}{" "}
-              {filteredHandhelds.length === 1
-                ? "Device"
-                : "Devices"}
-            </h2>
 
             <Link
               href="/compare"
-              className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+              className="atlas-button-secondary"
             >
               Compare devices
             </Link>
           </div>
 
           {filteredHandhelds.length === 0 ? (
-            <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/80 p-10 text-center">
-              <h3 className="text-2xl font-black">
+            <div className="atlas-panel mt-5 p-10 text-center">
+              <p className="atlas-section-label">
+                No matches
+              </p>
+
+              <h3 className="mt-3 text-3xl font-black">
                 No handhelds found
               </h3>
 
-              <p className="mt-3 text-slate-400">
-                Try changing the filters or publish a
-                handheld from the admin dashboard.
+              <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-400">
+                Change the filters or
+                publish another handheld
+                through the admin dashboard.
               </p>
 
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="mt-6 rounded-xl bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-400"
+                  className="atlas-button-primary mt-6"
                 >
                   Reset filters
                 </button>
               )}
             </div>
           ) : (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {filteredHandhelds.map((handheld) => (
-                <Link
-                  key={handheld.id}
-                  href={`/handhelds/${handheld.slug}`}
-                  className="group"
-                >
-                  <article className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-800 bg-slate-950 shadow-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-500">
-                    <div className="relative flex min-h-72 items-center justify-center overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-5">
-                      <div className="absolute left-5 top-5 z-10">
-                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500">
-                          {handheld.manufacturer}
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredHandhelds.map(
+                (handheld) => (
+                  <Link
+                    key={handheld.id}
+                    href={`/handhelds/${handheld.slug}`}
+                    className="group"
+                  >
+                    <article className="atlas-card atlas-card-hover atlas-card-cyan flex h-full flex-col">
+                      <div className="relative min-h-72 overflow-hidden border-b border-white/[0.07] bg-[radial-gradient(circle_at_50%_65%,rgba(24,215,255,0.13),transparent_38%),linear-gradient(135deg,#0b101b,#05070d)]">
+                        <div className="absolute left-4 top-4 z-10">
+                          <p className="text-[0.58rem] font-black uppercase tracking-[0.16em] text-cyan-400">
+                            {
+                              handheld.manufacturer
+                            }
+                          </p>
+                        </div>
+
+                        <div className="absolute right-4 top-4 z-10">
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] backdrop-blur ${getDeviceStatusStyle(
+                              handheld.deviceStatus,
+                            )}`}
+                          >
+                            {
+                              handheld.deviceStatus
+                            }
+                          </span>
+                        </div>
+
+                        <div className="relative h-72 w-full">
+                          {handheld.imageUrl ? (
+                            <Image
+                              src={
+                                handheld.imageUrl
+                              }
+                              alt={handheld.name}
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                              className="object-contain object-center p-7 drop-shadow-[0_30px_40px_rgba(0,0,0,0.75)] transition duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-700">
+                                Image coming soon
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pointer-events-none absolute inset-x-16 bottom-6 h-8 rounded-full bg-cyan-500/10 blur-2xl" />
+                      </div>
+
+                      <div className="flex flex-1 flex-col p-5">
+                        <h3 className="text-2xl font-black leading-tight transition group-hover:text-cyan-400">
+                          {handheld.name}
+                        </h3>
+
+                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">
+                          {handheld.tagline ??
+                            "Detailed handheld specifications and performance data."}
                         </p>
-                      </div>
 
-                      <div className="absolute right-4 top-4 z-10">
-                        <span
-                          className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide backdrop-blur ${getDeviceStatusStyle(
-                            handheld.deviceStatus,
-                          )}`}
-                        >
-                          {handheld.deviceStatus}
-                        </span>
-                      </div>
-
-                      <div className="relative mt-8 h-56 w-full">
-                        {handheld.imageUrl ? (
-                          <Image
-                            src={handheld.imageUrl}
-                            alt={handheld.name}
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                            className="object-contain object-center drop-shadow-[0_25px_35px_rgba(0,0,0,0.7)] transition duration-300 group-hover:scale-110"
+                        <div className="mt-5 grid grid-cols-2 gap-2">
+                          <InfoTile
+                            label="Processor"
+                            value={
+                              handheld.processor ??
+                              "Not set"
+                            }
+                            highlighted
                           />
-                        ) : (
-                          <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-800">
-                            <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-700">
-                              Image coming soon
-                            </p>
-                          </div>
-                        )}
+
+                          <InfoTile
+                            label="Memory"
+                            value={
+                              handheld.memory ??
+                              "Not set"
+                            }
+                          />
+
+                          <InfoTile
+                            label="Display"
+                            value={
+                              handheld.displaySize ??
+                              "Not set"
+                            }
+                          />
+
+                          <InfoTile
+                            label="Battery"
+                            value={
+                              handheld.battery ??
+                              "Not set"
+                            }
+                          />
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <MiniMeta
+                            label="Resolution"
+                            value={
+                              handheld.resolution ??
+                              "Not set"
+                            }
+                          />
+
+                          <MiniMeta
+                            label="Refresh"
+                            value={
+                              handheld.refreshRate ??
+                              "Not set"
+                            }
+                          />
+                        </div>
+
+                        <div className="mt-auto flex items-center justify-between gap-4 border-t border-white/[0.07] pt-4">
+                          <span className="truncate text-xs text-slate-600">
+                            {handheld.operatingSystem ??
+                              "OS not set"}
+                          </span>
+
+                          <span className="shrink-0 text-xs font-black text-cyan-400 transition group-hover:text-white">
+                            View profile →
+                          </span>
+                        </div>
                       </div>
-
-                      <div className="pointer-events-none absolute inset-x-16 bottom-5 h-8 rounded-full bg-cyan-500/10 blur-2xl" />
-                    </div>
-
-                    <div className="flex flex-1 flex-col p-6">
-                      <h2 className="text-3xl font-black transition group-hover:text-cyan-400">
-                        {handheld.name}
-                      </h2>
-
-                      <p className="mt-3 leading-7 text-slate-400">
-                        {handheld.tagline ??
-                          "Detailed handheld information will be added soon."}
-                      </p>
-
-                      <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-4">
-                        <DeviceStat
-                          label="Processor"
-                          value={
-                            handheld.processor ?? "Not set"
-                          }
-                        />
-
-                        <DeviceStat
-                          label="Memory"
-                          value={
-                            handheld.memory ?? "Not set"
-                          }
-                        />
-
-                        <DeviceStat
-                          label="Display"
-                          value={
-                            handheld.displaySize ?? "Not set"
-                          }
-                        />
-
-                        <DeviceStat
-                          label="Battery"
-                          value={
-                            handheld.battery ?? "Not set"
-                          }
-                        />
-                      </div>
-
-                      <div className="mt-auto flex items-center justify-between gap-4 border-t border-slate-800 pt-6">
-                        <span className="line-clamp-2 max-w-[65%] text-sm text-slate-500">
-                          {handheld.operatingSystem ??
-                            "Operating system not set"}
-                        </span>
-
-                        <span className="shrink-0 font-bold text-cyan-400">
-                          View profile →
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                </Link>
-              ))}
+                    </article>
+                  </Link>
+                ),
+              )}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </main>
+  );
+}
+
+function HeroStat({
+  label,
+  value,
+  highlighted = false,
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
+  return (
+    <article
+      className={`rounded-xl border p-4 ${
+        highlighted
+          ? "border-red-500/30 bg-red-500/10"
+          : "border-white/[0.08] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 text-3xl font-black ${
+          highlighted
+            ? "text-red-400"
+            : "text-white"
+        }`}
+      >
+        {value}
+      </p>
+    </article>
+  );
+}
+
+function FilterLabel({
+  htmlFor,
+  label,
+}: {
+  htmlFor: string;
+  label: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-2 block text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600"
+    >
+      {label}
+    </label>
   );
 }
 
@@ -428,19 +668,30 @@ function FilterSelect({
   options,
   onChange,
 }: FilterSelectProps) {
+  const id = `handheld-filter-${label
+    .toLowerCase()
+    .replaceAll(" ", "-")}`;
+
   return (
     <div>
-      <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-        {label}
-      </label>
+      <FilterLabel
+        htmlFor={id}
+        label={label}
+      />
 
       <select
+        id={id}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-slate-800 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
       >
         {options.map((option) => (
-          <option key={option} value={option}>
+          <option
+            key={option}
+            value={option}
+          >
             {option}
           </option>
         ))}
@@ -449,22 +700,79 @@ function FilterSelect({
   );
 }
 
-interface DeviceStatProps {
-  label: string;
-  value: string;
-}
-
-function DeviceStat({
+function InfoTile({
   label,
   value,
-}: DeviceStatProps) {
+  highlighted = false,
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
   return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-slate-500">
+    <div
+      className={`rounded-lg border p-3 ${
+        highlighted
+          ? "border-cyan-500/25 bg-cyan-500/[0.06]"
+          : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
         {label}
       </p>
 
-      <p className="mt-1 font-bold">{value}</p>
+      <p
+        className={`mt-1 line-clamp-2 text-xs font-black leading-5 ${
+          highlighted
+            ? "text-cyan-400"
+            : "text-slate-300"
+        }`}
+      >
+        {value}
+      </p>
     </div>
+  );
+}
+
+function MiniMeta({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-black/10 px-3 py-2">
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.1em] text-slate-700">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-[0.68rem] font-bold text-slate-400">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle
+        cx="11"
+        cy="11"
+        r="7"
+      />
+
+      <path d="m20 20-3.5-3.5" />
+    </svg>
   );
 }
