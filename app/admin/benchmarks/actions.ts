@@ -9,6 +9,33 @@ type ContentStatus =
   | "published"
   | "archived";
 
+interface RelationWithSlug {
+  slug: string;
+}
+
+interface BenchmarkLookup {
+  published_at: string | null;
+  games:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+  handhelds:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+}
+
+interface BenchmarkDeleteLookup {
+  games:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+  handhelds:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+}
+
 async function requireAdmin() {
   const supabase = await createClient();
 
@@ -20,11 +47,12 @@ async function requireAdmin() {
     redirect("/admin/login");
   }
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
+  const { data: profile, error } =
+    await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
 
   if (error || !profile?.is_admin) {
     redirect("/admin/login");
@@ -40,23 +68,33 @@ function requiredText(
   formData: FormData,
   name: string,
 ) {
-  return String(formData.get(name) ?? "").trim();
+  return String(
+    formData.get(name) ?? "",
+  ).trim();
 }
 
 function optionalText(
   formData: FormData,
   name: string,
 ) {
-  const value = requiredText(formData, name);
+  const value = requiredText(
+    formData,
+    name,
+  );
 
-  return value.length > 0 ? value : null;
+  return value.length > 0
+    ? value
+    : null;
 }
 
 function optionalNumber(
   formData: FormData,
   name: string,
 ) {
-  const value = requiredText(formData, name);
+  const value = requiredText(
+    formData,
+    name,
+  );
 
   if (!value) {
     return null;
@@ -88,6 +126,24 @@ function getStatus(
   return "draft";
 }
 
+function getRelationSlug(
+  relation:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null
+    | undefined,
+) {
+  if (!relation) {
+    return null;
+  }
+
+  if (Array.isArray(relation)) {
+    return relation[0]?.slug ?? null;
+  }
+
+  return relation.slug;
+}
+
 async function getRelatedSlugs(
   supabase: Awaited<
     ReturnType<typeof createClient>
@@ -95,27 +151,35 @@ async function getRelatedSlugs(
   gameId: string,
   handheldId: string,
 ) {
-  const [gameResult, handheldResult] =
-    await Promise.all([
-      supabase
-        .from("games")
-        .select("slug")
-        .eq("id", gameId)
-        .single(),
+  const [
+    gameResult,
+    handheldResult,
+  ] = await Promise.all([
+    supabase
+      .from("games")
+      .select("slug")
+      .eq("id", gameId)
+      .single(),
 
-      supabase
-        .from("handhelds")
-        .select("slug")
-        .eq("id", handheldId)
-        .single(),
-    ]);
+    supabase
+      .from("handhelds")
+      .select("slug")
+      .eq("id", handheldId)
+      .single(),
+  ]);
 
   return {
-    gameSlug: gameResult.data?.slug ?? null,
+    gameSlug:
+      gameResult.data?.slug ?? null,
+
     handheldSlug:
-      handheldResult.data?.slug ?? null,
+      handheldResult.data?.slug ??
+      null,
+
     gameError: gameResult.error,
-    handheldError: handheldResult.error,
+
+    handheldError:
+      handheldResult.error,
   };
 }
 
@@ -126,7 +190,9 @@ function revalidateBenchmarkPages(
 ) {
   revalidatePath("/");
   revalidatePath("/admin");
-  revalidatePath("/admin/benchmarks");
+  revalidatePath(
+    "/admin/benchmarks",
+  );
   revalidatePath("/benchmarks");
   revalidatePath("/games");
   revalidatePath("/handhelds");
@@ -138,12 +204,55 @@ function revalidateBenchmarkPages(
   }
 
   if (gameSlug) {
-    revalidatePath(`/games/${gameSlug}`);
+    revalidatePath(
+      `/games/${gameSlug}`,
+    );
   }
 
   if (handheldSlug) {
     revalidatePath(
       `/handhelds/${handheldSlug}`,
+    );
+  }
+}
+
+async function validatePresetRelation(
+  supabase: Awaited<
+    ReturnType<typeof createClient>
+  >,
+  presetId: string | null,
+  gameId: string,
+  handheldId: string,
+  errorPath: string,
+) {
+  if (!presetId) {
+    return;
+  }
+
+  const {
+    data: preset,
+    error: presetError,
+  } = await supabase
+    .from("presets")
+    .select(
+      "id, game_id, handheld_id",
+    )
+    .eq("id", presetId)
+    .single();
+
+  if (presetError || !preset) {
+    redirect(
+      `${errorPath}?error=Selected%20preset%20was%20not%20found`,
+    );
+  }
+
+  if (
+    preset.game_id !== gameId ||
+    preset.handheld_id !==
+      handheldId
+  ) {
+    redirect(
+      `${errorPath}?error=Selected%20preset%20does%20not%20match%20the%20chosen%20game%20and%20handheld`,
     );
   }
 }
@@ -164,10 +273,13 @@ export async function createBenchmark(
     "handheldId",
   );
 
-  const presetId =
-    optionalText(formData, "presetId");
+  const presetId = optionalText(
+    formData,
+    "presetId",
+  );
 
-  const status = getStatus(formData);
+  const status =
+    getStatus(formData);
 
   if (!gameId || !handheldId) {
     redirect(
@@ -180,10 +292,11 @@ export async function createBenchmark(
     "averageFps",
   );
 
-  const onePercentLow = optionalNumber(
-    formData,
-    "onePercentLow",
-  );
+  const onePercentLow =
+    optionalNumber(
+      formData,
+      "onePercentLow",
+    );
 
   if (
     averageFps !== null &&
@@ -228,61 +341,59 @@ export async function createBenchmark(
     );
   }
 
-  if (presetId) {
-    const { data: preset, error: presetError } =
-      await supabase
-        .from("presets")
-        .select("id, game_id, handheld_id")
-        .eq("id", presetId)
-        .single();
+  await validatePresetRelation(
+    supabase,
+    presetId,
+    gameId,
+    handheldId,
+    "/admin/benchmarks",
+  );
 
-    if (presetError || !preset) {
-      redirect(
-        "/admin/benchmarks?error=Selected%20preset%20was%20not%20found",
-      );
-    }
+  const {
+    data: benchmark,
+    error,
+  } = await supabase
+    .from("benchmarks")
+    .insert({
+      game_id: gameId,
+      handheld_id: handheldId,
+      preset_id: presetId,
 
-    if (
-      preset.game_id !== gameId ||
-      preset.handheld_id !== handheldId
-    ) {
-      redirect(
-        "/admin/benchmarks?error=Selected%20preset%20does%20not%20match%20the%20chosen%20game%20and%20handheld",
-      );
-    }
-  }
+      resolution: optionalText(
+        formData,
+        "resolution",
+      ),
 
-  const { data: benchmark, error } =
-    await supabase
-      .from("benchmarks")
-      .insert({
-        game_id: gameId,
-        handheld_id: handheldId,
-        preset_id: presetId,
-        resolution: optionalText(
-          formData,
-          "resolution",
-        ),
-        tdp: optionalText(formData, "tdp"),
-        average_fps: averageFps,
-        one_percent_low: onePercentLow,
-        battery_life: optionalText(
-          formData,
-          "batteryLife",
-        ),
-        test_notes: optionalText(
-          formData,
-          "testNotes",
-        ),
-        status,
-        created_by: user.id,
-        published_at:
-          status === "published"
-            ? new Date().toISOString()
-            : null,
-      })
-      .select("id")
-      .single();
+      tdp: optionalText(
+        formData,
+        "tdp",
+      ),
+
+      average_fps: averageFps,
+
+      one_percent_low:
+        onePercentLow,
+
+      battery_life: optionalText(
+        formData,
+        "batteryLife",
+      ),
+
+      test_notes: optionalText(
+        formData,
+        "testNotes",
+      ),
+
+      status,
+      created_by: user.id,
+
+      published_at:
+        status === "published"
+          ? new Date().toISOString()
+          : null,
+    })
+    .select("id")
+    .single();
 
   if (error || !benchmark) {
     redirect(
@@ -307,7 +418,8 @@ export async function createBenchmark(
 export async function updateBenchmark(
   formData: FormData,
 ) {
-  const { supabase } = await requireAdmin();
+  const { supabase } =
+    await requireAdmin();
 
   const benchmarkId = requiredText(
     formData,
@@ -324,19 +436,22 @@ export async function updateBenchmark(
     "handheldId",
   );
 
-  const presetId =
-    optionalText(formData, "presetId");
+  const presetId = optionalText(
+    formData,
+    "presetId",
+  );
 
-  const status = getStatus(formData);
-
-  const editPath =
-    `/admin/benchmarks/${benchmarkId}/edit`;
+  const status =
+    getStatus(formData);
 
   if (!benchmarkId) {
     redirect(
       "/admin/benchmarks?error=Missing%20benchmark%20ID",
     );
   }
+
+  const editPath =
+    `/admin/benchmarks/${benchmarkId}/edit`;
 
   if (!gameId || !handheldId) {
     redirect(
@@ -349,10 +464,11 @@ export async function updateBenchmark(
     "averageFps",
   );
 
-  const onePercentLow = optionalNumber(
-    formData,
-    "onePercentLow",
-  );
+  const onePercentLow =
+    optionalNumber(
+      formData,
+      "onePercentLow",
+    );
 
   if (
     averageFps !== null &&
@@ -373,7 +489,7 @@ export async function updateBenchmark(
   }
 
   const {
-    data: currentBenchmark,
+    data: currentData,
     error: currentError,
   } = await supabase
     .from("benchmarks")
@@ -391,12 +507,15 @@ export async function updateBenchmark(
 
   if (
     currentError ||
-    !currentBenchmark
+    !currentData
   ) {
     redirect(
       "/admin/benchmarks?error=Benchmark%20not%20found",
     );
   }
+
+  const currentBenchmark =
+    currentData as unknown as BenchmarkLookup;
 
   const relatedSlugs =
     await getRelatedSlugs(
@@ -423,29 +542,13 @@ export async function updateBenchmark(
     );
   }
 
-  if (presetId) {
-    const { data: preset, error: presetError } =
-      await supabase
-        .from("presets")
-        .select("id, game_id, handheld_id")
-        .eq("id", presetId)
-        .single();
-
-    if (presetError || !preset) {
-      redirect(
-        `${editPath}?error=Selected%20preset%20was%20not%20found`,
-      );
-    }
-
-    if (
-      preset.game_id !== gameId ||
-      preset.handheld_id !== handheldId
-    ) {
-      redirect(
-        `${editPath}?error=Selected%20preset%20does%20not%20match%20the%20chosen%20game%20and%20handheld`,
-      );
-    }
-  }
+  await validatePresetRelation(
+    supabase,
+    presetId,
+    gameId,
+    handheldId,
+    editPath,
+  );
 
   const publishedAt =
     status === "published"
@@ -459,21 +562,32 @@ export async function updateBenchmark(
       game_id: gameId,
       handheld_id: handheldId,
       preset_id: presetId,
+
       resolution: optionalText(
         formData,
         "resolution",
       ),
-      tdp: optionalText(formData, "tdp"),
+
+      tdp: optionalText(
+        formData,
+        "tdp",
+      ),
+
       average_fps: averageFps,
-      one_percent_low: onePercentLow,
+
+      one_percent_low:
+        onePercentLow,
+
       battery_life: optionalText(
         formData,
         "batteryLife",
       ),
+
       test_notes: optionalText(
         formData,
         "testNotes",
       ),
+
       status,
       published_at: publishedAt,
     })
@@ -487,17 +601,15 @@ export async function updateBenchmark(
     );
   }
 
-  const oldGameSlug = Array.isArray(
-    currentBenchmark.games,
-  )
-    ? currentBenchmark.games[0]?.slug
-    : currentBenchmark.games?.slug;
+  const oldGameSlug =
+    getRelationSlug(
+      currentBenchmark.games,
+    );
 
-  const oldHandheldSlug = Array.isArray(
-    currentBenchmark.handhelds,
-  )
-    ? currentBenchmark.handhelds[0]?.slug
-    : currentBenchmark.handhelds?.slug;
+  const oldHandheldSlug =
+    getRelationSlug(
+      currentBenchmark.handhelds,
+    );
 
   revalidateBenchmarkPages(
     benchmarkId,
@@ -507,9 +619,12 @@ export async function updateBenchmark(
 
   if (
     oldGameSlug &&
-    oldGameSlug !== relatedSlugs.gameSlug
+    oldGameSlug !==
+      relatedSlugs.gameSlug
   ) {
-    revalidatePath(`/games/${oldGameSlug}`);
+    revalidatePath(
+      `/games/${oldGameSlug}`,
+    );
   }
 
   if (
@@ -530,7 +645,8 @@ export async function updateBenchmark(
 export async function deleteBenchmark(
   formData: FormData,
 ) {
-  const { supabase } = await requireAdmin();
+  const { supabase } =
+    await requireAdmin();
 
   const benchmarkId = requiredText(
     formData,
@@ -544,7 +660,7 @@ export async function deleteBenchmark(
   }
 
   const {
-    data: benchmark,
+    data: lookupData,
     error: lookupError,
   } = await supabase
     .from("benchmarks")
@@ -559,11 +675,27 @@ export async function deleteBenchmark(
     .eq("id", benchmarkId)
     .single();
 
-  if (lookupError || !benchmark) {
+  if (
+    lookupError ||
+    !lookupData
+  ) {
     redirect(
       "/admin/benchmarks?error=Benchmark%20not%20found",
     );
   }
+
+  const benchmark =
+    lookupData as unknown as BenchmarkDeleteLookup;
+
+  const gameSlug =
+    getRelationSlug(
+      benchmark.games,
+    );
+
+  const handheldSlug =
+    getRelationSlug(
+      benchmark.handhelds,
+    );
 
   const { error } = await supabase
     .from("benchmarks")
@@ -577,18 +709,6 @@ export async function deleteBenchmark(
       )}`,
     );
   }
-
-  const gameSlug = Array.isArray(
-    benchmark.games,
-  )
-    ? benchmark.games[0]?.slug
-    : benchmark.games?.slug;
-
-  const handheldSlug = Array.isArray(
-    benchmark.handhelds,
-  )
-    ? benchmark.handhelds[0]?.slug
-    : benchmark.handhelds?.slug;
 
   revalidateBenchmarkPages(
     benchmarkId,

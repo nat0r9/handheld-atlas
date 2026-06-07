@@ -17,6 +17,33 @@ interface ParsedSettingGroup {
   items: ParsedSettingItem[];
 }
 
+interface RelationWithSlug {
+  slug: string;
+}
+
+interface PresetLookup {
+  published_at: string | null;
+  games:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+  handhelds:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+}
+
+interface PresetDeleteLookup {
+  games:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+  handhelds:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+}
+
 const validPresetTypes = [
   "Performance",
   "Balanced",
@@ -44,11 +71,12 @@ async function requireAdmin() {
     redirect("/admin/login");
   }
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
+  const { data: profile, error } =
+    await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
 
   if (error || !profile?.is_admin) {
     redirect("/admin/login");
@@ -64,23 +92,33 @@ function requiredText(
   formData: FormData,
   name: string,
 ) {
-  return String(formData.get(name) ?? "").trim();
+  return String(
+    formData.get(name) ?? "",
+  ).trim();
 }
 
 function optionalText(
   formData: FormData,
   name: string,
 ) {
-  const value = requiredText(formData, name);
+  const value = requiredText(
+    formData,
+    name,
+  );
 
-  return value.length > 0 ? value : null;
+  return value.length > 0
+    ? value
+    : null;
 }
 
 function optionalNumber(
   formData: FormData,
   name: string,
 ) {
-  const value = requiredText(formData, name);
+  const value = requiredText(
+    formData,
+    name,
+  );
 
   if (!value) {
     return null;
@@ -129,6 +167,24 @@ function getPresetType(
   }
 
   return "Custom";
+}
+
+function getRelationSlug(
+  relation:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null
+    | undefined,
+) {
+  if (!relation) {
+    return null;
+  }
+
+  if (Array.isArray(relation)) {
+    return relation[0]?.slug ?? null;
+  }
+
+  return relation.slug;
 }
 
 function parseSettings(
@@ -222,7 +278,10 @@ function parseSettings(
               item !== null,
           );
 
-        if (!name || items.length === 0) {
+        if (
+          !name ||
+          items.length === 0
+        ) {
           return null;
         }
 
@@ -282,24 +341,28 @@ async function createSettingGroups(
         .select("id")
         .single();
 
-      if (groupError || !createdGroup) {
+      if (
+        groupError ||
+        !createdGroup
+      ) {
         throw new Error(
           groupError?.message ??
             "Could not create settings group",
         );
       }
 
-      createdGroupIds.push(createdGroup.id);
+      createdGroupIds.push(
+        createdGroup.id,
+      );
 
-      const itemsToInsert = group.items.map(
-        (item) => ({
+      const itemsToInsert =
+        group.items.map((item) => ({
           group_id: createdGroup.id,
           label: item.label,
           value: item.value,
           note: item.note || null,
           sort_order: item.sortOrder,
-        }),
-      );
+        }));
 
       const { error: itemsError } =
         await supabase
@@ -307,7 +370,9 @@ async function createSettingGroups(
           .insert(itemsToInsert);
 
       if (itemsError) {
-        throw new Error(itemsError.message);
+        throw new Error(
+          itemsError.message,
+        );
       }
     }
 
@@ -316,7 +381,9 @@ async function createSettingGroups(
       errorMessage: null,
     };
   } catch (error) {
-    if (createdGroupIds.length > 0) {
+    if (
+      createdGroupIds.length > 0
+    ) {
       await supabase
         .from("preset_setting_groups")
         .delete()
@@ -353,7 +420,9 @@ function revalidatePresetPages(
   }
 
   if (gameSlug) {
-    revalidatePath(`/games/${gameSlug}`);
+    revalidatePath(
+      `/games/${gameSlug}`,
+    );
   }
 
   if (handheldSlug) {
@@ -379,22 +448,35 @@ export async function createPreset(
     "handheldId",
   );
 
-  const name = requiredText(formData, "name");
-  const presetType = getPresetType(formData);
-  const status = getStatus(formData);
+  const name = requiredText(
+    formData,
+    "name",
+  );
+
+  const presetType =
+    getPresetType(formData);
+
+  const status =
+    getStatus(formData);
+
   const settingGroups =
     parseSettings(formData);
 
-  if (!gameId || !handheldId || !name) {
+  if (
+    !gameId ||
+    !handheldId ||
+    !name
+  ) {
     redirect(
       "/admin/presets?error=Game%2C%20handheld%20and%20preset%20name%20are%20required",
     );
   }
 
-  const communityRating = optionalNumber(
-    formData,
-    "communityRating",
-  );
+  const communityRating =
+    optionalNumber(
+      formData,
+      "communityRating",
+    );
 
   validateCommunityRating(
     communityRating,
@@ -402,15 +484,18 @@ export async function createPreset(
   );
 
   const {
-    data: relations,
-    error: relationsError,
+    data: gameRelation,
+    error: gameRelationError,
   } = await supabase
     .from("games")
     .select("slug")
     .eq("id", gameId)
     .single();
 
-  if (relationsError || !relations) {
+  if (
+    gameRelationError ||
+    !gameRelation
+  ) {
     redirect(
       "/admin/presets?error=Selected%20game%20was%20not%20found",
     );
@@ -444,34 +529,49 @@ export async function createPreset(
       handheld_id: handheldId,
       name,
       preset_type: presetType,
+
       resolution: optionalText(
         formData,
         "resolution",
       ),
-      tdp: optionalText(formData, "tdp"),
+
+      tdp: optionalText(
+        formData,
+        "tdp",
+      ),
+
       fps_average: optionalNumber(
         formData,
         "fpsAverage",
       ),
-      one_percent_low: optionalNumber(
-        formData,
-        "onePercentLow",
-      ),
+
+      one_percent_low:
+        optionalNumber(
+          formData,
+          "onePercentLow",
+        ),
+
       upscaler: optionalText(
         formData,
         "upscaler",
       ),
+
       battery_life: optionalText(
         formData,
         "batteryLife",
       ),
-      community_rating: communityRating,
+
+      community_rating:
+        communityRating,
+
       summary: optionalText(
         formData,
         "summary",
       ),
+
       status,
       created_by: user.id,
+
       published_at:
         status === "published"
           ? new Date().toISOString()
@@ -480,7 +580,10 @@ export async function createPreset(
     .select("id")
     .single();
 
-  if (presetError || !preset) {
+  if (
+    presetError ||
+    !preset
+  ) {
     redirect(
       `/admin/presets?error=${encodeURIComponent(
         presetError?.message ??
@@ -496,7 +599,9 @@ export async function createPreset(
       settingGroups,
     );
 
-  if (settingsResult.errorMessage) {
+  if (
+    settingsResult.errorMessage
+  ) {
     await supabase
       .from("presets")
       .delete()
@@ -511,7 +616,7 @@ export async function createPreset(
 
   revalidatePresetPages(
     preset.id,
-    relations.slug,
+    gameRelation.slug,
     handheldRelation.slug,
   );
 
@@ -523,7 +628,8 @@ export async function createPreset(
 export async function updatePreset(
   formData: FormData,
 ) {
-  const { supabase } = await requireAdmin();
+  const { supabase } =
+    await requireAdmin();
 
   const presetId = requiredText(
     formData,
@@ -540,13 +646,19 @@ export async function updatePreset(
     "handheldId",
   );
 
-  const name = requiredText(formData, "name");
-  const presetType = getPresetType(formData);
-  const status = getStatus(formData);
+  const name = requiredText(
+    formData,
+    "name",
+  );
+
+  const presetType =
+    getPresetType(formData);
+
+  const status =
+    getStatus(formData);
+
   const settingGroups =
     parseSettings(formData);
-
-  const editPath = `/admin/presets/${presetId}/edit`;
 
   if (!presetId) {
     redirect(
@@ -554,16 +666,24 @@ export async function updatePreset(
     );
   }
 
-  if (!gameId || !handheldId || !name) {
+  const editPath =
+    `/admin/presets/${presetId}/edit`;
+
+  if (
+    !gameId ||
+    !handheldId ||
+    !name
+  ) {
     redirect(
       `${editPath}?error=Game%2C%20handheld%20and%20preset%20name%20are%20required`,
     );
   }
 
-  const communityRating = optionalNumber(
-    formData,
-    "communityRating",
-  );
+  const communityRating =
+    optionalNumber(
+      formData,
+      "communityRating",
+    );
 
   validateCommunityRating(
     communityRating,
@@ -571,32 +691,33 @@ export async function updatePreset(
   );
 
   const {
-    data: currentPreset,
+    data: currentData,
     error: currentPresetError,
   } = await supabase
     .from("presets")
-    .select(
-      `
-        published_at,
-        games (
-          slug
-        ),
-        handhelds (
-          slug
-        )
-      `,
-    )
+    .select(`
+      published_at,
+      games (
+        slug
+      ),
+      handhelds (
+        slug
+      )
+    `)
     .eq("id", presetId)
     .single();
 
   if (
     currentPresetError ||
-    !currentPreset
+    !currentData
   ) {
     redirect(
       "/admin/presets?error=Preset%20not%20found",
     );
   }
+
+  const currentPreset =
+    currentData as unknown as PresetLookup;
 
   const {
     data: newGame,
@@ -607,7 +728,10 @@ export async function updatePreset(
     .eq("id", gameId)
     .single();
 
-  if (newGameError || !newGame) {
+  if (
+    newGameError ||
+    !newGame
+  ) {
     redirect(
       `${editPath}?error=Selected%20game%20was%20not%20found`,
     );
@@ -643,9 +767,10 @@ export async function updatePreset(
       .select("id")
       .eq("preset_id", presetId);
 
-  const oldGroupIds = (oldGroups ?? []).map(
-    (group) => group.id,
-  );
+  const oldGroupIds =
+    (oldGroups ?? []).map(
+      (group) => group.id,
+    );
 
   const settingsResult =
     await createSettingGroups(
@@ -654,7 +779,9 @@ export async function updatePreset(
       settingGroups,
     );
 
-  if (settingsResult.errorMessage) {
+  if (
+    settingsResult.errorMessage
+  ) {
     redirect(
       `${editPath}?error=${encodeURIComponent(
         settingsResult.errorMessage,
@@ -670,32 +797,46 @@ export async function updatePreset(
         handheld_id: handheldId,
         name,
         preset_type: presetType,
+
         resolution: optionalText(
           formData,
           "resolution",
         ),
-        tdp: optionalText(formData, "tdp"),
+
+        tdp: optionalText(
+          formData,
+          "tdp",
+        ),
+
         fps_average: optionalNumber(
           formData,
           "fpsAverage",
         ),
-        one_percent_low: optionalNumber(
-          formData,
-          "onePercentLow",
-        ),
+
+        one_percent_low:
+          optionalNumber(
+            formData,
+            "onePercentLow",
+          ),
+
         upscaler: optionalText(
           formData,
           "upscaler",
         ),
+
         battery_life: optionalText(
           formData,
           "batteryLife",
         ),
-        community_rating: communityRating,
+
+        community_rating:
+          communityRating,
+
         summary: optionalText(
           formData,
           "summary",
         ),
+
         status,
         published_at: publishedAt,
       })
@@ -703,14 +844,16 @@ export async function updatePreset(
 
   if (updateError) {
     if (
-      settingsResult.createdGroupIds.length > 0
+      settingsResult
+        .createdGroupIds.length > 0
     ) {
       await supabase
         .from("preset_setting_groups")
         .delete()
         .in(
           "id",
-          settingsResult.createdGroupIds,
+          settingsResult
+            .createdGroupIds,
         );
     }
 
@@ -730,15 +873,16 @@ export async function updatePreset(
 
     if (deleteOldError) {
       if (
-        settingsResult.createdGroupIds.length >
-        0
+        settingsResult
+          .createdGroupIds.length > 0
       ) {
         await supabase
           .from("preset_setting_groups")
           .delete()
           .in(
             "id",
-            settingsResult.createdGroupIds,
+            settingsResult
+              .createdGroupIds,
           );
       }
 
@@ -751,14 +895,14 @@ export async function updatePreset(
   }
 
   const oldGameSlug =
-    Array.isArray(currentPreset.games)
-      ? currentPreset.games[0]?.slug
-      : currentPreset.games?.slug;
+    getRelationSlug(
+      currentPreset.games,
+    );
 
   const oldHandheldSlug =
-    Array.isArray(currentPreset.handhelds)
-      ? currentPreset.handhelds[0]?.slug
-      : currentPreset.handhelds?.slug;
+    getRelationSlug(
+      currentPreset.handhelds,
+    );
 
   revalidatePresetPages(
     presetId,
@@ -770,12 +914,15 @@ export async function updatePreset(
     oldGameSlug &&
     oldGameSlug !== newGame.slug
   ) {
-    revalidatePath(`/games/${oldGameSlug}`);
+    revalidatePath(
+      `/games/${oldGameSlug}`,
+    );
   }
 
   if (
     oldHandheldSlug &&
-    oldHandheldSlug !== newHandheld.slug
+    oldHandheldSlug !==
+      newHandheld.slug
   ) {
     revalidatePath(
       `/handhelds/${oldHandheldSlug}`,
@@ -790,7 +937,8 @@ export async function updatePreset(
 export async function deletePreset(
   formData: FormData,
 ) {
-  const { supabase } = await requireAdmin();
+  const { supabase } =
+    await requireAdmin();
 
   const presetId = requiredText(
     formData,
@@ -804,28 +952,42 @@ export async function deletePreset(
   }
 
   const {
-    data: preset,
+    data: lookupData,
     error: presetLookupError,
   } = await supabase
     .from("presets")
-    .select(
-      `
-        games (
-          slug
-        ),
-        handhelds (
-          slug
-        )
-      `,
-    )
+    .select(`
+      games (
+        slug
+      ),
+      handhelds (
+        slug
+      )
+    `)
     .eq("id", presetId)
     .single();
 
-  if (presetLookupError || !preset) {
+  if (
+    presetLookupError ||
+    !lookupData
+  ) {
     redirect(
       "/admin/presets?error=Preset%20not%20found",
     );
   }
+
+  const preset =
+    lookupData as unknown as PresetDeleteLookup;
+
+  const gameSlug =
+    getRelationSlug(
+      preset.games,
+    );
+
+  const handheldSlug =
+    getRelationSlug(
+      preset.handhelds,
+    );
 
   const { error } = await supabase
     .from("presets")
@@ -839,16 +1001,6 @@ export async function deletePreset(
       )}`,
     );
   }
-
-  const gameSlug = Array.isArray(preset.games)
-    ? preset.games[0]?.slug
-    : preset.games?.slug;
-
-  const handheldSlug = Array.isArray(
-    preset.handhelds,
-  )
-    ? preset.handhelds[0]?.slug
-    : preset.handhelds?.slug;
 
   revalidatePresetPages(
     presetId,
