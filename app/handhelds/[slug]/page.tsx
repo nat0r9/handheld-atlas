@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { handhelds as legacyHandhelds } from "../../../data/handhelds";
 import { createClient } from "../../../lib/supabase/server";
 
 interface HandheldPageProps {
@@ -163,7 +162,8 @@ async function getHandheldPresets(
     return [];
   }
 
-  return (data ?? []) as unknown as DatabasePreset[];
+  return (data ??
+    []) as unknown as DatabasePreset[];
 }
 
 async function getHandheldBenchmarks(
@@ -206,7 +206,8 @@ async function getHandheldBenchmarks(
     return [];
   }
 
-  return (data ?? []) as unknown as DatabaseBenchmark[];
+  return (data ??
+    []) as unknown as DatabaseBenchmark[];
 }
 
 export async function generateMetadata({
@@ -230,6 +231,7 @@ export async function generateMetadata({
   return {
     title: `${handheld.name} Specs and Benchmarks`,
     description,
+
     openGraph: {
       title: `${handheld.name} | HandheldAtlas`,
       description,
@@ -242,6 +244,7 @@ export async function generateMetadata({
           ]
         : [],
     },
+
     twitter: {
       card: "summary_large_image",
       title: `${handheld.name} | HandheldAtlas`,
@@ -285,7 +288,7 @@ function getPresetStyle(
     case "Docked":
       return "border-red-500/30 bg-red-500/15 text-red-400";
 
-    case "Custom":
+    default:
       return "border-purple-500/30 bg-purple-500/15 text-purple-400";
   }
 }
@@ -308,19 +311,14 @@ export default async function HandheldPage({
     getHandheldBenchmarks(handheld.id),
   ]);
 
-  const legacyHandheld = legacyHandhelds.find(
-    (item) => item.slug === handheld.slug,
-  );
-
-  const bestBenchmark = handheldBenchmarks.find(
-    (benchmark) =>
-      benchmark.average_fps !== null,
-  );
+  const bestBenchmark =
+    handheldBenchmarks.find(
+      (benchmark) =>
+        benchmark.average_fps !== null,
+    );
 
   const handheldImage =
-    handheld.image_url ??
-    legacyHandheld?.image ??
-    null;
+    handheld.image_url;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -363,18 +361,25 @@ export default async function HandheldPage({
               <MetricCard
                 label="Processor"
                 value={
-                  handheld.processor ?? "Not set"
+                  handheld.processor ??
+                  "Not set"
                 }
               />
 
               <MetricCard
                 label="Memory"
-                value={handheld.memory ?? "Not set"}
+                value={
+                  handheld.memory ??
+                  "Not set"
+                }
               />
 
               <MetricCard
                 label="Battery"
-                value={handheld.battery ?? "Not set"}
+                value={
+                  handheld.battery ??
+                  "Not set"
+                }
               />
 
               <MetricCard
@@ -382,7 +387,8 @@ export default async function HandheldPage({
                 value={handheldPresets.length.toString()}
               />
 
-              {bestBenchmark?.average_fps !== null &&
+              {bestBenchmark?.average_fps !==
+                null &&
                 bestBenchmark?.average_fps !==
                   undefined && (
                   <MetricCard
@@ -440,48 +446,66 @@ export default async function HandheldPage({
 
             <SpecCard
               label="Processor"
-              value={handheld.processor ?? "Not set"}
+              value={
+                handheld.processor ??
+                "Not set"
+              }
             />
 
             <SpecCard
               label="Memory"
-              value={handheld.memory ?? "Not set"}
+              value={
+                handheld.memory ??
+                "Not set"
+              }
             />
 
             <SpecCard
               label="Storage"
-              value={handheld.storage ?? "Not set"}
+              value={
+                handheld.storage ??
+                "Not set"
+              }
             />
 
             <SpecCard
               label="Display"
               value={
-                handheld.display_size ?? "Not set"
+                handheld.display_size ??
+                "Not set"
               }
             />
 
             <SpecCard
               label="Resolution"
               value={
-                handheld.resolution ?? "Not set"
+                handheld.resolution ??
+                "Not set"
               }
             />
 
             <SpecCard
               label="Refresh Rate"
               value={
-                handheld.refresh_rate ?? "Not set"
+                handheld.refresh_rate ??
+                "Not set"
               }
             />
 
             <SpecCard
               label="Battery"
-              value={handheld.battery ?? "Not set"}
+              value={
+                handheld.battery ??
+                "Not set"
+              }
             />
 
             <SpecCard
               label="Weight"
-              value={handheld.weight ?? "Not set"}
+              value={
+                handheld.weight ??
+                "Not set"
+              }
             />
           </div>
         </section>
@@ -525,6 +549,7 @@ export default async function HandheldPage({
                   )
                   .map((group) => ({
                     ...group,
+
                     preset_setting_items: [
                       ...(group.preset_setting_items ??
                         []),
@@ -619,7 +644,8 @@ export default async function HandheldPage({
                         <PresetStat
                           label="TDP"
                           value={
-                            preset.tdp ?? "Not set"
+                            preset.tdp ??
+                            "Not set"
                           }
                         />
 
@@ -684,56 +710,58 @@ export default async function HandheldPage({
                         </div>
                       ) : (
                         <div className="mt-7 grid gap-6 lg:grid-cols-2">
-                          {sortedGroups.map((group) => (
-                            <section
-                              key={group.id}
-                              className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
-                            >
-                              <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
-                                <h5 className="text-xl font-black">
-                                  {group.name}
-                                </h5>
-                              </div>
+                          {sortedGroups.map(
+                            (group) => (
+                              <section
+                                key={group.id}
+                                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
+                              >
+                                <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
+                                  <h5 className="text-xl font-black">
+                                    {group.name}
+                                  </h5>
+                                </div>
 
-                              <dl>
-                                {group.preset_setting_items.map(
-                                  (
-                                    item,
-                                    itemIndex,
-                                  ) => (
-                                    <div
-                                      key={item.id}
-                                      className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] ${
-                                        itemIndex ===
-                                        group
-                                          .preset_setting_items
-                                          .length -
-                                          1
-                                          ? ""
-                                          : "border-b border-slate-800"
-                                      }`}
-                                    >
-                                      <div>
-                                        <dt className="font-semibold text-slate-300">
-                                          {item.label}
-                                        </dt>
+                                <dl>
+                                  {group.preset_setting_items.map(
+                                    (
+                                      item,
+                                      itemIndex,
+                                    ) => (
+                                      <div
+                                        key={item.id}
+                                        className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] ${
+                                          itemIndex ===
+                                          group
+                                            .preset_setting_items
+                                            .length -
+                                            1
+                                            ? ""
+                                            : "border-b border-slate-800"
+                                        }`}
+                                      >
+                                        <div>
+                                          <dt className="font-semibold text-slate-300">
+                                            {item.label}
+                                          </dt>
 
-                                        {item.note && (
-                                          <p className="mt-1 text-sm text-slate-500">
-                                            {item.note}
-                                          </p>
-                                        )}
+                                          {item.note && (
+                                            <p className="mt-1 text-sm text-slate-500">
+                                              {item.note}
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        <dd className="font-black text-cyan-400">
+                                          {item.value}
+                                        </dd>
                                       </div>
-
-                                      <dd className="font-black text-cyan-400">
-                                        {item.value}
-                                      </dd>
-                                    </div>
-                                  ),
-                                )}
-                              </dl>
-                            </section>
-                          ))}
+                                    ),
+                                  )}
+                                </dl>
+                              </section>
+                            ),
+                          )}
                         </div>
                       )}
 
