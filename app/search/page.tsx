@@ -87,19 +87,19 @@ function getPresetStyle(
 ) {
   switch (type) {
     case "Performance":
-      return "border-red-500/30 bg-red-500/10 text-red-400";
+      return "border-orange-500/30 bg-orange-500/15 text-orange-400";
 
     case "Balanced":
-      return "border-cyan-500/30 bg-cyan-500/10 text-cyan-400";
+      return "border-cyan-500/30 bg-cyan-500/15 text-cyan-400";
 
     case "Battery":
-      return "border-green-500/30 bg-green-500/10 text-green-400";
+      return "border-green-500/30 bg-green-500/15 text-green-400";
 
     case "Docked":
-      return "border-blue-500/30 bg-blue-500/10 text-blue-400";
+      return "border-red-500/30 bg-red-500/15 text-red-400";
 
     default:
-      return "border-purple-500/30 bg-purple-500/10 text-purple-400";
+      return "border-purple-500/30 bg-purple-500/15 text-purple-400";
   }
 }
 
@@ -108,16 +108,16 @@ function getDifficultyStyle(
 ) {
   switch (difficulty?.toLowerCase()) {
     case "beginner":
-      return "border-green-500/30 bg-green-500/10 text-green-400";
+      return "border-green-500/30 bg-green-500/15 text-green-400";
 
     case "intermediate":
-      return "border-orange-500/30 bg-orange-500/10 text-orange-400";
+      return "border-orange-500/30 bg-orange-500/15 text-orange-400";
 
     case "advanced":
-      return "border-red-500/30 bg-red-500/10 text-red-400";
+      return "border-red-500/30 bg-red-500/15 text-red-400";
 
     default:
-      return "border-slate-500/30 bg-slate-500/10 text-slate-300";
+      return "border-slate-500/30 bg-slate-500/15 text-slate-300";
   }
 }
 
@@ -150,43 +150,23 @@ export default async function SearchPage({
 
   if (!searchQuery) {
     return (
-      <main className="atlas-page pb-14 text-white">
-        <section className="border-b border-white/[0.06]">
-          <div className="atlas-shell py-12">
-            <SearchHero query="" />
-          </div>
-        </section>
+      <main className="min-h-screen bg-slate-950 text-white">
+        <div className="mx-auto max-w-7xl px-6 py-16">
+          <SearchHero query="" />
 
-        <div className="atlas-shell pt-6">
-          <section className="atlas-panel p-10 text-center">
-            <p className="atlas-section-label">
-              Global search
+          <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-900 p-10 text-center">
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-cyan-400">
+              Global Search
             </p>
 
-            <h2 className="mt-3 text-4xl font-black">
+            <h2 className="mt-3 text-3xl font-black">
               Search the entire Atlas
             </h2>
 
-            <p className="mx-auto mt-4 max-w-2xl leading-8 text-slate-400">
-              Search games, handhelds, presets,
-              guides and news from one place.
+            <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
+              Search games, handhelds, performance
+              presets, guides and news from one place.
             </p>
-
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/games"
-                className="atlas-button-primary"
-              >
-                Browse games
-              </Link>
-
-              <Link
-                href="/handhelds"
-                className="atlas-button-secondary"
-              >
-                Browse handhelds
-              </Link>
-            </div>
           </section>
         </div>
       </main>
@@ -320,7 +300,8 @@ export default async function SearchPage({
     (gamesResult.data ?? []) as GameResult[];
 
   const handhelds =
-    (handheldsResult.data ?? []) as HandheldResult[];
+    (handheldsResult.data ??
+      []) as HandheldResult[];
 
   const presets =
     (presetsResult.data ??
@@ -348,28 +329,23 @@ export default async function SearchPage({
     null;
 
   return (
-    <main className="atlas-page pb-14 text-white">
-      <section className="border-b border-white/[0.06]">
-        <div className="atlas-shell py-12">
-          <SearchHero query={searchQuery} />
-        </div>
-      </section>
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        <SearchHero query={searchQuery} />
 
-      <div className="atlas-shell pt-6">
         {databaseError && (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
             <p className="font-black">
-              Some search results could not be
-              loaded.
+              Some search results could not be loaded.
             </p>
 
-            <p className="mt-2 break-words">
+            <p className="mt-2 break-words text-sm">
               {databaseError}
             </p>
           </div>
         )}
 
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <SearchStat
             label="All results"
             value={totalResults}
@@ -391,6 +367,7 @@ export default async function SearchPage({
             value={presets.length}
           />
 
+          <div className="col-span-2 md:col-span-1">
           <SearchStat
             label="Editorial"
             value={
@@ -398,99 +375,80 @@ export default async function SearchPage({
               newsItems.length
             }
           />
+          </div>
         </section>
 
         {totalResults === 0 ? (
-          <section className="atlas-panel mt-5 p-12 text-center">
-            <p className="atlas-section-label">
-              No matches
+          <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-900 p-12 text-center">
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-cyan-400">
+              No Matches
             </p>
 
-            <h2 className="mt-3 text-4xl font-black">
+            <h2 className="mt-3 text-3xl font-black">
               Nothing found for “{searchQuery}”
             </h2>
 
-            <p className="mx-auto mt-4 max-w-2xl leading-8 text-slate-400">
+            <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
               Try a game title, handheld model,
-              manufacturer, preset name or a
-              broader keyword.
+              manufacturer, preset name or a broader
+              keyword.
             </p>
-
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/games"
-                className="atlas-button-primary"
-              >
-                Browse games
-              </Link>
-
-              <Link
-                href="/handhelds"
-                className="atlas-button-secondary"
-              >
-                Browse handhelds
-              </Link>
-            </div>
           </section>
         ) : (
-          <div className="mt-8 space-y-8">
+          <div className="mt-14 space-y-16">
             {games.length > 0 && (
-              <section className="atlas-panel p-5">
+              <section>
                 <SectionHeading
                   title="Games"
                   count={games.length}
                   href="/games"
                 />
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {games.map((game) => (
                     <Link
                       key={game.id}
                       href={`/games/${game.slug}`}
-                      className="group"
+                      className="group min-w-0"
                     >
-                      <article className="atlas-card atlas-card-hover h-full">
-                        <div className="relative aspect-[4/5] overflow-hidden">
-                          {game.cover_image_url ? (
-                            <Image
-                              src={game.cover_image_url}
-                              alt={game.name}
-                              fill
-                              sizes="(max-width: 640px) 100vw, 25vw"
-                              className="object-cover object-center transition duration-500 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-950 to-black" />
-                          )}
+                      <article className="relative aspect-[3/4] overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-cyan-500">
+                        {game.cover_image_url ? (
+                          <Image
+                            src={game.cover_image_url}
+                            alt={game.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 25vw"
+                            className="object-cover object-center transition duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-950 to-black" />
+                        )}
 
-                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
-                          {game.atlas_score !== null && (
-                            <div className="absolute right-3 top-3 flex h-14 w-14 flex-col items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 backdrop-blur">
-                              <span className="text-[0.45rem] font-black uppercase tracking-[0.1em] text-red-400">
-                                Atlas
-                              </span>
-
-                              <strong className="mt-0.5 text-xl">
-                                {game.atlas_score}
-                              </strong>
-                            </div>
-                          )}
-
-                          <div className="absolute inset-x-0 bottom-0 p-4">
-                            <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-red-400">
+                        <div className="absolute inset-x-0 bottom-0 p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400">
                               {game.genre}
-                            </p>
+                            </span>
 
-                            <h3 className="mt-2 line-clamp-2 text-2xl font-black leading-[1.05]">
-                              {game.name}
-                            </h3>
-
-                            <p className="mt-2 text-xs text-slate-400">
-                              {game.developer ??
-                                "Developer not set"}
-                            </p>
+                            {game.atlas_score !==
+                              null && (
+                              <span className="rounded-full border border-cyan-500/40 bg-cyan-500/20 px-3 py-1 text-xs font-black text-cyan-300 backdrop-blur">
+                                {game.atlas_score}
+                                /100
+                              </span>
+                            )}
                           </div>
+
+                          <h3 className="mt-3 text-2xl font-black">
+                            {game.name}
+                          </h3>
+
+                          <p className="mt-2 text-sm text-slate-400">
+                            {game.developer ??
+                              "Developer not set"}
+                          </p>
                         </div>
                       </article>
                     </Link>
@@ -500,53 +458,47 @@ export default async function SearchPage({
             )}
 
             {handhelds.length > 0 && (
-              <section className="atlas-panel p-5">
+              <section>
                 <SectionHeading
                   title="Handhelds"
                   count={handhelds.length}
                   href="/handhelds"
                 />
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {handhelds.map((handheld) => (
                     <Link
                       key={handheld.id}
                       href={`/handhelds/${handheld.slug}`}
-                      className="group"
+                      className="group min-w-0"
                     >
-                      <article className="atlas-card atlas-card-hover atlas-card-cyan h-full">
-                        <div className="relative aspect-[16/10] overflow-hidden border-b border-white/[0.07] bg-[radial-gradient(circle_at_50%_65%,rgba(24,215,255,0.12),transparent_38%),linear-gradient(135deg,#0b101b,#05070d)]">
+                      <article className="h-full overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-purple-500">
+                        <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-6">
                           {handheld.image_url ? (
                             <Image
                               src={handheld.image_url}
                               alt={handheld.name}
                               fill
                               sizes="(max-width: 768px) 100vw, 33vw"
-                              className="object-contain object-center p-7 transition duration-500 group-hover:scale-105"
+                              className="object-contain object-center p-8 transition duration-500 group-hover:scale-105"
                             />
                           ) : (
-                            <div className="flex h-full items-center justify-center text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                              Image coming soon
-                            </div>
+                            <p className="font-black text-slate-600">
+                              Device image coming soon
+                            </p>
                           )}
                         </div>
 
-                        <div className="p-5">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-cyan-400">
-                              {handheld.manufacturer}
-                            </p>
+                        <div className="p-6">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-400">
+                            {handheld.manufacturer}
+                          </p>
 
-                            <span className="atlas-chip-green atlas-chip">
-                              {handheld.device_status}
-                            </span>
-                          </div>
-
-                          <h3 className="mt-3 text-2xl font-black transition group-hover:text-cyan-400">
+                          <h3 className="mt-3 text-2xl font-black transition group-hover:text-purple-400">
                             {handheld.name}
                           </h3>
 
-                          <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">
+                          <p className="mt-3 line-clamp-2 leading-7 text-slate-400">
                             {handheld.tagline ??
                               handheld.processor ??
                               "Complete handheld profile."}
@@ -560,34 +512,34 @@ export default async function SearchPage({
             )}
 
             {presets.length > 0 && (
-              <section className="atlas-panel p-5">
+              <section>
                 <SectionHeading
                   title="Presets"
                   count={presets.length}
                   href="/presets"
                 />
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {presets.map((preset) => (
                     <Link
                       key={preset.id}
                       href="/presets"
-                      className="atlas-card atlas-card-hover group p-5"
+                      className="group rounded-3xl border border-slate-800 bg-slate-900 p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-500"
                     >
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] ${getPresetStyle(
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getPresetStyle(
                           preset.preset_type,
                         )}`}
                       >
                         {preset.preset_type}
                       </span>
 
-                      <p className="mt-4 text-[0.58rem] font-black uppercase tracking-[0.14em] text-cyan-400">
+                      <p className="mt-5 text-sm font-black uppercase tracking-[0.15em] text-cyan-400">
                         {preset.games?.name ??
                           "Unknown game"}
                       </p>
 
-                      <h3 className="mt-2 text-2xl font-black transition group-hover:text-cyan-400">
+                      <h3 className="mt-2 break-words text-xl font-black transition group-hover:text-cyan-400 sm:text-2xl">
                         {preset.name}
                       </h3>
 
@@ -596,12 +548,7 @@ export default async function SearchPage({
                           "Unknown handheld"}
                       </p>
 
-                      <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-500">
-                        {preset.summary ??
-                          "Tested handheld performance configuration."}
-                      </p>
-
-                      <div className="mt-5 grid grid-cols-3 gap-2">
+                      <div className="mt-6 grid grid-cols-3 gap-3">
                         <MiniStat
                           label="Resolution"
                           value={
@@ -636,22 +583,22 @@ export default async function SearchPage({
             )}
 
             {guides.length > 0 && (
-              <section className="atlas-panel p-5">
+              <section>
                 <SectionHeading
                   title="Guides"
                   count={guides.length}
                   href="/guides"
                 />
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {guides.map((guide) => (
                     <Link
                       key={guide.id}
                       href={`/guides/${guide.slug}`}
-                      className="group"
+                      className="group min-w-0"
                     >
-                      <article className="atlas-card atlas-card-hover atlas-card-cyan flex h-full flex-col">
-                        <div className="relative aspect-[16/10] overflow-hidden border-b border-white/[0.07]">
+                      <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-yellow-500">
+                        <div className="relative aspect-[16/10] overflow-hidden border-b border-slate-800 bg-slate-950">
                           {guide.cover_image_url ? (
                             <Image
                               src={guide.cover_image_url}
@@ -661,18 +608,18 @@ export default async function SearchPage({
                               className="object-cover object-center transition duration-500 group-hover:scale-105"
                             />
                           ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-950 via-slate-950 to-black" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-950 via-slate-950 to-black" />
                           )}
                         </div>
 
-                        <div className="flex flex-1 flex-col p-5">
+                        <div className="flex flex-1 flex-col p-6">
                           <div className="flex flex-wrap gap-2">
-                            <span className="atlas-chip-red atlas-chip">
+                            <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-black uppercase text-yellow-400">
                               {guide.category}
                             </span>
 
                             <span
-                              className={`atlas-chip ${getDifficultyStyle(
+                              className={`rounded-full border px-3 py-1 text-xs font-black uppercase ${getDifficultyStyle(
                                 guide.difficulty,
                               )}`}
                             >
@@ -681,15 +628,15 @@ export default async function SearchPage({
                             </span>
                           </div>
 
-                          <h3 className="mt-4 text-2xl font-black transition group-hover:text-cyan-400">
+                          <h3 className="mt-4 text-2xl font-black transition group-hover:text-yellow-400">
                             {guide.title}
                           </h3>
 
-                          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
+                          <p className="mt-4 line-clamp-3 leading-7 text-slate-400">
                             {guide.excerpt}
                           </p>
 
-                          <p className="mt-auto border-t border-white/[0.07] pt-4 text-xs font-black text-slate-400">
+                          <p className="mt-auto border-t border-slate-800 pt-5 text-sm text-slate-500">
                             {guide.reading_time !==
                             null
                               ? `${guide.reading_time} min read`
@@ -704,22 +651,22 @@ export default async function SearchPage({
             )}
 
             {newsItems.length > 0 && (
-              <section className="atlas-panel p-5">
+              <section>
                 <SectionHeading
                   title="News"
                   count={newsItems.length}
                   href="/news"
                 />
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {newsItems.map((item) => (
                     <Link
                       key={item.id}
                       href={`/news/${item.slug}`}
-                      className="group"
+                      className="group min-w-0"
                     >
-                      <article className="atlas-card atlas-card-hover atlas-card-cyan flex h-full flex-col">
-                        <div className="relative aspect-[16/10] overflow-hidden border-b border-white/[0.07]">
+                      <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition duration-300 hover:-translate-y-1 hover:border-cyan-500">
+                        <div className="relative aspect-[16/10] overflow-hidden border-b border-slate-800 bg-slate-950">
                           {item.cover_image_url ? (
                             <Image
                               src={item.cover_image_url}
@@ -729,24 +676,24 @@ export default async function SearchPage({
                               className="object-cover object-center transition duration-500 group-hover:scale-105"
                             />
                           ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-red-950 via-slate-950 to-black" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-950 via-slate-950 to-black" />
                           )}
                         </div>
 
-                        <div className="flex flex-1 flex-col p-5">
-                          <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-red-400">
+                        <div className="flex flex-1 flex-col p-6">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400">
                             {item.category}
                           </p>
 
-                          <h3 className="mt-3 text-2xl font-black transition group-hover:text-cyan-400">
+                          <h3 className="mt-3 text-xl font-black transition group-hover:text-cyan-400 sm:text-2xl">
                             {item.title}
                           </h3>
 
-                          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
+                          <p className="mt-4 line-clamp-3 leading-7 text-slate-400">
                             {item.excerpt}
                           </p>
 
-                          <p className="mt-auto border-t border-white/[0.07] pt-4 text-xs text-slate-600">
+                          <p className="mt-auto border-t border-slate-800 pt-5 text-sm text-slate-500">
                             {formatDate(
                               item.published_at,
                             )}
@@ -771,18 +718,17 @@ function SearchHero({
   query: string;
 }) {
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative min-w-0 overflow-hidden">
       <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-red-500/10 blur-[100px]" />
-
       <div className="absolute bottom-0 left-1/3 h-56 w-56 rounded-full bg-cyan-500/10 blur-[90px]" />
 
-      <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
-        <div>
+      <div className="relative grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-8">
+        <div className="min-w-0">
           <p className="atlas-section-label">
             Global Atlas search
           </p>
 
-          <h1 className="mt-4 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+          <h1 className="mt-3 text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-4 sm:text-6xl">
             Search everything.
             <span className="block">
               Find it{" "}
@@ -792,7 +738,7 @@ function SearchHero({
             </span>
           </h1>
 
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
+          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
             Search games, handhelds, presets,
             guides and news without crawling
             through five separate menus like
@@ -803,16 +749,16 @@ function SearchHero({
         <form
           action="/search"
           method="get"
-          className="atlas-panel p-4"
+          className="atlas-panel min-w-0 p-4"
         >
           <label
             htmlFor="global-search"
-            className="mb-2 block text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600"
+            className="mb-2 block text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[0.58rem] sm:tracking-[0.15em]"
           >
             Search the Atlas
           </label>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
             <input
               id="global-search"
               name="q"
@@ -825,7 +771,7 @@ function SearchHero({
 
             <button
               type="submit"
-              className="atlas-button-primary"
+              className="atlas-button-primary w-full sm:w-auto"
             >
               Search
             </button>
@@ -856,18 +802,18 @@ function SearchStat({
 }) {
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
         highlighted
           ? "border-red-500/30 bg-red-500/10"
           : "border-white/[0.08] bg-black/20"
       }`}
     >
-      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
         {label}
       </p>
 
       <p
-        className={`mt-2 text-3xl font-black ${
+        className={`mt-2 text-2xl font-black sm:text-3xl ${
           highlighted
             ? "text-red-400"
             : "text-white"
@@ -889,7 +835,7 @@ function SectionHeading({
   href: string;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] pb-3">
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.07] pb-3">
       <div>
         <p className="atlas-section-label">
           Search results
@@ -902,7 +848,7 @@ function SectionHeading({
 
       <Link
         href={href}
-        className="text-xs font-black text-cyan-400 transition hover:text-white"
+        className="text-[0.68rem] font-black text-cyan-400 transition hover:text-white sm:text-xs"
       >
         {count}{" "}
         {count === 1 ? "result" : "results"} →
@@ -922,18 +868,18 @@ function MiniStat({
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`min-w-0 rounded-lg border p-3 ${
         highlighted
           ? "border-red-500/25 bg-red-500/[0.07]"
           : "border-white/[0.07] bg-black/20"
       }`}
     >
-      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.1em] text-slate-600 sm:text-[0.5rem] sm:tracking-[0.12em]">
         {label}
       </p>
 
       <p
-        className={`mt-1 break-words text-xs font-black ${
+        className={`mt-1 break-words text-[0.68rem] font-black sm:text-xs ${
           highlighted
             ? "text-red-400"
             : "text-slate-300"

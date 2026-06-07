@@ -36,12 +36,7 @@ interface BenchmarksCatalogProps {
   databaseError: string | null;
 }
 
-type FpsFilter =
-  | "All"
-  | "30+ FPS"
-  | "45+ FPS"
-  | "60+ FPS"
-  | "90+ FPS";
+type FpsFilter = "All" | "30+ FPS" | "45+ FPS" | "60+ FPS" | "90+ FPS";
 
 type SortOption =
   | "Newest"
@@ -62,16 +57,12 @@ function getMinimumFps(filter: FpsFilter) {
   switch (filter) {
     case "30+ FPS":
       return 30;
-
     case "45+ FPS":
       return 45;
-
     case "60+ FPS":
       return 60;
-
     case "90+ FPS":
       return 90;
-
     default:
       return null;
   }
@@ -123,30 +114,15 @@ export default function BenchmarksCatalog({
   benchmarks,
   databaseError,
 }: BenchmarksCatalogProps) {
-  const [searchQuery, setSearchQuery] =
-    useState("");
-
-  const [gameFilter, setGameFilter] =
-    useState("All");
-
-  const [
-    handheldFilter,
-    setHandheldFilter,
-  ] = useState("All");
-
-  const [tdpFilter, setTdpFilter] =
-    useState("All");
-
-  const [fpsFilter, setFpsFilter] =
-    useState<FpsFilter>("All");
-
-  const [sortOption, setSortOption] =
-    useState<SortOption>("Newest");
-
-  const [
-    expandedBenchmarkIds,
-    setExpandedBenchmarkIds,
-  ] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [gameFilter, setGameFilter] = useState("All");
+  const [handheldFilter, setHandheldFilter] = useState("All");
+  const [tdpFilter, setTdpFilter] = useState("All");
+  const [fpsFilter, setFpsFilter] = useState<FpsFilter>("All");
+  const [sortOption, setSortOption] = useState<SortOption>("Newest");
+  const [expandedBenchmarkIds, setExpandedBenchmarkIds] = useState<string[]>(
+    [],
+  );
 
   const gameOptions = useMemo(
     () => [
@@ -154,16 +130,10 @@ export default function BenchmarksCatalog({
       ...Array.from(
         new Set(
           benchmarks
-            .map(
-              (benchmark) =>
-                benchmark.game?.name,
-            )
+            .map((benchmark) => benchmark.game?.name)
             .filter(
-              (
-                value,
-              ): value is string =>
-                typeof value === "string" &&
-                value.length > 0,
+              (value): value is string =>
+                typeof value === "string" && value.length > 0,
             ),
         ),
       ).sort(),
@@ -177,16 +147,10 @@ export default function BenchmarksCatalog({
       ...Array.from(
         new Set(
           benchmarks
-            .map(
-              (benchmark) =>
-                benchmark.handheld?.name,
-            )
+            .map((benchmark) => benchmark.handheld?.name)
             .filter(
-              (
-                value,
-              ): value is string =>
-                typeof value === "string" &&
-                value.length > 0,
+              (value): value is string =>
+                typeof value === "string" && value.length > 0,
             ),
         ),
       ).sort(),
@@ -200,16 +164,10 @@ export default function BenchmarksCatalog({
       ...Array.from(
         new Set(
           benchmarks
-            .map(
-              (benchmark) =>
-                benchmark.tdp,
-            )
+            .map((benchmark) => benchmark.tdp)
             .filter(
-              (
-                value,
-              ): value is string =>
-                typeof value === "string" &&
-                value.length > 0,
+              (value): value is string =>
+                typeof value === "string" && value.length > 0,
             ),
         ),
       ).sort(),
@@ -218,114 +176,61 @@ export default function BenchmarksCatalog({
   );
 
   const filteredBenchmarks = useMemo(() => {
-    const normalizedQuery =
-      searchQuery
-        .trim()
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const minimumFps = getMinimumFps(fpsFilter);
+
+    const matchingBenchmarks = benchmarks.filter((benchmark) => {
+      const searchableText = [
+        benchmark.game?.name ?? "",
+        benchmark.handheld?.name ?? "",
+        benchmark.handheld?.manufacturer ?? "",
+        benchmark.preset?.name ?? "",
+        benchmark.preset?.preset_type ?? "",
+        benchmark.resolution ?? "",
+        benchmark.tdp ?? "",
+        benchmark.batteryLife ?? "",
+        benchmark.testNotes ?? "",
+      ]
+        .join(" ")
         .toLowerCase();
 
-    const minimumFps =
-      getMinimumFps(fpsFilter);
+      return (
+        (normalizedQuery.length === 0 ||
+          searchableText.includes(normalizedQuery)) &&
+        (gameFilter === "All" || benchmark.game?.name === gameFilter) &&
+        (handheldFilter === "All" ||
+          benchmark.handheld?.name === handheldFilter) &&
+        (tdpFilter === "All" || benchmark.tdp === tdpFilter) &&
+        (minimumFps === null ||
+          (benchmark.averageFps !== null &&
+            benchmark.averageFps >= minimumFps))
+      );
+    });
 
-    const matchingBenchmarks =
-      benchmarks.filter((benchmark) => {
-        const searchableText = [
-          benchmark.game?.name ?? "",
-          benchmark.handheld?.name ?? "",
-          benchmark.handheld
-            ?.manufacturer ?? "",
-          benchmark.preset?.name ?? "",
-          benchmark.preset
-            ?.preset_type ?? "",
-          benchmark.resolution ?? "",
-          benchmark.tdp ?? "",
-          benchmark.batteryLife ?? "",
-          benchmark.testNotes ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        const matchesSearch =
-          normalizedQuery.length === 0 ||
-          searchableText.includes(
-            normalizedQuery,
+    return [...matchingBenchmarks].sort((first, second) => {
+      switch (sortOption) {
+        case "Highest FPS":
+          return (second.averageFps ?? -1) - (first.averageFps ?? -1);
+        case "Lowest FPS":
+          return (
+            (first.averageFps ?? Number.MAX_SAFE_INTEGER) -
+            (second.averageFps ?? Number.MAX_SAFE_INTEGER)
           );
-
-        const matchesGame =
-          gameFilter === "All" ||
-          benchmark.game?.name ===
-            gameFilter;
-
-        const matchesHandheld =
-          handheldFilter === "All" ||
-          benchmark.handheld?.name ===
-            handheldFilter;
-
-        const matchesTdp =
-          tdpFilter === "All" ||
-          benchmark.tdp === tdpFilter;
-
-        const matchesFps =
-          minimumFps === null ||
-          (benchmark.averageFps !==
-            null &&
-            benchmark.averageFps >=
-              minimumFps);
-
-        return (
-          matchesSearch &&
-          matchesGame &&
-          matchesHandheld &&
-          matchesTdp &&
-          matchesFps
-        );
-      });
-
-    return [...matchingBenchmarks].sort(
-      (first, second) => {
-        switch (sortOption) {
-          case "Highest FPS":
-            return (
-              (second.averageFps ?? -1) -
-              (first.averageFps ?? -1)
-            );
-
-          case "Lowest FPS":
-            return (
-              (first.averageFps ??
-                Number.MAX_SAFE_INTEGER) -
-              (second.averageFps ??
-                Number.MAX_SAFE_INTEGER)
-            );
-
-          case "Game":
-            return (
-              first.game?.name ??
-              ""
-            ).localeCompare(
-              second.game?.name ?? "",
-            );
-
-          case "Handheld":
-            return (
-              first.handheld?.name ??
-              ""
-            ).localeCompare(
-              second.handheld?.name ??
-                "",
-            );
-
-          default:
-            return (
-              new Date(
-                second.publishedAt ?? 0,
-              ).getTime() -
-              new Date(
-                first.publishedAt ?? 0,
-              ).getTime()
-            );
-        }
-      },
-    );
+        case "Game":
+          return (first.game?.name ?? "").localeCompare(
+            second.game?.name ?? "",
+          );
+        case "Handheld":
+          return (first.handheld?.name ?? "").localeCompare(
+            second.handheld?.name ?? "",
+          );
+        default:
+          return (
+            new Date(second.publishedAt ?? 0).getTime() -
+            new Date(first.publishedAt ?? 0).getTime()
+          );
+      }
+    });
   }, [
     benchmarks,
     searchQuery,
@@ -336,75 +241,50 @@ export default function BenchmarksCatalog({
     sortOption,
   ]);
 
-  const averageFpsAcrossResults =
-    useMemo(() => {
-      const validResults =
-        filteredBenchmarks
-          .map(
-            (benchmark) =>
-              benchmark.averageFps,
-          )
-          .filter(
-            (
-              fps,
-            ): fps is number =>
-              typeof fps === "number",
-          );
+  const averageFpsAcrossResults = useMemo(() => {
+    const validResults = filteredBenchmarks
+      .map((benchmark) => benchmark.averageFps)
+      .filter((fps): fps is number => typeof fps === "number");
 
-      if (validResults.length === 0) {
-        return null;
-      }
+    if (validResults.length === 0) {
+      return null;
+    }
 
-      const total =
-        validResults.reduce(
-          (sum, fps) => sum + fps,
-          0,
-        );
+    return (
+      validResults.reduce((sum, fps) => sum + fps, 0) / validResults.length
+    );
+  }, [filteredBenchmarks]);
 
-      return total / validResults.length;
-    }, [filteredBenchmarks]);
-
-  const highestFpsBenchmark =
-    useMemo(() => {
-      return filteredBenchmarks.reduce<
-        PublicBenchmark | null
-      >((currentBest, benchmark) => {
-        if (
-          benchmark.averageFps === null
-        ) {
+  const highestFpsBenchmark = useMemo(() => {
+    return filteredBenchmarks.reduce<PublicBenchmark | null>(
+      (currentBest, benchmark) => {
+        if (benchmark.averageFps === null) {
           return currentBest;
         }
 
         if (
           !currentBest ||
-          currentBest.averageFps ===
-            null ||
-          benchmark.averageFps >
-            currentBest.averageFps
+          currentBest.averageFps === null ||
+          benchmark.averageFps > currentBest.averageFps
         ) {
           return benchmark;
         }
 
         return currentBest;
-      }, null);
-    }, [filteredBenchmarks]);
+      },
+      null,
+    );
+  }, [filteredBenchmarks]);
 
-  const sixtyPlusResults =
-    benchmarks.filter(
-      (benchmark) =>
-        (benchmark.averageFps ?? 0) >=
-        60,
-    ).length;
+  const sixtyPlusResults = benchmarks.filter(
+    (benchmark) => (benchmark.averageFps ?? 0) >= 60,
+  ).length;
 
-  const uniqueDevices =
-    new Set(
-      benchmarks
-        .map(
-          (benchmark) =>
-            benchmark.handheld?.name,
-        )
-        .filter(Boolean),
-    ).size;
+  const uniqueDevices = new Set(
+    benchmarks
+      .map((benchmark) => benchmark.handheld?.name)
+      .filter(Boolean),
+  ).size;
 
   const hasActiveFilters =
     searchQuery.length > 0 ||
@@ -423,120 +303,77 @@ export default function BenchmarksCatalog({
     setSortOption("Newest");
   }
 
-  function toggleBenchmark(
-    benchmarkId: string,
-  ) {
-    setExpandedBenchmarkIds(
-      (currentIds) =>
-        currentIds.includes(
-          benchmarkId,
-        )
-          ? currentIds.filter(
-              (id) =>
-                id !== benchmarkId,
-            )
-          : [
-              ...currentIds,
-              benchmarkId,
-            ],
+  function toggleBenchmark(benchmarkId: string) {
+    setExpandedBenchmarkIds((currentIds) =>
+      currentIds.includes(benchmarkId)
+        ? currentIds.filter((id) => id !== benchmarkId)
+        : [...currentIds, benchmarkId],
     );
   }
 
   return (
-    <main className="atlas-page pb-14 text-white">
+    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="border-b border-white/[0.06]">
-        <div className="atlas-shell py-12">
-          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div>
-              <p className="atlas-section-label">
-                Verified performance data
-              </p>
+        <div className="atlas-shell py-9 sm:py-12">
+          <div className="grid gap-7 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div className="min-w-0">
+              <p className="atlas-section-label">Verified performance data</p>
 
-              <h1 className="mt-4 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+              <h1 className="mt-3 text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-4 sm:text-6xl">
                 Real numbers.
                 <span className="block">
                   No benchmark{" "}
-                  <span className="atlas-text-red">
-                    theatre.
-                  </span>
+                  <span className="atlas-text-red">theatre.</span>
                 </span>
               </h1>
 
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-                Compare measured handheld
-                performance by game, device,
-                resolution, TDP and linked
-                preset.
+              <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
+                Compare measured handheld performance by game, device,
+                resolution, TDP and linked preset.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-              <HeroStat
-                label="Published"
-                value={benchmarks.length.toString()}
-              />
+              <HeroStat label="Published" value={benchmarks.length.toString()} />
 
               <HeroStat
                 label="Average FPS"
                 value={
-                  averageFpsAcrossResults !==
-                  null
-                    ? averageFpsAcrossResults.toFixed(
-                        1,
-                      )
+                  averageFpsAcrossResults !== null
+                    ? averageFpsAcrossResults.toFixed(1)
                     : "—"
                 }
                 highlighted
               />
 
-              <HeroStat
-                label="60+ FPS"
-                value={sixtyPlusResults.toString()}
-              />
-
-              <HeroStat
-                label="Devices"
-                value={uniqueDevices.toString()}
-              />
+              <HeroStat label="60+ FPS" value={sixtyPlusResults.toString()} />
+              <HeroStat label="Devices" value={uniqueDevices.toString()} />
             </div>
           </div>
         </div>
       </section>
 
-      <div className="atlas-shell pt-6">
+      <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
         {databaseError && (
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-            <p className="font-black">
-              Could not load the benchmark
-              database.
-            </p>
-
-            <p className="mt-2 break-words">
-              {databaseError}
-            </p>
+            <p className="font-black">Could not load the benchmark database.</p>
+            <p className="mt-2 break-words">{databaseError}</p>
           </div>
         )}
 
-        <section className="atlas-panel p-4 md:p-5">
-          <div className="grid gap-4 xl:grid-cols-[1.8fr_repeat(4,minmax(0,1fr))_auto]">
-            <div>
-              <FilterLabel
-                htmlFor="benchmark-search"
-                label="Search"
-              />
+        <section className="atlas-panel min-w-0 p-4 md:p-5">
+          <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-[1.8fr_repeat(4,minmax(0,1fr))_auto] xl:gap-4">
+            <div className="col-span-2 min-w-0 xl:col-span-1">
+              <FilterLabel htmlFor="benchmark-search" label="Search" />
 
-              <div className="relative">
+              <div className="relative min-w-0">
                 <input
                   id="benchmark-search"
                   type="search"
                   value={searchQuery}
-                  onChange={(event) =>
-                    setSearchQuery(
-                      event.target.value,
-                    )
-                  }
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search game, device, preset or notes..."
-                  className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
                 />
 
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
@@ -556,9 +393,7 @@ export default function BenchmarksCatalog({
               label="Handheld"
               value={handheldFilter}
               options={handheldOptions}
-              onChange={
-                setHandheldFilter
-              }
+              onChange={setHandheldFilter}
             />
 
             <FilterSelect
@@ -578,32 +413,26 @@ export default function BenchmarksCatalog({
                 "Game",
                 "Handheld",
               ]}
-              onChange={(value) =>
-                setSortOption(
-                  value as SortOption,
-                )
-              }
+              onChange={(value) => setSortOption(value as SortOption)}
             />
 
             <button
               type="button"
               onClick={resetFilters}
               disabled={!hasActiveFilters}
-              className="atlas-button-primary self-end whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-35"
+              className="atlas-button-primary col-span-2 mt-1 w-full self-end xl:col-span-1 xl:mt-0 xl:w-auto disabled:cursor-not-allowed disabled:opacity-35"
             >
               Reset
             </button>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {fpsFilters.map((filter) => (
               <button
                 key={filter}
                 type="button"
-                onClick={() =>
-                  setFpsFilter(filter)
-                }
-                className={`rounded-full border px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] transition ${
+                onClick={() => setFpsFilter(filter)}
+                className={`shrink-0 rounded-full border px-3 py-2 text-[0.64rem] font-black uppercase tracking-[0.08em] transition sm:text-[0.68rem] sm:tracking-[0.1em] ${
                   fpsFilter === filter
                     ? "border-red-500/40 bg-red-500/15 text-red-300"
                     : "border-white/[0.08] bg-black/20 text-slate-500 hover:border-white/20 hover:text-white"
@@ -615,43 +444,32 @@ export default function BenchmarksCatalog({
           </div>
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_0.45fr]">
+        <section className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[1fr_0.45fr]">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-3">
               <div>
-                <p className="atlas-section-label">
-                  Benchmark wall
-                </p>
+                <p className="atlas-section-label">Benchmark wall</p>
 
                 <h2 className="mt-1 text-xl font-black">
                   {filteredBenchmarks.length}{" "}
-                  {filteredBenchmarks.length ===
-                  1
-                    ? "result"
-                    : "results"}
+                  {filteredBenchmarks.length === 1 ? "result" : "results"}
                 </h2>
               </div>
 
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-600">
+              <p className="text-[0.64rem] font-bold uppercase tracking-[0.12em] text-slate-600 sm:text-xs sm:tracking-[0.15em]">
                 Live performance database
               </p>
             </div>
 
-            {filteredBenchmarks.length ===
-            0 ? (
+            {filteredBenchmarks.length === 0 ? (
               <div className="atlas-panel mt-5 p-10 text-center">
-                <p className="atlas-section-label">
-                  No matches
-                </p>
-
+                <p className="atlas-section-label">No matches</p>
                 <h3 className="mt-3 text-3xl font-black">
                   No benchmarks found
                 </h3>
-
                 <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-400">
-                  Change the filters or
-                  publish another benchmark
-                  through the admin dashboard.
+                  Change the filters or publish another benchmark through the
+                  admin dashboard.
                 </p>
 
                 {hasActiveFilters && (
@@ -666,205 +484,156 @@ export default function BenchmarksCatalog({
               </div>
             ) : (
               <div className="mt-5 space-y-3">
-                {filteredBenchmarks.map(
-                  (benchmark) => {
-                    const isExpanded =
-                      expandedBenchmarkIds.includes(
-                        benchmark.id,
-                      );
+                {filteredBenchmarks.map((benchmark) => {
+                  const isExpanded = expandedBenchmarkIds.includes(
+                    benchmark.id,
+                  );
 
-                    return (
-                      <article
-                        key={benchmark.id}
-                        className="atlas-card atlas-card-hover"
-                      >
-                        <div className="grid gap-4 p-4 lg:grid-cols-[1.4fr_1fr_auto] lg:items-center">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-red-400">
-                                {benchmark.game
-                                  ?.name ??
-                                  "Unknown game"}
-                              </span>
+                  return (
+                    <article
+                      key={benchmark.id}
+                      className="atlas-card atlas-card-hover min-w-0"
+                    >
+                      <div className="grid min-w-0 gap-4 p-4 lg:grid-cols-[1.4fr_1fr_auto] lg:items-center">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="min-w-0 truncate text-[0.56rem] font-black uppercase tracking-[0.12em] text-red-400 sm:text-[0.58rem] sm:tracking-[0.14em]">
+                              {benchmark.game?.name ?? "Unknown game"}
+                            </span>
 
-                              <span className="text-[0.58rem] text-slate-600">
-                                {formatPublishedDate(
-                                  benchmark.publishedAt,
-                                )}
-                              </span>
-                            </div>
-
-                            <h3 className="mt-2 text-xl font-black">
-                              {benchmark.handheld
-                                ?.name ??
-                                "Unknown handheld"}
-                            </h3>
-
-                            <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
-                              {benchmark.handheld
-                                ?.manufacturer ??
-                                "Unknown manufacturer"}
-                            </p>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <span className="atlas-chip">
-                                {benchmark.resolution ??
-                                  "Resolution n/a"}
-                              </span>
-
-                              <span className="atlas-chip">
-                                {benchmark.tdp ??
-                                  "TDP n/a"}
-                              </span>
-
-                              <span className="atlas-chip-cyan atlas-chip">
-                                {benchmark.preset
-                                  ?.preset_type ??
-                                  "Custom"}
-                              </span>
-                            </div>
+                            <span className="text-[0.56rem] text-slate-600 sm:text-[0.58rem]">
+                              {formatPublishedDate(benchmark.publishedAt)}
+                            </span>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2">
-                            <BenchmarkStat
-                              label="Average"
-                              value={
-                                benchmark.averageFps !==
-                                null
-                                  ? `${benchmark.averageFps}`
-                                  : "—"
-                              }
-                              suffix="FPS"
-                              styleClass={getFpsStyle(
-                                benchmark.averageFps,
+                          <h3 className="mt-2 break-words text-xl font-black">
+                            {benchmark.handheld?.name ?? "Unknown handheld"}
+                          </h3>
+
+                          <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-slate-600 sm:tracking-[0.12em]">
+                            {benchmark.handheld?.manufacturer ??
+                              "Unknown manufacturer"}
+                          </p>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="atlas-chip">
+                              {benchmark.resolution ?? "Resolution n/a"}
+                            </span>
+
+                            <span className="atlas-chip">
+                              {benchmark.tdp ?? "TDP n/a"}
+                            </span>
+
+                            <span className="atlas-chip-cyan atlas-chip">
+                              {benchmark.preset?.preset_type ?? "Custom"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <BenchmarkStat
+                            label="Average"
+                            value={
+                              benchmark.averageFps !== null
+                                ? `${benchmark.averageFps}`
+                                : "—"
+                            }
+                            suffix="FPS"
+                            styleClass={getFpsStyle(benchmark.averageFps)}
+                          />
+
+                          <BenchmarkStat
+                            label="1% Low"
+                            value={
+                              benchmark.onePercentLow !== null
+                                ? `${benchmark.onePercentLow}`
+                                : "—"
+                            }
+                            suffix="FPS"
+                          />
+
+                          <BenchmarkStat
+                            label="Battery"
+                            value={benchmark.batteryLife ?? "—"}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleBenchmark(benchmark.id)}
+                          className="atlas-button-secondary w-full whitespace-nowrap lg:w-auto"
+                        >
+                          {isExpanded ? "Hide details" : "View details"}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-white/[0.06] bg-black/20 px-4 py-3 text-[0.64rem] text-slate-500 sm:text-[0.68rem] lg:grid-cols-4">
+                        <MetaItem
+                          label="Game"
+                          value={benchmark.game?.name ?? "Unknown"}
+                        />
+                        <MetaItem
+                          label="Device"
+                          value={benchmark.handheld?.name ?? "Unknown"}
+                        />
+                        <MetaItem
+                          label="Preset"
+                          value={benchmark.preset?.name ?? "Custom"}
+                        />
+                        <MetaItem
+                          label="Published"
+                          value={formatPublishedDate(benchmark.publishedAt)}
+                        />
+                      </div>
+
+                      {isExpanded && (
+                        <div className="border-t border-white/[0.07] bg-[#060911] p-4 md:p-5">
+                          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+                            <div className="min-w-0">
+                              <p className="atlas-section-label">Test notes</p>
+                              <h4 className="mt-1 text-xl font-black">
+                                Benchmark details
+                              </h4>
+
+                              <p className="mt-4 max-w-4xl break-words text-sm leading-7 text-slate-400">
+                                {benchmark.testNotes ??
+                                  "No additional test notes were provided for this benchmark."}
+                              </p>
+                            </div>
+
+                            <div className="grid gap-2 sm:flex sm:flex-wrap">
+                              {benchmark.game && (
+                                <Link
+                                  href={`/games/${benchmark.game.slug}`}
+                                  className="atlas-button-secondary w-full sm:w-auto"
+                                >
+                                  Open game
+                                </Link>
                               )}
-                            />
 
-                            <BenchmarkStat
-                              label="1% Low"
-                              value={
-                                benchmark.onePercentLow !==
-                                null
-                                  ? `${benchmark.onePercentLow}`
-                                  : "—"
-                              }
-                              suffix="FPS"
-                            />
-
-                            <BenchmarkStat
-                              label="Battery"
-                              value={
-                                benchmark.batteryLife ??
-                                "—"
-                              }
-                            />
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggleBenchmark(
-                                benchmark.id,
-                              )
-                            }
-                            className="atlas-button-secondary whitespace-nowrap"
-                          >
-                            {isExpanded
-                              ? "Hide details"
-                              : "View details"}
-                          </button>
-                        </div>
-
-                        <div className="grid gap-3 border-t border-white/[0.06] bg-black/20 px-4 py-3 text-[0.68rem] text-slate-500 sm:grid-cols-2 lg:grid-cols-4">
-                          <MetaItem
-                            label="Game"
-                            value={
-                              benchmark.game?.name ??
-                              "Unknown"
-                            }
-                          />
-
-                          <MetaItem
-                            label="Device"
-                            value={
-                              benchmark.handheld
-                                ?.name ?? "Unknown"
-                            }
-                          />
-
-                          <MetaItem
-                            label="Preset"
-                            value={
-                              benchmark.preset
-                                ?.name ?? "Custom"
-                            }
-                          />
-
-                          <MetaItem
-                            label="Published"
-                            value={formatPublishedDate(
-                              benchmark.publishedAt,
-                            )}
-                          />
-                        </div>
-
-                        {isExpanded && (
-                          <div className="border-t border-white/[0.07] bg-[#060911] p-4 md:p-5">
-                            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
-                              <div>
-                                <p className="atlas-section-label">
-                                  Test notes
-                                </p>
-
-                                <h4 className="mt-1 text-xl font-black">
-                                  Benchmark details
-                                </h4>
-
-                                <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-400">
-                                  {benchmark.testNotes ??
-                                    "No additional test notes were provided for this benchmark."}
-                                </p>
-                              </div>
-
-                              <div className="flex flex-wrap gap-2">
-                                {benchmark.game && (
-                                  <Link
-                                    href={`/games/${benchmark.game.slug}`}
-                                    className="atlas-button-secondary"
-                                  >
-                                    Open game
-                                  </Link>
-                                )}
-
-                                {benchmark.handheld && (
-                                  <Link
-                                    href={`/handhelds/${benchmark.handheld.slug}`}
-                                    className="atlas-button-secondary"
-                                  >
-                                    Open handheld
-                                  </Link>
-                                )}
-                              </div>
+                              {benchmark.handheld && (
+                                <Link
+                                  href={`/handhelds/${benchmark.handheld.slug}`}
+                                  className="atlas-button-secondary w-full sm:w-auto"
+                                >
+                                  Open handheld
+                                </Link>
+                              )}
                             </div>
                           </div>
-                        )}
-                      </article>
-                    );
-                  },
-                )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <aside className="space-y-5">
+          <aside className="min-w-0 space-y-5">
             <section className="atlas-panel p-5">
-              <p className="atlas-section-label">
-                Performance snapshot
-              </p>
-
-              <h2 className="mt-1 text-xl font-black">
-                Current result set
-              </h2>
+              <p className="atlas-section-label">Performance snapshot</p>
+              <h2 className="mt-1 text-xl font-black">Current result set</h2>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <SideStat
@@ -875,11 +644,8 @@ export default function BenchmarksCatalog({
                 <SideStat
                   label="Average"
                   value={
-                    averageFpsAcrossResults !==
-                    null
-                      ? `${averageFpsAcrossResults.toFixed(
-                          1,
-                        )} FPS`
+                    averageFpsAcrossResults !== null
+                      ? `${averageFpsAcrossResults.toFixed(1)} FPS`
                       : "No data"
                   }
                   highlighted
@@ -888,10 +654,8 @@ export default function BenchmarksCatalog({
                 <SideStat
                   label="Highest"
                   value={
-                    highestFpsBenchmark?.averageFps !==
-                      null &&
-                    highestFpsBenchmark?.averageFps !==
-                      undefined
+                    highestFpsBenchmark?.averageFps !== null &&
+                    highestFpsBenchmark?.averageFps !== undefined
                       ? `${highestFpsBenchmark.averageFps} FPS`
                       : "No data"
                   }
@@ -900,11 +664,7 @@ export default function BenchmarksCatalog({
                 <SideStat
                   label="60+ FPS"
                   value={filteredBenchmarks
-                    .filter(
-                      (benchmark) =>
-                        (benchmark.averageFps ??
-                          0) >= 60,
-                    )
+                    .filter((benchmark) => (benchmark.averageFps ?? 0) >= 60)
                     .length.toString()}
                 />
               </div>
@@ -912,25 +672,18 @@ export default function BenchmarksCatalog({
 
             {highestFpsBenchmark && (
               <section className="atlas-panel p-5">
-                <p className="atlas-section-label">
-                  Top result
-                </p>
+                <p className="atlas-section-label">Top result</p>
 
                 <h2 className="mt-2 text-2xl font-black">
-                  {highestFpsBenchmark
-                    .averageFps ?? "—"}{" "}
-                  FPS
+                  {highestFpsBenchmark.averageFps ?? "—"} FPS
                 </h2>
 
                 <p className="mt-3 font-black text-slate-200">
-                  {highestFpsBenchmark.game
-                    ?.name ?? "Unknown game"}
+                  {highestFpsBenchmark.game?.name ?? "Unknown game"}
                 </p>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  {highestFpsBenchmark
-                    .handheld?.name ??
-                    "Unknown handheld"}
+                  {highestFpsBenchmark.handheld?.name ?? "Unknown handheld"}
                 </p>
 
                 <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.06]">
@@ -939,33 +692,24 @@ export default function BenchmarksCatalog({
                     style={{
                       width: `${Math.min(
                         100,
-                        highestFpsBenchmark.averageFps ??
-                          0,
+                        highestFpsBenchmark.averageFps ?? 0,
                       )}%`,
                     }}
                   />
                 </div>
 
                 <p className="mt-3 text-xs text-slate-600">
-                  {highestFpsBenchmark.resolution ??
-                    "Resolution not set"}{" "}
-                  ·{" "}
-                  {highestFpsBenchmark.tdp ??
-                    "TDP not set"}
+                  {highestFpsBenchmark.resolution ?? "Resolution not set"} ·{" "}
+                  {highestFpsBenchmark.tdp ?? "TDP not set"}
                 </p>
               </section>
             )}
 
             <section className="atlas-panel p-5">
-              <p className="atlas-section-label">
-                Explore data
-              </p>
+              <p className="atlas-section-label">Explore data</p>
 
               <div className="mt-4 space-y-2">
-                <Link
-                  href="/games"
-                  className="atlas-button-secondary w-full"
-                >
+                <Link href="/games" className="atlas-button-secondary w-full">
                   Browse games
                 </Link>
 
@@ -976,10 +720,7 @@ export default function BenchmarksCatalog({
                   Browse handhelds
                 </Link>
 
-                <Link
-                  href="/compare"
-                  className="atlas-button-primary w-full"
-                >
+                <Link href="/compare" className="atlas-button-primary w-full">
                   Compare devices
                 </Link>
               </div>
@@ -1002,21 +743,19 @@ function HeroStat({
 }) {
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
         highlighted
           ? "border-red-500/30 bg-red-500/10"
           : "border-white/[0.08] bg-black/20"
       }`}
     >
-      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
         {label}
       </p>
 
       <p
-        className={`mt-2 text-3xl font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-white"
+        className={`mt-2 text-2xl font-black sm:text-3xl ${
+          highlighted ? "text-red-400" : "text-white"
         }`}
       >
         {value}
@@ -1035,7 +774,7 @@ function FilterLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-2 block text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600"
+      className="mb-2 block text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[0.58rem] sm:tracking-[0.15em]"
     >
       {label}
     </label>
@@ -1055,30 +794,20 @@ function FilterSelect({
   options,
   onChange,
 }: FilterSelectProps) {
-  const id = `benchmark-filter-${label
-    .toLowerCase()
-    .replaceAll(" ", "-")}`;
+  const id = `benchmark-filter-${label.toLowerCase().replaceAll(" ", "-")}`;
 
   return (
-    <div>
-      <FilterLabel
-        htmlFor={id}
-        label={label}
-      />
+    <div className="min-w-0">
+      <FilterLabel htmlFor={id} label={label} />
 
       <select
         id={id}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full min-w-0 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
       >
         {options.map((option) => (
-          <option
-            key={option}
-            value={option}
-          >
+          <option key={option} value={option}>
             {option}
           </option>
         ))}
@@ -1100,21 +829,21 @@ function BenchmarkStat({
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`min-w-0 rounded-lg border p-3 ${
         styleClass ??
         "border-white/[0.07] bg-black/20 text-slate-300"
       }`}
     >
-      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] opacity-60">
+      <p className="text-[0.46rem] font-black uppercase tracking-[0.09em] opacity-60 sm:text-[0.5rem] sm:tracking-[0.12em]">
         {label}
       </p>
 
-      <p className="mt-1 text-lg font-black">
+      <p className="mt-1 break-words text-base font-black sm:text-lg">
         {value}
       </p>
 
       {suffix && (
-        <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] opacity-60">
+        <p className="text-[0.46rem] font-black uppercase tracking-[0.09em] opacity-60 sm:text-[0.5rem] sm:tracking-[0.12em]">
           {suffix}
         </p>
       )}
@@ -1130,13 +859,11 @@ function MetaItem({
   value: string;
 }) {
   return (
-    <div>
-      <span className="font-black uppercase tracking-[0.1em] text-slate-600">
+    <div className="min-w-0 break-words">
+      <span className="font-black uppercase tracking-[0.08em] text-slate-600 sm:tracking-[0.1em]">
         {label}:
       </span>{" "}
-      <strong className="text-slate-300">
-        {value}
-      </strong>
+      <strong className="text-slate-300">{value}</strong>
     </div>
   );
 }
@@ -1152,21 +879,19 @@ function SideStat({
 }) {
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
         highlighted
           ? "border-red-500/25 bg-red-500/[0.07]"
           : "border-white/[0.07] bg-black/20"
       }`}
     >
-      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
+      <p className="text-[0.46rem] font-black uppercase tracking-[0.09em] text-slate-600 sm:text-[0.5rem] sm:tracking-[0.12em]">
         {label}
       </p>
 
       <p
-        className={`mt-2 text-xl font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-white"
+        className={`mt-2 break-words text-lg font-black sm:text-xl ${
+          highlighted ? "text-red-400" : "text-white"
         }`}
       >
         {value}
@@ -1187,12 +912,7 @@ function SearchIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <circle
-        cx="11"
-        cy="11"
-        r="7"
-      />
-
+      <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
     </svg>
   );

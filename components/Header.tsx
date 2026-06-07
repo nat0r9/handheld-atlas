@@ -76,6 +76,23 @@ export default function Header() {
     setIsMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    const originalOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow =
+      "hidden";
+
+    return () => {
+      document.body.style.overflow =
+        originalOverflow;
+    };
+  }, [isMenuOpen]);
+
   function closeMenu() {
     setIsMenuOpen(false);
   }
@@ -99,17 +116,17 @@ export default function Header() {
       className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ${
         isScrolled
           ? "border-white/[0.08] bg-[#05070d]/95 shadow-[0_16px_45px_rgba(0,0,0,0.55)] backdrop-blur-xl"
-          : "border-white/[0.06] bg-[#05070d]/88 backdrop-blur-lg"
+          : "border-white/[0.06] bg-[#05070d]/90 backdrop-blur-lg"
       }`}
     >
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-red-500/35 to-transparent" />
 
-      <nav className="atlas-shell">
-        <div className="flex min-h-[4.5rem] items-center justify-between gap-4">
+      <nav className="mx-auto w-full max-w-[96rem] px-3 sm:px-4 lg:px-6">
+        <div className="flex min-h-[4.5rem] w-full items-center justify-between gap-2">
           <Link
             href="/"
             onClick={closeMenu}
-            className="group flex min-w-0 items-center gap-3"
+            className="group flex min-w-0 flex-1 items-center gap-2 sm:gap-3"
             aria-label="HandheldAtlas homepage"
           >
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-red-500/30 bg-red-500/[0.08] shadow-[0_0_28px_rgba(239,35,60,0.12)] transition duration-300 group-hover:border-red-400 group-hover:bg-red-500 group-hover:shadow-[0_0_34px_rgba(239,35,60,0.3)]">
@@ -121,7 +138,7 @@ export default function Header() {
             </div>
 
             <div className="min-w-0">
-              <span className="block truncate text-lg font-black tracking-[-0.04em] text-white transition group-hover:text-red-400">
+              <span className="block truncate text-base font-black tracking-[-0.04em] text-white transition group-hover:text-red-400 sm:text-lg">
                 HandheldAtlas
               </span>
 
@@ -156,7 +173,7 @@ export default function Header() {
             })}
           </div>
 
-          <div className="hidden items-center gap-2 xl:flex">
+          <div className="hidden shrink-0 items-center gap-2 xl:flex">
             <Link
               href="/search"
               aria-label="Search HandheldAtlas"
@@ -178,7 +195,7 @@ export default function Header() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 xl:hidden">
+          <div className="flex shrink-0 items-center gap-2 xl:hidden">
             <Link
               href="/search"
               onClick={closeMenu}
@@ -255,7 +272,7 @@ export default function Header() {
           }`}
         >
           <div className="overflow-hidden">
-            <div className="border-t border-white/[0.06] py-4">
+            <div className="max-h-[calc(100vh-4.5rem)] overflow-y-auto border-t border-white/[0.06] py-4">
               <div className="grid gap-2 sm:grid-cols-2">
                 {primaryNavigation.map(
                   (item) => {
@@ -332,7 +349,7 @@ export default function Header() {
               <div className="mt-4 flex items-center justify-center gap-2 border-t border-white/[0.06] pt-4">
                 <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,35,60,0.8)]" />
 
-                <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-slate-700">
+                <p className="text-center text-[0.5rem] font-black uppercase tracking-[0.14em] text-slate-700 sm:text-[0.56rem] sm:tracking-[0.18em]">
                   Tested settings · Real data · No filler
                 </p>
               </div>
@@ -380,6 +397,7 @@ function ArrowIcon() {
       strokeLinejoin="round"
     >
       <path d="M5 12h14" />
+
       <path d="m13 6 6 6-6 6" />
     </svg>
   );

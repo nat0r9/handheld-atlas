@@ -56,15 +56,9 @@ interface PresetsCatalogProps {
   databaseError: string | null;
 }
 
-type PresetFilter =
-  | "All"
-  | PublicPresetType;
+type PresetFilter = "All" | PublicPresetType;
 
-type SortOption =
-  | "Newest"
-  | "Rating"
-  | "FPS"
-  | "Name";
+type SortOption = "Newest" | "Rating" | "FPS" | "Name";
 
 const presetFilters: PresetFilter[] = [
   "All",
@@ -75,22 +69,16 @@ const presetFilters: PresetFilter[] = [
   "Custom",
 ];
 
-function getPresetStyle(
-  type: PublicPresetType,
-) {
+function getPresetStyle(type: PublicPresetType) {
   switch (type) {
     case "Performance":
       return "border-red-500/30 bg-red-500/10 text-red-400";
-
     case "Balanced":
       return "border-cyan-500/30 bg-cyan-500/10 text-cyan-400";
-
     case "Battery":
       return "border-green-500/30 bg-green-500/10 text-green-400";
-
     case "Docked":
       return "border-blue-500/30 bg-blue-500/10 text-blue-400";
-
     default:
       return "border-purple-500/30 bg-purple-500/10 text-purple-400";
   }
@@ -133,27 +121,12 @@ export default function PresetsCatalog({
   presets,
   databaseError,
 }: PresetsCatalogProps) {
-  const [searchQuery, setSearchQuery] =
-    useState("");
-
-  const [presetFilter, setPresetFilter] =
-    useState<PresetFilter>("All");
-
-  const [gameFilter, setGameFilter] =
-    useState("All");
-
-  const [
-    handheldFilter,
-    setHandheldFilter,
-  ] = useState("All");
-
-  const [sortOption, setSortOption] =
-    useState<SortOption>("Newest");
-
-  const [
-    expandedPresetIds,
-    setExpandedPresetIds,
-  ] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [presetFilter, setPresetFilter] = useState<PresetFilter>("All");
+  const [gameFilter, setGameFilter] = useState("All");
+  const [handheldFilter, setHandheldFilter] = useState("All");
+  const [sortOption, setSortOption] = useState<SortOption>("Newest");
+  const [expandedPresetIds, setExpandedPresetIds] = useState<string[]>([]);
 
   const gameOptions = useMemo(
     () => [
@@ -161,17 +134,10 @@ export default function PresetsCatalog({
       ...Array.from(
         new Set(
           presets
-            .map(
-              (preset) =>
-                preset.game?.name,
-            )
+            .map((preset) => preset.game?.name)
             .filter(
-              (
-                value,
-              ): value is string =>
-                typeof value ===
-                  "string" &&
-                value.length > 0,
+              (value): value is string =>
+                typeof value === "string" && value.length > 0,
             ),
         ),
       ).sort(),
@@ -185,17 +151,10 @@ export default function PresetsCatalog({
       ...Array.from(
         new Set(
           presets
-            .map(
-              (preset) =>
-                preset.handheld?.name,
-            )
+            .map((preset) => preset.handheld?.name)
             .filter(
-              (
-                value,
-              ): value is string =>
-                typeof value ===
-                  "string" &&
-                value.length > 0,
+              (value): value is string =>
+                typeof value === "string" && value.length > 0,
             ),
         ),
       ).sort(),
@@ -204,108 +163,63 @@ export default function PresetsCatalog({
   );
 
   const filteredPresets = useMemo(() => {
-    const normalizedQuery =
-      searchQuery
-        .trim()
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    const matchingPresets = presets.filter((preset) => {
+      const searchableSettings = preset.groups
+        .flatMap((group) => [
+          group.name,
+          ...group.items.flatMap((item) => [
+            item.label,
+            item.value,
+            item.note ?? "",
+          ]),
+        ])
+        .join(" ");
+
+      const searchableText = [
+        preset.name,
+        preset.type,
+        preset.game?.name ?? "",
+        preset.handheld?.name ?? "",
+        preset.handheld?.manufacturer ?? "",
+        preset.resolution ?? "",
+        preset.tdp ?? "",
+        preset.upscaler ?? "",
+        preset.summary ?? "",
+        searchableSettings,
+      ]
+        .join(" ")
         .toLowerCase();
 
-    const matchingPresets =
-      presets.filter((preset) => {
-        const searchableSettings =
-          preset.groups
-            .flatMap((group) => [
-              group.name,
+      return (
+        (normalizedQuery.length === 0 ||
+          searchableText.includes(normalizedQuery)) &&
+        (presetFilter === "All" || preset.type === presetFilter) &&
+        (gameFilter === "All" || preset.game?.name === gameFilter) &&
+        (handheldFilter === "All" ||
+          preset.handheld?.name === handheldFilter)
+      );
+    });
 
-              ...group.items.flatMap(
-                (item) => [
-                  item.label,
-                  item.value,
-                  item.note ?? "",
-                ],
-              ),
-            ])
-            .join(" ");
-
-        const searchableText = [
-          preset.name,
-          preset.type,
-          preset.game?.name ?? "",
-          preset.handheld?.name ?? "",
-          preset.handheld?.manufacturer ??
-            "",
-          preset.resolution ?? "",
-          preset.tdp ?? "",
-          preset.upscaler ?? "",
-          preset.summary ?? "",
-          searchableSettings,
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        const matchesSearch =
-          normalizedQuery.length === 0 ||
-          searchableText.includes(
-            normalizedQuery,
+    return [...matchingPresets].sort((first, second) => {
+      switch (sortOption) {
+        case "Rating":
+          return (
+            (second.communityRating ?? -1) -
+            (first.communityRating ?? -1)
           );
-
-        const matchesType =
-          presetFilter === "All" ||
-          preset.type === presetFilter;
-
-        const matchesGame =
-          gameFilter === "All" ||
-          preset.game?.name ===
-            gameFilter;
-
-        const matchesHandheld =
-          handheldFilter === "All" ||
-          preset.handheld?.name ===
-            handheldFilter;
-
-        return (
-          matchesSearch &&
-          matchesType &&
-          matchesGame &&
-          matchesHandheld
-        );
-      });
-
-    return [...matchingPresets].sort(
-      (first, second) => {
-        switch (sortOption) {
-          case "Rating":
-            return (
-              (second.communityRating ??
-                -1) -
-              (first.communityRating ??
-                -1)
-            );
-
-          case "FPS":
-            return (
-              (second.averageFps ??
-                -1) -
-              (first.averageFps ??
-                -1)
-            );
-
-          case "Name":
-            return first.name.localeCompare(
-              second.name,
-            );
-
-          default:
-            return (
-              new Date(
-                second.publishedAt ?? 0,
-              ).getTime() -
-              new Date(
-                first.publishedAt ?? 0,
-              ).getTime()
-            );
-        }
-      },
-    );
+        case "FPS":
+          return (second.averageFps ?? -1) - (first.averageFps ?? -1);
+        case "Name":
+          return first.name.localeCompare(second.name);
+        default:
+          return (
+            new Date(second.publishedAt ?? 0).getTime() -
+            new Date(first.publishedAt ?? 0).getTime()
+          );
+      }
+    });
   }, [
     presets,
     searchQuery,
@@ -322,43 +236,33 @@ export default function PresetsCatalog({
     handheldFilter !== "All" ||
     sortOption !== "Newest";
 
-  const ratedPresets =
-    presets.filter(
-      (preset) =>
-        preset.communityRating !== null,
-    );
+  const ratedPresets = presets.filter(
+    (preset) => preset.communityRating !== null,
+  );
 
   const averageRating =
     ratedPresets.length > 0
       ? (
           ratedPresets.reduce(
-            (total, preset) =>
-              total +
-              (preset.communityRating ??
-                0),
+            (total, preset) => total + (preset.communityRating ?? 0),
             0,
           ) / ratedPresets.length
         ).toFixed(1)
       : "—";
 
-  const performancePresets =
-    presets.filter(
-      (preset) =>
-        preset.type === "Performance",
-    ).length;
+  const performancePresets = presets.filter(
+    (preset) => preset.type === "Performance",
+  ).length;
 
-  const totalSettings =
-    presets.reduce(
-      (presetTotal, preset) =>
-        presetTotal +
-        preset.groups.reduce(
-          (groupTotal, group) =>
-            groupTotal +
-            group.items.length,
-          0,
-        ),
-      0,
-    );
+  const totalSettings = presets.reduce(
+    (presetTotal, preset) =>
+      presetTotal +
+      preset.groups.reduce(
+        (groupTotal, group) => groupTotal + group.items.length,
+        0,
+      ),
+    0,
+  );
 
   function resetFilters() {
     setSearchQuery("");
@@ -368,107 +272,73 @@ export default function PresetsCatalog({
     setSortOption("Newest");
   }
 
-  function togglePreset(
-    presetId: string,
-  ) {
-    setExpandedPresetIds(
-      (currentIds) =>
-        currentIds.includes(presetId)
-          ? currentIds.filter(
-              (id) => id !== presetId,
-            )
-          : [...currentIds, presetId],
+  function togglePreset(presetId: string) {
+    setExpandedPresetIds((currentIds) =>
+      currentIds.includes(presetId)
+        ? currentIds.filter((id) => id !== presetId)
+        : [...currentIds, presetId],
     );
   }
 
   return (
-    <main className="atlas-page pb-14 text-white">
+    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="border-b border-white/[0.06]">
-        <div className="atlas-shell py-12">
-          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div>
-              <p className="atlas-section-label">
-                Performance profiles
-              </p>
+        <div className="atlas-shell py-9 sm:py-12">
+          <div className="grid gap-7 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div className="min-w-0">
+              <p className="atlas-section-label">Performance profiles</p>
 
-              <h1 className="mt-4 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+              <h1 className="mt-3 text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-4 sm:text-6xl">
                 Tested settings.
                 <span className="block">
-                  Zero{" "}
-                  <span className="atlas-text-red">
-                    guesswork.
-                  </span>
+                  Zero <span className="atlas-text-red">guesswork.</span>
                 </span>
               </h1>
 
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-                Reproduce tested handheld
-                performance using exact graphics
-                settings, TDP targets, resolutions
-                and measured FPS.
+              <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
+                Reproduce tested handheld performance using exact graphics
+                settings, TDP targets, resolutions and measured FPS.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-              <HeroStat
-                label="Published"
-                value={presets.length.toString()}
-              />
-
+              <HeroStat label="Published" value={presets.length.toString()} />
               <HeroStat
                 label="Average rating"
                 value={averageRating}
                 highlighted
               />
-
               <HeroStat
                 label="Performance"
                 value={performancePresets.toString()}
               />
-
-              <HeroStat
-                label="Settings"
-                value={totalSettings.toString()}
-              />
+              <HeroStat label="Settings" value={totalSettings.toString()} />
             </div>
           </div>
         </div>
       </section>
 
-      <div className="atlas-shell pt-6">
+      <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
         {databaseError && (
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-            <p className="font-black">
-              Could not load the preset
-              database.
-            </p>
-
-            <p className="mt-2 break-words">
-              {databaseError}
-            </p>
+            <p className="font-black">Could not load the preset database.</p>
+            <p className="mt-2 break-words">{databaseError}</p>
           </div>
         )}
 
-        <section className="atlas-panel p-4 md:p-5">
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[1.8fr_repeat(3,minmax(0,1fr))_auto]">
-            <div>
-              <FilterLabel
-                htmlFor="preset-search"
-                label="Search"
-              />
+        <section className="atlas-panel min-w-0 p-4 md:p-5">
+          <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-[1.8fr_repeat(3,minmax(0,1fr))_auto] xl:gap-4">
+            <div className="col-span-2 min-w-0 xl:col-span-1">
+              <FilterLabel htmlFor="preset-search" label="Search" />
 
-              <div className="relative">
+              <div className="relative min-w-0">
                 <input
                   id="preset-search"
                   type="search"
                   value={searchQuery}
-                  onChange={(event) =>
-                    setSearchQuery(
-                      event.target.value,
-                    )
-                  }
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search game, handheld, setting or upscaler..."
-                  className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
                 />
 
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
@@ -488,94 +358,64 @@ export default function PresetsCatalog({
               label="Handheld"
               value={handheldFilter}
               options={handheldOptions}
-              onChange={
-                setHandheldFilter
-              }
+              onChange={setHandheldFilter}
             />
 
             <FilterSelect
               label="Sort"
               value={sortOption}
-              options={[
-                "Newest",
-                "Rating",
-                "FPS",
-                "Name",
-              ]}
-              onChange={(value) =>
-                setSortOption(
-                  value as SortOption,
-                )
-              }
+              options={["Newest", "Rating", "FPS", "Name"]}
+              onChange={(value) => setSortOption(value as SortOption)}
             />
 
             <button
               type="button"
               onClick={resetFilters}
               disabled={!hasActiveFilters}
-              className="atlas-button-primary self-end whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-35"
+              className="atlas-button-primary col-span-2 mt-1 w-full self-end xl:col-span-1 xl:mt-0 xl:w-auto disabled:cursor-not-allowed disabled:opacity-35"
             >
               Reset
             </button>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            {presetFilters.map(
-              (filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() =>
-                    setPresetFilter(
-                      filter,
-                    )
-                  }
-                  className={`rounded-full border px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] transition ${getActiveFilterStyle(
-                    filter,
-                    presetFilter,
-                  )}`}
-                >
-                  {filter}
-                </button>
-              ),
-            )}
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            {presetFilters.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setPresetFilter(filter)}
+                className={`shrink-0 rounded-full border px-3 py-2 text-[0.64rem] font-black uppercase tracking-[0.08em] transition sm:text-[0.68rem] sm:tracking-[0.1em] ${getActiveFilterStyle(
+                  filter,
+                  presetFilter,
+                )}`}
+              >
+                {filter}
+              </button>
+            ))}
           </div>
         </section>
 
-        <section className="mt-5">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] pb-3">
+        <section className="mt-5 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-3">
             <div>
-              <p className="atlas-section-label">
-                Preset library
-              </p>
-
+              <p className="atlas-section-label">Preset library</p>
               <h2 className="mt-1 text-xl font-black">
                 {filteredPresets.length}{" "}
-                {filteredPresets.length === 1
-                  ? "preset"
-                  : "presets"}
+                {filteredPresets.length === 1 ? "preset" : "presets"}
               </h2>
             </div>
 
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-600">
-              Exact settings from the live
-              database
+            <p className="text-[0.64rem] font-bold uppercase tracking-[0.12em] text-slate-600 sm:text-xs sm:tracking-[0.15em]">
+              Exact settings from the live database
             </p>
           </div>
 
           {filteredPresets.length === 0 ? (
             <div className="atlas-panel mt-5 p-10 text-center">
-              <p className="atlas-section-label">
-                No matches
-              </p>
-
-              <h3 className="mt-3 text-3xl font-black">
-                No presets found
-              </h3>
-
+              <p className="atlas-section-label">No matches</p>
+              <h3 className="mt-3 text-3xl font-black">No presets found</h3>
               <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-400">
-                Change the filters or publish
-                another preset through the admin
+                Change the filters or publish another preset through the admin
                 dashboard.
               </p>
 
@@ -591,297 +431,217 @@ export default function PresetsCatalog({
             </div>
           ) : (
             <div className="mt-5 space-y-3">
-              {filteredPresets.map(
-                (preset) => {
-                  const isExpanded =
-                    expandedPresetIds.includes(
-                      preset.id,
-                    );
+              {filteredPresets.map((preset) => {
+                const isExpanded = expandedPresetIds.includes(preset.id);
+                const settingsCount = preset.groups.reduce(
+                  (total, group) => total + group.items.length,
+                  0,
+                );
 
-                  const settingsCount =
-                    preset.groups.reduce(
-                      (total, group) =>
-                        total +
-                        group.items.length,
-                      0,
-                    );
-
-                  return (
-                    <article
-                      key={preset.id}
-                      className="atlas-card atlas-card-hover"
-                    >
-                      <div className="grid gap-5 p-4 lg:grid-cols-[1.5fr_1fr_auto] lg:items-center">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] ${getPresetStyle(
-                                preset.type,
-                              )}`}
-                            >
-                              {preset.type}
-                            </span>
-
-                            <span className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-400">
-                              {preset.game?.name ??
-                                "Unknown game"}
-                            </span>
-
-                            <span className="text-[0.62rem] text-slate-600">
-                              {formatDate(
-                                preset.publishedAt,
-                              )}
-                            </span>
-                          </div>
-
-                          <h3 className="mt-3 text-2xl font-black leading-tight">
-                            {preset.name}
-                          </h3>
-
-                          <p className="mt-1 text-sm font-bold text-slate-400">
-                            {preset.handheld?.name ??
-                              "Unknown handheld"}
-                          </p>
-
-                          <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500">
-                            {preset.summary ??
-                              "Tested handheld performance configuration."}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-                          <PresetStat
-                            label="Resolution"
-                            value={
-                              preset.resolution ??
-                              "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="TDP"
-                            value={
-                              preset.tdp ??
-                              "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="Average"
-                            value={
-                              preset.averageFps !==
-                              null
-                                ? `${preset.averageFps} FPS`
-                                : "Not set"
-                            }
-                            highlighted
-                          />
-
-                          <PresetStat
-                            label="1% Low"
-                            value={
-                              preset.onePercentLow !==
-                              null
-                                ? `${preset.onePercentLow} FPS`
-                                : "Not set"
-                            }
-                          />
-                        </div>
-
-                        <div className="flex flex-row items-center justify-between gap-3 lg:flex-col lg:items-end">
-                          {preset.communityRating !==
-                            null ? (
-                            <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-4 py-3 text-right">
-                              <p className="text-[0.52rem] font-black uppercase tracking-[0.12em] text-yellow-500">
-                                Rating
-                              </p>
-
-                              <p className="mt-1 text-xl font-black text-yellow-300">
-                                ★{" "}
-                                {preset.communityRating.toFixed(
-                                  1,
-                                )}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="rounded-xl border border-white/[0.07] bg-black/20 px-4 py-3 text-right">
-                              <p className="text-[0.52rem] font-black uppercase tracking-[0.12em] text-slate-600">
-                                Rating
-                              </p>
-
-                              <p className="mt-1 font-black text-slate-400">
-                                Unrated
-                              </p>
-                            </div>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              togglePreset(
-                                preset.id,
-                              )
-                            }
-                            className="atlas-button-primary whitespace-nowrap"
+                return (
+                  <article
+                    key={preset.id}
+                    className="atlas-card atlas-card-hover min-w-0"
+                  >
+                    <div className="grid min-w-0 gap-4 p-4 lg:grid-cols-[1.5fr_1fr_auto] lg:items-center lg:gap-5">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[0.54rem] font-black uppercase tracking-[0.1em] ${getPresetStyle(
+                              preset.type,
+                            )}`}
                           >
-                            {isExpanded
-                              ? "Hide settings"
-                              : "View settings"}
-                          </button>
+                            {preset.type}
+                          </span>
+
+                          <span className="min-w-0 truncate text-[0.58rem] font-black uppercase tracking-[0.1em] text-cyan-400 sm:text-[0.62rem] sm:tracking-[0.12em]">
+                            {preset.game?.name ?? "Unknown game"}
+                          </span>
+
+                          <span className="text-[0.58rem] text-slate-600 sm:text-[0.62rem]">
+                            {formatDate(preset.publishedAt)}
+                          </span>
                         </div>
+
+                        <h3 className="mt-3 break-words text-xl font-black leading-tight sm:text-2xl">
+                          {preset.name}
+                        </h3>
+
+                        <p className="mt-1 text-sm font-bold text-slate-400">
+                          {preset.handheld?.name ?? "Unknown handheld"}
+                        </p>
+
+                        <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500">
+                          {preset.summary ??
+                            "Tested handheld performance configuration."}
+                        </p>
                       </div>
 
-                      <div className="grid gap-3 border-t border-white/[0.06] bg-black/20 px-4 py-3 text-[0.68rem] text-slate-500 sm:grid-cols-2 lg:grid-cols-4">
-                        <MetaItem
-                          label="Upscaler"
-                          value={
-                            preset.upscaler ??
-                            "Not set"
-                          }
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                        <PresetStat
+                          label="Resolution"
+                          value={preset.resolution ?? "Not set"}
                         />
-
-                        <MetaItem
-                          label="Battery"
+                        <PresetStat label="TDP" value={preset.tdp ?? "Not set"} />
+                        <PresetStat
+                          label="Average"
                           value={
-                            preset.batteryLife ??
-                            "Not set"
+                            preset.averageFps !== null
+                              ? `${preset.averageFps} FPS`
+                              : "Not set"
                           }
+                          highlighted
                         />
-
-                        <MetaItem
-                          label="Manufacturer"
+                        <PresetStat
+                          label="1% Low"
                           value={
-                            preset.handheld
-                              ?.manufacturer ??
-                            "Unknown"
+                            preset.onePercentLow !== null
+                              ? `${preset.onePercentLow} FPS`
+                              : "Not set"
                           }
-                        />
-
-                        <MetaItem
-                          label="Detailed settings"
-                          value={`${settingsCount} values`}
                         />
                       </div>
 
-                      {isExpanded && (
-                        <div className="border-t border-white/[0.07] bg-[#060911] p-4 md:p-5">
-                          <div className="flex flex-wrap items-end justify-between gap-4">
-                            <div>
-                              <p className="atlas-section-label">
-                                Complete configuration
-                              </p>
+                      <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-end">
+                        {preset.communityRating !== null ? (
+                          <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:px-4 lg:py-3 lg:text-right">
+                            <p className="text-[0.5rem] font-black uppercase tracking-[0.1em] text-yellow-500 sm:text-[0.52rem] sm:tracking-[0.12em]">
+                              Rating
+                            </p>
+                            <p className="mt-1 text-lg font-black text-yellow-300 sm:text-xl">
+                              ★ {preset.communityRating.toFixed(1)}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5 text-left lg:px-4 lg:py-3 lg:text-right">
+                            <p className="text-[0.5rem] font-black uppercase tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.12em]">
+                              Rating
+                            </p>
+                            <p className="mt-1 font-black text-slate-400">
+                              Unrated
+                            </p>
+                          </div>
+                        )}
 
-                              <h4 className="mt-1 text-xl font-black">
-                                Full settings
-                              </h4>
-                            </div>
+                        <button
+                          type="button"
+                          onClick={() => togglePreset(preset.id)}
+                          className="atlas-button-primary whitespace-nowrap"
+                        >
+                          {isExpanded ? "Hide settings" : "View settings"}
+                        </button>
+                      </div>
+                    </div>
 
-                            <div className="flex flex-wrap gap-2">
-                              {preset.game && (
-                                <Link
-                                  href={`/games/${preset.game.slug}`}
-                                  className="atlas-button-secondary"
-                                >
-                                  Open game
-                                </Link>
-                              )}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-white/[0.06] bg-black/20 px-4 py-3 text-[0.64rem] text-slate-500 sm:text-[0.68rem] lg:grid-cols-4">
+                      <MetaItem
+                        label="Upscaler"
+                        value={preset.upscaler ?? "Not set"}
+                      />
+                      <MetaItem
+                        label="Battery"
+                        value={preset.batteryLife ?? "Not set"}
+                      />
+                      <MetaItem
+                        label="Manufacturer"
+                        value={preset.handheld?.manufacturer ?? "Unknown"}
+                      />
+                      <MetaItem
+                        label="Detailed settings"
+                        value={`${settingsCount} values`}
+                      />
+                    </div>
 
-                              {preset.handheld && (
-                                <Link
-                                  href={`/handhelds/${preset.handheld.slug}`}
-                                  className="atlas-button-secondary"
-                                >
-                                  Open handheld
-                                </Link>
-                              )}
-                            </div>
+                    {isExpanded && (
+                      <div className="min-w-0 border-t border-white/[0.07] bg-[#060911] p-4 md:p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                          <div>
+                            <p className="atlas-section-label">
+                              Complete configuration
+                            </p>
+                            <h4 className="mt-1 text-xl font-black">
+                              Full settings
+                            </h4>
                           </div>
 
-                          {preset.groups.length ===
-                          0 ? (
-                            <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
-                              No detailed settings
-                              available for this preset.
-                            </div>
-                          ) : (
-                            <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                              {preset.groups.map(
-                                (group) => (
-                                  <section
-                                    key={group.id}
-                                    className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
-                                  >
-                                    <div className="border-b border-white/[0.07] px-4 py-3">
-                                      <h5 className="text-sm font-black">
-                                        {group.name}
-                                      </h5>
+                          <div className="grid gap-2 sm:flex sm:flex-wrap">
+                            {preset.game && (
+                              <Link
+                                href={`/games/${preset.game.slug}`}
+                                className="atlas-button-secondary w-full sm:w-auto"
+                              >
+                                Open game
+                              </Link>
+                            )}
 
-                                      <p className="mt-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-600">
-                                        {
-                                          group
-                                            .items
-                                            .length
-                                        }{" "}
-                                        settings
-                                      </p>
-                                    </div>
-
-                                    <dl>
-                                      {group.items.map(
-                                        (
-                                          item,
-                                          index,
-                                        ) => (
-                                          <div
-                                            key={
-                                              item.id
-                                            }
-                                            className={`grid grid-cols-[1fr_auto] gap-4 px-4 py-3 ${
-                                              index ===
-                                              group
-                                                .items
-                                                .length -
-                                                1
-                                                ? ""
-                                                : "border-b border-white/[0.06]"
-                                            }`}
-                                          >
-                                            <div>
-                                              <dt className="text-sm font-bold text-slate-300">
-                                                {
-                                                  item.label
-                                                }
-                                              </dt>
-
-                                              {item.note && (
-                                                <p className="mt-1 text-xs leading-5 text-slate-600">
-                                                  {
-                                                    item.note
-                                                  }
-                                                </p>
-                                              )}
-                                            </div>
-
-                                            <dd className="text-sm font-black text-cyan-400">
-                                              {
-                                                item.value
-                                              }
-                                            </dd>
-                                          </div>
-                                        ),
-                                      )}
-                                    </dl>
-                                  </section>
-                                ),
-                              )}
-                            </div>
-                          )}
+                            {preset.handheld && (
+                              <Link
+                                href={`/handhelds/${preset.handheld.slug}`}
+                                className="atlas-button-secondary w-full sm:w-auto"
+                              >
+                                Open handheld
+                              </Link>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </article>
-                  );
-                },
-              )}
+
+                        {preset.groups.length === 0 ? (
+                          <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
+                            No detailed settings available for this preset.
+                          </div>
+                        ) : (
+                          <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                            {preset.groups.map((group) => (
+                              <section
+                                key={group.id}
+                                className="min-w-0 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
+                              >
+                                <div className="border-b border-white/[0.07] px-4 py-3">
+                                  <h5 className="text-sm font-black">
+                                    {group.name}
+                                  </h5>
+                                  <p className="mt-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-600">
+                                    {group.items.length} settings
+                                  </p>
+                                </div>
+
+                                <dl>
+                                  {group.items.map((item, index) => (
+                                    <div
+                                      key={item.id}
+                                      className={`grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 ${
+                                        index === group.items.length - 1
+                                          ? ""
+                                          : "border-b border-white/[0.06]"
+                                      }`}
+                                    >
+                                      <div className="min-w-0">
+                                        <dt className="break-words text-sm font-bold text-slate-300">
+                                          {item.label}
+                                        </dt>
+
+                                        {item.note && (
+                                          <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                                            {item.note}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <dd className="max-w-28 break-words text-right text-sm font-black text-cyan-400">
+                                        {item.value}
+                                      </dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              </section>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
@@ -901,21 +661,18 @@ function HeroStat({
 }) {
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
         highlighted
           ? "border-red-500/30 bg-red-500/10"
           : "border-white/[0.08] bg-black/20"
       }`}
     >
-      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
         {label}
       </p>
-
       <p
-        className={`mt-2 text-3xl font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-white"
+        className={`mt-2 text-2xl font-black sm:text-3xl ${
+          highlighted ? "text-red-400" : "text-white"
         }`}
       >
         {value}
@@ -934,7 +691,7 @@ function FilterLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-2 block text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600"
+      className="mb-2 block text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[0.58rem] sm:tracking-[0.15em]"
     >
       {label}
     </label>
@@ -954,30 +711,19 @@ function FilterSelect({
   options,
   onChange,
 }: FilterSelectProps) {
-  const id = `preset-filter-${label
-    .toLowerCase()
-    .replaceAll(" ", "-")}`;
+  const id = `preset-filter-${label.toLowerCase().replaceAll(" ", "-")}`;
 
   return (
-    <div>
-      <FilterLabel
-        htmlFor={id}
-        label={label}
-      />
-
+    <div className="min-w-0">
+      <FilterLabel htmlFor={id} label={label} />
       <select
         id={id}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full min-w-0 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
       >
         {options.map((option) => (
-          <option
-            key={option}
-            value={option}
-          >
+          <option key={option} value={option}>
             {option}
           </option>
         ))}
@@ -997,21 +743,18 @@ function PresetStat({
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`min-w-0 rounded-lg border p-3 ${
         highlighted
           ? "border-red-500/25 bg-red-500/[0.07]"
           : "border-white/[0.07] bg-black/20"
       }`}
     >
-      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.1em] text-slate-600 sm:text-[0.5rem] sm:tracking-[0.12em]">
         {label}
       </p>
-
       <p
-        className={`mt-1 text-xs font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-slate-300"
+        className={`mt-1 break-words text-[0.68rem] font-black leading-5 sm:text-xs ${
+          highlighted ? "text-red-400" : "text-slate-300"
         }`}
       >
         {value}
@@ -1028,13 +771,11 @@ function MetaItem({
   value: string;
 }) {
   return (
-    <div>
-      <span className="font-black uppercase tracking-[0.1em] text-slate-600">
+    <div className="min-w-0 break-words">
+      <span className="font-black uppercase tracking-[0.08em] text-slate-600 sm:tracking-[0.1em]">
         {label}:
       </span>{" "}
-      <strong className="text-slate-300">
-        {value}
-      </strong>
+      <strong className="text-slate-300">{value}</strong>
     </div>
   );
 }
@@ -1051,12 +792,7 @@ function SearchIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <circle
-        cx="11"
-        cy="11"
-        r="7"
-      />
-
+      <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
     </svg>
   );

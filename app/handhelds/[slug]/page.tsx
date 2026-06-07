@@ -343,13 +343,13 @@ export default async function HandheldPage({
     handheld.image_url;
 
   return (
-    <main className="atlas-page pb-14 text-white">
+    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(24,215,255,0.14),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.13),transparent_26%),linear-gradient(135deg,#05070d,#090d16_55%,#120810)]" />
 
         <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/92 to-transparent" />
 
-        <div className="atlas-shell relative grid min-h-[35rem] items-center gap-10 py-12 lg:grid-cols-[1fr_1.1fr]">
+        <div className="atlas-shell relative grid min-h-0 items-center gap-7 py-9 sm:min-h-[35rem] sm:gap-10 sm:py-12 lg:grid-cols-[1fr_1.1fr]">
           <div>
             <Link
               href="/handhelds"
@@ -358,7 +358,7 @@ export default async function HandheldPage({
               ← Back to handhelds
             </Link>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
               <span
                 className={`rounded-full border px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] ${getDeviceStatusStyle(
                   handheld.device_status,
@@ -372,26 +372,26 @@ export default async function HandheldPage({
               </span>
             </div>
 
-            <h1 className="mt-5 text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-4 break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-5 sm:text-6xl lg:text-7xl">
               {handheld.name}
             </h1>
 
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
               {handheld.tagline ??
                 "Detailed handheld specifications, presets and performance data."}
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
               <Link
                 href="/presets"
-                className="atlas-button-primary"
+                className="atlas-button-primary w-full sm:w-auto"
               >
                 Browse presets
               </Link>
 
               <Link
                 href="/compare"
-                className="atlas-button-secondary"
+                className="atlas-button-secondary w-full sm:w-auto"
               >
                 Compare devices
               </Link>
@@ -429,13 +429,13 @@ export default async function HandheldPage({
             </div>
           </div>
 
-          <div className="relative flex min-h-[25rem] items-center justify-center">
+          <div className="relative flex min-h-[15rem] items-center justify-center sm:min-h-[25rem]">
             <div className="absolute h-64 w-64 rounded-full bg-cyan-500/15 blur-[90px]" />
 
             <div className="absolute h-44 w-44 translate-x-24 translate-y-12 rounded-full bg-red-500/12 blur-[80px]" />
 
             {handheldImage ? (
-              <div className="relative h-80 w-full max-w-3xl atlas-float md:h-[26rem]">
+              <div className="relative h-56 w-full max-w-3xl atlas-float sm:h-80 md:h-[26rem]">
                 <Image
                   src={handheldImage}
                   alt={handheld.name}
@@ -446,7 +446,7 @@ export default async function HandheldPage({
                 />
               </div>
             ) : (
-              <div className="atlas-panel-soft flex h-72 w-full max-w-2xl items-center justify-center">
+              <div className="atlas-panel-soft flex h-52 w-full max-w-2xl items-center justify-center sm:h-72">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">
                   Device image coming soon
                 </p>
@@ -455,7 +455,7 @@ export default async function HandheldPage({
           </div>
         </div>
 
-        <div className="atlas-shell relative pb-8">
+        <div className="atlas-shell relative pb-6 sm:pb-8">
           <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
             <StripStat
               label="Operating system"
@@ -508,9 +508,9 @@ export default async function HandheldPage({
         </div>
       </section>
 
-      <div className="atlas-shell pt-6">
-        <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="atlas-panel p-5">
+      <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
+        <section className="grid min-w-0 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="atlas-panel min-w-0 p-4 sm:p-5">
             <SectionHeader
               title="Technical specifications"
               eyebrow="Hardware"
@@ -592,7 +592,7 @@ export default async function HandheldPage({
             </div>
           </div>
 
-          <div className="atlas-panel p-5">
+          <div className="atlas-panel min-w-0 p-4 sm:p-5">
             <SectionHeader
               title="Performance overview"
               eyebrow="Atlas data"
@@ -644,8 +644,8 @@ export default async function HandheldPage({
           </div>
         </section>
 
-        <section className="atlas-panel mt-5 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <SectionHeader
               title="Recommended presets"
               eyebrow="Game settings"
@@ -663,7 +663,7 @@ export default async function HandheldPage({
           {handheldPresets.length === 0 ? (
             <EmptyState text="No published presets available for this handheld." />
           ) : (
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
               {handheldPresets.map(
                 (preset) => {
                   const sortedGroups = [
@@ -701,7 +701,7 @@ export default async function HandheldPage({
                   return (
                     <details
                       key={preset.id}
-                      className="group atlas-card atlas-card-hover"
+                      className="group atlas-card atlas-card-hover min-w-0"
                     >
                       <summary className="cursor-pointer list-none p-4">
                         <div className="flex items-start justify-between gap-4">
@@ -891,8 +891,8 @@ export default async function HandheldPage({
           )}
         </section>
 
-        <section className="atlas-panel mt-5 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <SectionHeader
               title="Benchmark wall"
               eyebrow="Performance data"
@@ -910,9 +910,9 @@ export default async function HandheldPage({
           {handheldBenchmarks.length === 0 ? (
             <EmptyState text="No published benchmarks available for this handheld." />
           ) : (
-            <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07]">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left">
+            <div className="mt-5 max-w-full overflow-hidden rounded-xl border border-white/[0.07]">
+              <div className="max-w-full overflow-x-auto">
+                <table className="min-w-[48rem] text-left md:min-w-full">
                   <thead className="bg-black/30">
                     <tr>
                       <TableHeading label="Game" />

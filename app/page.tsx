@@ -439,13 +439,13 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/95 to-[#05070d]/25" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/20" />
 
-        <div className="atlas-shell relative grid min-h-[38rem] items-center gap-10 py-14 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="atlas-shell relative grid min-h-0 items-center gap-8 pb-10 pt-12 sm:min-h-[38rem] sm:gap-10 sm:py-14 lg:grid-cols-[1.02fr_0.98fr]">
           <div className="max-w-3xl">
             <p className="atlas-section-label">
               Your performance hub
             </p>
 
-            <h1 className="mt-5 text-5xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-4 text-[2.7rem] font-black leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-6xl lg:text-7xl">
               Master every game.
               <span className="block">
                 On every{" "}
@@ -455,7 +455,7 @@ export default async function HomePage() {
               </span>
             </h1>
 
-            <p className="mt-5 text-lg leading-8 text-slate-400">
+            <p className="mt-5 text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
               Real settings. Real performance. A living
               handheld gaming database built for players
               who want answers without the usual filler.
@@ -464,7 +464,7 @@ export default async function HomePage() {
             <form
               action="/search"
               method="get"
-              className="mt-8 flex max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-black/30 shadow-2xl backdrop-blur"
+              className="mt-7 flex max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-black/30 shadow-2xl backdrop-blur sm:mt-8"
             >
               <label
                 htmlFor="homepage-search"
@@ -552,7 +552,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="atlas-shell relative pb-8">
+        <div className="atlas-shell relative min-w-0 max-w-full overflow-x-clip pb-8">
           <div className="atlas-stat-strip grid grid-cols-2 lg:grid-cols-4">
             {portalStats.map((stat) => (
               <Link
@@ -573,7 +573,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <div className="atlas-shell pt-8">
+      <div className="atlas-shell min-w-0 max-w-full overflow-x-clip pt-8">
         {databaseError && (
           <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             Some live data could not be loaded:{" "}
@@ -581,7 +581,7 @@ export default async function HomePage() {
           </div>
         )}
 
-        <section className="atlas-panel p-4">
+        <section className="atlas-panel min-w-0 max-w-full overflow-hidden p-4">
           <SectionHeader
             title="Featured games"
             href="/games"
@@ -591,12 +591,12 @@ export default async function HomePage() {
           {games.length === 0 ? (
             <EmptyState text="No published games yet." />
           ) : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="mt-4 flex w-full min-w-0 max-w-full snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-5">
               {games.map((game) => (
                 <Link
                   key={game.id}
                   href={`/games/${game.slug}`}
-                  className="group"
+                  className="group min-w-[17rem] snap-start sm:min-w-0"
                 >
                   <article className="atlas-card atlas-card-hover h-full">
                     <div className="relative aspect-[5/4] overflow-hidden">
@@ -660,8 +660,8 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_1fr_1.15fr]">
-          <div className="atlas-panel p-4">
+        <section className="mt-5 grid min-w-0 max-w-full gap-5 overflow-x-clip xl:grid-cols-[1.05fr_1fr_1.15fr]">
+          <div className="atlas-panel min-w-0 max-w-full overflow-hidden p-4">
             <SectionHeader
               title="Latest presets"
               href="/presets"
@@ -739,7 +739,7 @@ export default async function HomePage() {
             )}
           </div>
 
-          <div className="atlas-panel p-4">
+          <div className="atlas-panel min-w-0 max-w-full overflow-hidden p-4">
             <SectionHeader
               title="Handheld spotlight"
               href="/handhelds"
@@ -750,13 +750,13 @@ export default async function HomePage() {
             {handhelds.length === 0 ? (
               <EmptyState text="No published handhelds yet." />
             ) : (
-              <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="mt-4 flex w-full min-w-0 max-w-full snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:snap-none sm:grid-cols-3 sm:overflow-visible sm:pb-0">
                 {handhelds.map(
                   (handheld, index) => (
                     <Link
                       key={handheld.id}
                       href={`/handhelds/${handheld.slug}`}
-                      className="group overflow-hidden rounded-xl border border-white/[0.07] bg-black/20 transition hover:border-cyan-500/35"
+                      className="group min-w-[10.5rem] snap-start overflow-hidden rounded-xl border border-white/[0.07] bg-black/20 transition hover:border-cyan-500/35"
                     >
                       <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-900 to-black">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_60%,rgba(24,215,255,0.12),transparent_50%)]" />
@@ -807,7 +807,7 @@ export default async function HomePage() {
             )}
           </div>
 
-          <div className="atlas-panel p-4">
+          <div className="atlas-panel min-w-0 max-w-full overflow-hidden p-4">
             <SectionHeader
               title="Benchmark wall"
               href="/benchmarks"
@@ -818,56 +818,92 @@ export default async function HomePage() {
             {benchmarks.length === 0 ? (
               <EmptyState text="No published benchmarks yet." />
             ) : (
-              <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.07]">
-                <div className="grid grid-cols-[1.3fr_1fr_1fr_auto] gap-3 bg-black/30 px-3 py-2 text-[0.58rem] font-black uppercase tracking-[0.12em] text-slate-600">
-                  <span>Game</span>
-                  <span>Device</span>
-                  <span>Preset</span>
-                  <span>FPS</span>
+              <>
+                <div className="mt-4 space-y-2 md:hidden">
+                  {benchmarks.map((benchmark) => (
+                    <article
+                      key={benchmark.id}
+                      className="rounded-xl border border-white/[0.07] bg-black/20 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-slate-200">
+                            {benchmark.games?.name ?? "Unknown"}
+                          </p>
+
+                          <p className="mt-1 truncate text-xs text-slate-500">
+                            {benchmark.handhelds?.name ?? "Unknown device"}
+                          </p>
+                        </div>
+
+                        <strong
+                          className={`shrink-0 text-xl ${
+                            (benchmark.average_fps ?? 0) >= 60
+                              ? "text-green-400"
+                              : "text-cyan-400"
+                          }`}
+                        >
+                          {benchmark.average_fps ?? "—"} FPS
+                        </strong>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="atlas-chip">
+                          {benchmark.presets?.preset_type ?? "Custom"}
+                        </span>
+
+                        {benchmark.one_percent_low !== null && (
+                          <span className="atlas-chip">
+                            1% Low {benchmark.one_percent_low} FPS
+                          </span>
+                        )}
+                      </div>
+                    </article>
+                  ))}
                 </div>
 
-                {benchmarks.map(
-                  (benchmark, index) => (
+                <div className="mt-4 hidden overflow-hidden rounded-xl border border-white/[0.07] md:block">
+                  <div className="grid grid-cols-[1.3fr_1fr_1fr_auto] gap-3 bg-black/30 px-3 py-2 text-[0.58rem] font-black uppercase tracking-[0.12em] text-slate-600">
+                    <span>Game</span>
+                    <span>Device</span>
+                    <span>Preset</span>
+                    <span>FPS</span>
+                  </div>
+
+                  {benchmarks.map((benchmark, index) => (
                     <div
                       key={benchmark.id}
                       className={`grid grid-cols-[1.3fr_1fr_1fr_auto] items-center gap-3 px-3 py-3 text-[0.68rem] ${
-                        index ===
-                        benchmarks.length - 1
+                        index === benchmarks.length - 1
                           ? ""
                           : "border-b border-white/[0.06]"
                       }`}
                     >
                       <span className="truncate font-bold text-slate-200">
-                        {benchmark.games?.name ??
-                          "Unknown"}
+                        {benchmark.games?.name ?? "Unknown"}
                       </span>
 
                       <span className="truncate text-slate-400">
-                        {benchmark.handhelds
-                          ?.name ?? "Unknown"}
+                        {benchmark.handhelds?.name ?? "Unknown"}
                       </span>
 
                       <span className="truncate text-slate-500">
-                        {benchmark.presets
-                          ?.preset_type ??
-                          "Custom"}
+                        {benchmark.presets?.preset_type ?? "Custom"}
                       </span>
 
                       <strong
                         className={
-                          (benchmark.average_fps ??
-                            0) >= 60
+                          (benchmark.average_fps ?? 0) >= 60
                             ? "text-green-400"
                             : "text-slate-200"
                         }
                       >
-                        {benchmark.average_fps ??
-                          "—"}
+                        {benchmark.average_fps ?? "—"}
                       </strong>
                     </div>
-                  ),
-                )}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </section>
@@ -959,7 +995,7 @@ function SectionHeader({
 
       <Link
         href={href}
-        className="text-[0.65rem] font-black text-cyan-400 transition hover:text-white"
+        className="shrink-0 text-right text-[0.62rem] font-black text-cyan-400 transition hover:text-white sm:text-[0.65rem]"
       >
         {linkLabel} →
       </Link>

@@ -100,11 +100,7 @@ async function getGame(slug: string) {
     .maybeSingle();
 
   if (error) {
-    console.error(
-      "Could not load game:",
-      error.message,
-    );
-
+    console.error("Could not load game:", error.message);
     return null;
   }
 
@@ -154,11 +150,7 @@ async function getGamePresets(gameId: string) {
     });
 
   if (error) {
-    console.error(
-      "Could not load game presets:",
-      error.message,
-    );
-
+    console.error("Could not load game presets:", error.message);
     return [];
   }
 
@@ -196,11 +188,7 @@ async function getGameBenchmarks(gameId: string) {
     });
 
   if (error) {
-    console.error(
-      "Could not load game benchmarks:",
-      error.message,
-    );
-
+    console.error("Could not load game benchmarks:", error.message);
     return [];
   }
 
@@ -228,27 +216,18 @@ export async function generateMetadata({
   return {
     title: `${game.name} Handheld Settings`,
     description,
-
     openGraph: {
       title: `${game.name} Handheld Settings | HandheldAtlas`,
       description,
       images: game.cover_image_url
-        ? [
-            {
-              url: game.cover_image_url,
-              alt: game.name,
-            },
-          ]
+        ? [{ url: game.cover_image_url, alt: game.name }]
         : [],
     },
-
     twitter: {
       card: "summary_large_image",
       title: `${game.name} Handheld Settings | HandheldAtlas`,
       description,
-      images: game.cover_image_url
-        ? [game.cover_image_url]
-        : [],
+      images: game.cover_image_url ? [game.cover_image_url] : [],
     },
   };
 }
@@ -257,133 +236,96 @@ function getCompatibilityData(score: number | null) {
   if (score === null) {
     return {
       label: "Unrated",
-      style:
-        "border-slate-500/30 bg-slate-500/10 text-slate-300",
+      style: "border-slate-500/30 bg-slate-500/10 text-slate-300",
     };
   }
 
   if (score >= 90) {
     return {
       label: "Excellent",
-      style:
-        "border-green-500/30 bg-green-500/10 text-green-400",
+      style: "border-green-500/30 bg-green-500/10 text-green-400",
     };
   }
 
   if (score >= 85) {
     return {
       label: "Great",
-      style:
-        "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
+      style: "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
     };
   }
 
   if (score >= 75) {
     return {
       label: "Playable",
-      style:
-        "border-orange-500/30 bg-orange-500/10 text-orange-400",
+      style: "border-orange-500/30 bg-orange-500/10 text-orange-400",
     };
   }
 
   return {
     label: "Tweaks Required",
-    style:
-      "border-red-500/30 bg-red-500/10 text-red-400",
+    style: "border-red-500/30 bg-red-500/10 text-red-400",
   };
 }
 
-function getPresetStyle(
-  type: DatabasePreset["preset_type"],
-) {
+function getPresetStyle(type: DatabasePreset["preset_type"]) {
   switch (type) {
     case "Performance":
       return "border-red-500/30 bg-red-500/10 text-red-400";
-
     case "Balanced":
       return "border-cyan-500/30 bg-cyan-500/10 text-cyan-400";
-
     case "Battery":
       return "border-green-500/30 bg-green-500/10 text-green-400";
-
     case "Docked":
       return "border-blue-500/30 bg-blue-500/10 text-blue-400";
-
     default:
       return "border-purple-500/30 bg-purple-500/10 text-purple-400";
   }
 }
 
 function getFpsStyle(value: number | null) {
-  if (value === null) {
-    return "text-slate-400";
-  }
-
-  if (value >= 60) {
-    return "text-green-400";
-  }
-
-  if (value >= 45) {
-    return "text-cyan-400";
-  }
-
-  if (value >= 30) {
-    return "text-orange-400";
-  }
-
+  if (value === null) return "text-slate-400";
+  if (value >= 60) return "text-green-400";
+  if (value >= 45) return "text-cyan-400";
+  if (value >= 30) return "text-orange-400";
   return "text-red-400";
 }
 
-export default async function GamePage({
-  params,
-}: GamePageProps) {
+export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
-
   const game = await getGame(slug);
 
   if (!game) {
     notFound();
   }
 
-  const [gamePresets, gameBenchmarks] =
-    await Promise.all([
-      getGamePresets(game.id),
-      getGameBenchmarks(game.id),
-    ]);
+  const [gamePresets, gameBenchmarks] = await Promise.all([
+    getGamePresets(game.id),
+    getGameBenchmarks(game.id),
+  ]);
 
-  const compatibility =
-    getCompatibilityData(game.atlas_score);
+  const compatibility = getCompatibilityData(game.atlas_score);
 
   const validBenchmarkFps = gameBenchmarks
     .map((benchmark) => benchmark.average_fps)
-    .filter(
-      (value): value is number =>
-        typeof value === "number",
-    );
+    .filter((value): value is number => typeof value === "number");
 
   const highestTestedFps =
-    validBenchmarkFps.length > 0
-      ? Math.max(...validBenchmarkFps)
-      : null;
+    validBenchmarkFps.length > 0 ? Math.max(...validBenchmarkFps) : null;
 
   const averageTestedFps =
     validBenchmarkFps.length > 0
       ? Math.round(
-          validBenchmarkFps.reduce(
-            (total, value) => total + value,
-            0,
-          ) / validBenchmarkFps.length,
+          validBenchmarkFps.reduce((total, value) => total + value, 0) /
+            validBenchmarkFps.length,
         )
       : null;
 
-  const coverImage = game.cover_image_url;
-
   return (
-    <main className="atlas-page pb-14 text-white">
+    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
-        {coverImage ? (
+        {game.cover_image_url ? (
           <Image
-            src={coverImage}
+            src={game.cover_image_url}
             alt={game.name}
             fill
             priority
@@ -397,8 +339,8 @@ export default async function GamePage({
         <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/95 to-[#05070d]/25" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/25" />
 
-        <div className="atlas-shell relative grid min-h-[38rem] items-end gap-10 py-12 lg:grid-cols-[1.15fr_0.85fr]">
-          <div>
+        <div className="atlas-shell relative grid min-h-[34rem] items-end gap-7 py-9 sm:min-h-[38rem] sm:gap-10 sm:py-12 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="min-w-0">
             <Link
               href="/games"
               className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
@@ -406,104 +348,83 @@ export default async function GamePage({
               ← Back to games
             </Link>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
               <span
                 className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] backdrop-blur ${compatibility.style}`}
               >
                 {compatibility.label}
               </span>
 
-              <span className="atlas-chip">
-                {game.genre}
-              </span>
+              <span className="atlas-chip">{game.genre}</span>
 
               {game.release_year && (
-                <span className="atlas-chip">
-                  {game.release_year}
-                </span>
+                <span className="atlas-chip">{game.release_year}</span>
               )}
             </div>
 
-            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-4 max-w-4xl break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-5 sm:text-6xl lg:text-7xl">
               {game.name}
             </h1>
 
-            <p className="mt-4 text-lg font-bold text-slate-300">
+            <p className="mt-3 text-base font-bold text-slate-300 sm:mt-4 sm:text-lg">
               {game.developer ?? "Unknown developer"}
             </p>
 
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-400">
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:mt-5 sm:text-base sm:leading-8">
               {game.notes ??
                 "Detailed handheld performance notes and recommended settings will be added soon."}
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
               <Link
                 href="/presets"
-                className="atlas-button-primary"
+                className="atlas-button-primary w-full sm:w-auto"
               >
                 Browse presets
               </Link>
 
               <Link
                 href="/benchmarks"
-                className="atlas-button-secondary"
+                className="atlas-button-secondary w-full sm:w-auto"
               >
                 View benchmarks
               </Link>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
             <HeroMetric
               label="Atlas score"
-              value={
-                game.atlas_score !== null
-                  ? `${game.atlas_score}`
-                  : "—"
-              }
+              value={game.atlas_score !== null ? `${game.atlas_score}` : "—"}
               suffix="/100"
               highlighted
             />
-
             <HeroMetric
               label="Best handheld"
               value={game.best_handheld ?? "Not set"}
             />
-
             <HeroMetric
               label="Recommended TDP"
               value={game.recommended_tdp ?? "Not set"}
             />
-
             <HeroMetric
               label="Highest tested"
-              value={
-                highestTestedFps !== null
-                  ? `${highestTestedFps}`
-                  : "—"
-              }
-              suffix={
-                highestTestedFps !== null
-                  ? "FPS"
-                  : undefined
-              }
+              value={highestTestedFps !== null ? `${highestTestedFps}` : "—"}
+              suffix={highestTestedFps !== null ? "FPS" : undefined}
             />
           </div>
         </div>
 
-        <div className="atlas-shell relative pb-8">
+        <div className="atlas-shell relative pb-6 sm:pb-8">
           <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-4">
             <StripStat
               label="Published presets"
               value={gamePresets.length.toString()}
             />
-
             <StripStat
               label="Published benchmarks"
               value={gameBenchmarks.length.toString()}
             />
-
             <StripStat
               label="Average tested FPS"
               value={
@@ -512,18 +433,14 @@ export default async function GamePage({
                   : "No data"
               }
             />
-
-            <StripStat
-              label="Compatibility"
-              value={compatibility.label}
-            />
+            <StripStat label="Compatibility" value={compatibility.label} />
           </div>
         </div>
       </section>
 
-      <div className="atlas-shell pt-6">
-        <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-          <article className="atlas-panel p-5">
+      <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
+        <section className="grid min-w-0 gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+          <article className="atlas-panel min-w-0 p-4 sm:p-5">
             <SectionHeading
               eyebrow="Atlas notes"
               title="Performance overview"
@@ -544,25 +461,14 @@ export default async function GamePage({
                 }
                 highlighted
               />
-
               <OverviewStat
                 label="Best FPS"
-                value={
-                  highestTestedFps !== null
-                    ? `${highestTestedFps}`
-                    : "—"
-                }
+                value={highestTestedFps !== null ? `${highestTestedFps}` : "—"}
               />
-
               <OverviewStat
                 label="Average FPS"
-                value={
-                  averageTestedFps !== null
-                    ? `${averageTestedFps}`
-                    : "—"
-                }
+                value={averageTestedFps !== null ? `${averageTestedFps}` : "—"}
               />
-
               <OverviewStat
                 label="TDP"
                 value={game.recommended_tdp ?? "Not set"}
@@ -570,53 +476,34 @@ export default async function GamePage({
             </div>
           </article>
 
-          <article className="atlas-panel p-5">
-            <SectionHeading
-              eyebrow="Quick facts"
-              title="Game profile"
-            />
+          <article className="atlas-panel min-w-0 p-4 sm:p-5">
+            <SectionHeading eyebrow="Quick facts" title="Game profile" />
 
             <dl className="mt-5">
               <OverviewRow
                 label="Developer"
                 value={game.developer ?? "Not set"}
               />
-
-              <OverviewRow
-                label="Genre"
-                value={game.genre}
-              />
-
+              <OverviewRow label="Genre" value={game.genre} />
               <OverviewRow
                 label="Release year"
-                value={
-                  game.release_year?.toString() ??
-                  "Not set"
-                }
+                value={game.release_year?.toString() ?? "Not set"}
               />
-
               <OverviewRow
                 label="Best handheld"
-                value={
-                  game.best_handheld ??
-                  "Not set"
-                }
+                value={game.best_handheld ?? "Not set"}
               />
-
               <OverviewRow
                 label="Recommended TDP"
-                value={
-                  game.recommended_tdp ??
-                  "Not set"
-                }
+                value={game.recommended_tdp ?? "Not set"}
                 isLast
               />
             </dl>
           </article>
         </section>
 
-        <section className="atlas-panel mt-5 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <SectionHeading
               eyebrow="Recommended settings"
               title="Presets"
@@ -634,40 +521,35 @@ export default async function GamePage({
           {gamePresets.length === 0 ? (
             <EmptyState text="No published presets are available for this game." />
           ) : (
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
               {gamePresets.map((preset) => {
                 const sortedGroups = [
                   ...(preset.preset_setting_groups ?? []),
                 ]
                   .sort(
                     (first, second) =>
-                      first.sort_order -
-                      second.sort_order,
+                      first.sort_order - second.sort_order,
                   )
                   .map((group) => ({
                     ...group,
-
                     preset_setting_items: [
                       ...(group.preset_setting_items ?? []),
                     ].sort(
                       (first, second) =>
-                        first.sort_order -
-                        second.sort_order,
+                        first.sort_order - second.sort_order,
                     ),
                   }));
 
-                const settingsCount =
-                  sortedGroups.reduce(
-                    (total, group) =>
-                      total +
-                      group.preset_setting_items.length,
-                    0,
-                  );
+                const settingsCount = sortedGroups.reduce(
+                  (total, group) =>
+                    total + group.preset_setting_items.length,
+                  0,
+                );
 
                 return (
                   <details
                     key={preset.id}
-                    className="group atlas-card atlas-card-hover"
+                    className="group atlas-card atlas-card-hover min-w-0"
                   >
                     <summary className="cursor-pointer list-none p-4">
                       <div className="flex items-start justify-between gap-4">
@@ -682,12 +564,11 @@ export default async function GamePage({
                             </span>
 
                             <span className="text-[0.58rem] font-black uppercase tracking-[0.12em] text-cyan-400">
-                              {preset.handhelds?.name ??
-                                "Unknown handheld"}
+                              {preset.handhelds?.name ?? "Unknown handheld"}
                             </span>
                           </div>
 
-                          <h3 className="mt-3 text-xl font-black">
+                          <h3 className="mt-3 break-words text-xl font-black">
                             {preset.name}
                           </h3>
 
@@ -707,12 +588,7 @@ export default async function GamePage({
                           label="Resolution"
                           value={preset.resolution ?? "Not set"}
                         />
-
-                        <PresetStat
-                          label="TDP"
-                          value={preset.tdp ?? "Not set"}
-                        />
-
+                        <PresetStat label="TDP" value={preset.tdp ?? "Not set"} />
                         <PresetStat
                           label="Average"
                           value={
@@ -722,7 +598,6 @@ export default async function GamePage({
                           }
                           highlighted
                         />
-
                         <PresetStat
                           label="1% Low"
                           value={
@@ -733,39 +608,28 @@ export default async function GamePage({
                         />
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2 text-[0.62rem] text-slate-600">
+                      <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[0.6rem] text-slate-600 sm:text-[0.62rem]">
                         <span>
                           Upscaler:{" "}
                           <strong className="text-slate-300">
                             {preset.upscaler ?? "Not set"}
                           </strong>
                         </span>
-
                         <span>•</span>
-
                         <span>
                           Battery:{" "}
                           <strong className="text-slate-300">
-                            {preset.battery_life ??
-                              "Not set"}
+                            {preset.battery_life ?? "Not set"}
                           </strong>
                         </span>
-
                         <span>•</span>
-
-                        <span>
-                          {settingsCount} settings
-                        </span>
+                        <span>{settingsCount} settings</span>
 
                         {preset.community_rating !== null && (
                           <>
                             <span>•</span>
-
                             <span className="text-yellow-400">
-                              ★{" "}
-                              {preset.community_rating.toFixed(
-                                1,
-                              )}
+                              ★ {preset.community_rating.toFixed(1)}
                             </span>
                           </>
                         )}
@@ -778,11 +642,11 @@ export default async function GamePage({
                           No detailed settings available.
                         </p>
                       ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid min-w-0 gap-4 md:grid-cols-2">
                           {sortedGroups.map((group) => (
                             <section
                               key={group.id}
-                              className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
+                              className="min-w-0 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
                             >
                               <div className="border-b border-white/[0.07] px-4 py-3">
                                 <h4 className="text-sm font-black">
@@ -795,29 +659,26 @@ export default async function GamePage({
                                   (item, index) => (
                                     <div
                                       key={item.id}
-                                      className={`grid grid-cols-[1fr_auto] gap-4 px-4 py-3 ${
+                                      className={`grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 ${
                                         index ===
-                                        group
-                                          .preset_setting_items
-                                          .length -
-                                          1
+                                        group.preset_setting_items.length - 1
                                           ? ""
                                           : "border-b border-white/[0.06]"
                                       }`}
                                     >
-                                      <div>
-                                        <dt className="text-sm font-bold text-slate-300">
+                                      <div className="min-w-0">
+                                        <dt className="break-words text-sm font-bold text-slate-300">
                                           {item.label}
                                         </dt>
 
                                         {item.note && (
-                                          <p className="mt-1 text-xs leading-5 text-slate-600">
+                                          <p className="mt-1 break-words text-xs leading-5 text-slate-600">
                                             {item.note}
                                           </p>
                                         )}
                                       </div>
 
-                                      <dd className="text-sm font-black text-cyan-400">
+                                      <dd className="max-w-28 break-words text-right text-sm font-black text-cyan-400">
                                         {item.value}
                                       </dd>
                                     </div>
@@ -845,8 +706,8 @@ export default async function GamePage({
           )}
         </section>
 
-        <section className="atlas-panel mt-5 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <SectionHeading
               eyebrow="Performance data"
               title="Benchmark wall"
@@ -864,9 +725,9 @@ export default async function GamePage({
           {gameBenchmarks.length === 0 ? (
             <EmptyState text="No published benchmark results are available for this game." />
           ) : (
-            <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07]">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left">
+            <div className="mt-5 max-w-full overflow-hidden rounded-xl border border-white/[0.07]">
+              <div className="max-w-full overflow-x-auto">
+                <table className="min-w-[48rem] text-left md:min-w-full">
                   <thead className="bg-black/30">
                     <tr>
                       <TableHeading label="Handheld" />
@@ -933,8 +794,7 @@ export default async function GamePage({
                         </td>
 
                         <td className="px-4 py-4 text-sm text-slate-400">
-                          {benchmark.battery_life ??
-                            "Not set"}
+                          {benchmark.battery_life ?? "Not set"}
                         </td>
                       </tr>
                     ))}
@@ -962,22 +822,20 @@ function HeroMetric({
 }) {
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
         highlighted
           ? "border-red-500/30 bg-red-500/10"
           : "border-white/[0.08] bg-black/20"
       }`}
     >
-      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
         {label}
       </p>
 
       <div className="mt-2 flex items-end gap-1">
         <p
-          className={`text-3xl font-black ${
-            highlighted
-              ? "text-red-400"
-              : "text-white"
+          className={`break-words text-2xl font-black sm:text-3xl ${
+            highlighted ? "text-red-400" : "text-white"
           }`}
         >
           {value}
@@ -993,16 +851,10 @@ function HeroMetric({
   );
 }
 
-function StripStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StripStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 px-4 py-4">
-      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+    <div className="min-w-0 px-3 py-3 sm:px-4 sm:py-4">
+      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
         {label}
       </p>
 
@@ -1023,20 +875,9 @@ function SectionHeading({
   noBorder?: boolean;
 }) {
   return (
-    <div
-      className={
-        noBorder
-          ? ""
-          : "border-b border-white/[0.07] pb-3"
-      }
-    >
-      <p className="atlas-section-label">
-        {eyebrow}
-      </p>
-
-      <h2 className="mt-1 text-xl font-black">
-        {title}
-      </h2>
+    <div className={noBorder ? "" : "border-b border-white/[0.07] pb-3"}>
+      <p className="atlas-section-label">{eyebrow}</p>
+      <h2 className="mt-1 text-xl font-black">{title}</h2>
     </div>
   );
 }
@@ -1052,7 +893,7 @@ function OverviewStat({
 }) {
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
         highlighted
           ? "border-red-500/25 bg-red-500/[0.07]"
           : "border-white/[0.07] bg-black/20"
@@ -1063,10 +904,8 @@ function OverviewStat({
       </p>
 
       <p
-        className={`mt-2 text-xl font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-white"
+        className={`mt-2 break-words text-xl font-black ${
+          highlighted ? "text-red-400" : "text-white"
         }`}
       >
         {value}
@@ -1087,16 +926,11 @@ function OverviewRow({
   return (
     <div
       className={`flex items-start justify-between gap-5 py-4 ${
-        isLast
-          ? ""
-          : "border-b border-white/[0.06]"
+        isLast ? "" : "border-b border-white/[0.06]"
       }`}
     >
-      <dt className="text-sm text-slate-600">
-        {label}
-      </dt>
-
-      <dd className="max-w-[65%] text-right text-sm font-black text-slate-300">
+      <dt className="text-sm text-slate-600">{label}</dt>
+      <dd className="max-w-[65%] break-words text-right text-sm font-black text-slate-300">
         {value}
       </dd>
     </div>
@@ -1114,7 +948,7 @@ function PresetStat({
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`min-w-0 rounded-lg border p-3 ${
         highlighted
           ? "border-red-500/25 bg-red-500/[0.07]"
           : "border-white/[0.07] bg-black/20"
@@ -1125,10 +959,8 @@ function PresetStat({
       </p>
 
       <p
-        className={`mt-1 text-xs font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-slate-300"
+        className={`mt-1 break-words text-xs font-black ${
+          highlighted ? "text-red-400" : "text-slate-300"
         }`}
       >
         {value}
@@ -1137,11 +969,7 @@ function PresetStat({
   );
 }
 
-function EmptyState({
-  text,
-}: {
-  text: string;
-}) {
+function EmptyState({ text }: { text: string }) {
   return (
     <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
       {text}
@@ -1149,11 +977,7 @@ function EmptyState({
   );
 }
 
-function TableHeading({
-  label,
-}: {
-  label: string;
-}) {
+function TableHeading({ label }: { label: string }) {
   return (
     <th className="whitespace-nowrap px-4 py-3 text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
       {label}

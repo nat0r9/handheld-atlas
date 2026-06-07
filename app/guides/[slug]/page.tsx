@@ -222,7 +222,7 @@ function renderGuideContent(content: string) {
       return (
         <h2
           key={`${firstLine}-${index}`}
-          className="mt-12 border-l-2 border-red-500 pl-4 text-3xl font-black leading-tight text-white first:mt-0"
+          className="mt-10 border-l-2 border-red-500 pl-4 text-2xl font-black leading-tight text-white first:mt-0 sm:mt-12 sm:text-3xl"
         >
           {firstLine}
         </h2>
@@ -237,7 +237,7 @@ function renderGuideContent(content: string) {
       return (
         <ul
           key={`list-${index}`}
-          className="my-7 space-y-3 text-base leading-8 text-slate-300"
+          className="my-6 space-y-3 text-sm leading-7 text-slate-300 sm:my-7 sm:text-base sm:leading-8"
         >
           {lines.map((line, lineIndex) => (
             <li
@@ -271,7 +271,7 @@ function renderGuideContent(content: string) {
           {lines.map((line, lineIndex) => (
             <li
               key={`${line}-${lineIndex}`}
-              className="grid grid-cols-[2.5rem_1fr] gap-3 text-base leading-8 text-slate-300"
+              className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 text-sm leading-7 text-slate-300 sm:grid-cols-[2.5rem_minmax(0,1fr)] sm:text-base sm:leading-8"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/[0.07] text-sm font-black text-red-400">
                 {lineIndex + 1}
@@ -292,7 +292,7 @@ function renderGuideContent(content: string) {
     return (
       <p
         key={`paragraph-${index}`}
-        className="my-7 whitespace-pre-line text-base leading-8 text-slate-300"
+        className="my-6 whitespace-pre-line break-words text-sm leading-7 text-slate-300 sm:my-7 sm:text-base sm:leading-8"
       >
         {block}
       </p>
@@ -316,7 +316,7 @@ export default async function GuidePage({
   } = await getRelatedContent(guide);
 
   return (
-    <main className="atlas-page pb-14 text-white">
+    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
         {guide.cover_image_url ? (
           <Image
@@ -334,8 +334,8 @@ export default async function GuidePage({
         <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/95 to-[#05070d]/25" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/25" />
 
-        <div className="atlas-shell relative flex min-h-[38rem] items-end py-12">
-          <div className="max-w-5xl">
+        <div className="atlas-shell relative flex min-h-[32rem] items-end py-9 sm:min-h-[38rem] sm:py-12">
+          <div className="min-w-0 max-w-5xl">
             <Link
               href="/guides"
               className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
@@ -343,7 +343,7 @@ export default async function GuidePage({
               ← Back to guides
             </Link>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
               <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] text-red-400 backdrop-blur">
                 {guide.category}
               </span>
@@ -363,15 +363,15 @@ export default async function GuidePage({
               )}
             </div>
 
-            <h1 className="mt-6 max-w-5xl text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-5 max-w-5xl break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-6 sm:text-6xl lg:text-7xl">
               {guide.title}
             </h1>
 
-            <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
+            <p className="mt-5 max-w-4xl text-base leading-7 text-slate-300 sm:mt-6 sm:text-lg sm:leading-8">
               {guide.excerpt}
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-500">
+            <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500 sm:mt-8 sm:gap-x-6 sm:gap-y-3 sm:text-sm">
               <span>
                 Published{" "}
                 <strong className="text-slate-200">
@@ -395,7 +395,7 @@ export default async function GuidePage({
           </div>
         </div>
 
-        <div className="atlas-shell relative pb-8">
+        <div className="atlas-shell relative pb-6 sm:pb-8">
           <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-4">
             <StripStat
               label="Category"
@@ -428,9 +428,9 @@ export default async function GuidePage({
         </div>
       </section>
 
-      <div className="atlas-shell grid gap-5 pt-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="atlas-shell grid min-w-0 gap-5 pt-5 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <article className="min-w-0">
-          <section className="atlas-panel p-6 md:p-8 lg:p-10">
+          <section className="atlas-panel min-w-0 p-5 sm:p-6 md:p-8 lg:p-10">
             <div className="border-b border-white/[0.07] pb-5">
               <p className="atlas-section-label">
                 HandheldAtlas guide
@@ -448,7 +448,7 @@ export default async function GuidePage({
             </div>
           </section>
 
-          <section className="atlas-panel mt-5 p-5">
+          <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
             <p className="atlas-section-label">
               Continue exploring
             </p>
@@ -457,24 +457,24 @@ export default async function GuidePage({
               More routes through the Atlas
             </h2>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Link
                 href="/guides"
-                className="atlas-button-secondary"
+                className="atlas-button-secondary w-full sm:w-auto"
               >
                 Browse guides
               </Link>
 
               <Link
                 href="/games"
-                className="atlas-button-secondary"
+                className="atlas-button-secondary w-full sm:w-auto"
               >
                 Browse games
               </Link>
 
               <Link
                 href="/handhelds"
-                className="atlas-button-primary"
+                className="atlas-button-primary w-full sm:w-auto"
               >
                 Browse handhelds
               </Link>
@@ -482,8 +482,8 @@ export default async function GuidePage({
           </section>
         </article>
 
-        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <section className="atlas-panel p-5">
+        <aside className="min-w-0 space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <section className="atlas-panel min-w-0 p-4 sm:p-5">
             <p className="atlas-section-label">
               Guide details
             </p>
@@ -527,7 +527,7 @@ export default async function GuidePage({
 
           {(relatedGame ||
             relatedHandheld) && (
-            <section className="atlas-panel p-5">
+            <section className="atlas-panel min-w-0 p-4 sm:p-5">
               <p className="atlas-section-label">
                 Related content
               </p>
@@ -578,7 +578,7 @@ export default async function GuidePage({
             </section>
           )}
 
-          <section className="atlas-panel p-5">
+          <section className="atlas-panel min-w-0 p-4 sm:p-5">
             <p className="atlas-section-label">
               Need more?
             </p>
@@ -609,8 +609,8 @@ function StripStat({
   value: string;
 }) {
   return (
-    <div className="min-w-0 px-4 py-4">
-      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+    <div className="min-w-0 px-3 py-3 sm:px-4 sm:py-4">
+      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
         {label}
       </p>
 
