@@ -56,11 +56,13 @@ interface DatabasePreset {
   battery_life: string | null;
   community_rating: number | null;
   summary: string | null;
+
   handhelds: {
     name: string;
     slug: string;
     manufacturer: string;
   } | null;
+
   preset_setting_groups: DatabaseSettingGroup[];
 }
 
@@ -72,11 +74,13 @@ interface DatabaseBenchmark {
   one_percent_low: number | null;
   battery_life: string | null;
   test_notes: string | null;
+
   handhelds: {
     name: string;
     slug: string;
     manufacturer: string;
   } | null;
+
   presets: {
     name: string;
     preset_type: string;
@@ -107,9 +111,7 @@ async function getGame(slug: string) {
   return data as DatabaseGame | null;
 }
 
-async function getGamePresets(
-  gameId: string,
-) {
+async function getGamePresets(gameId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -160,13 +162,10 @@ async function getGamePresets(
     return [];
   }
 
-  return (data ??
-    []) as unknown as DatabasePreset[];
+  return (data ?? []) as unknown as DatabasePreset[];
 }
 
-async function getGameBenchmarks(
-  gameId: string,
-) {
+async function getGameBenchmarks(gameId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -205,8 +204,7 @@ async function getGameBenchmarks(
     return [];
   }
 
-  return (data ??
-    []) as unknown as DatabaseBenchmark[];
+  return (data ?? []) as unknown as DatabaseBenchmark[];
 }
 
 export async function generateMetadata({
@@ -255,45 +253,43 @@ export async function generateMetadata({
   };
 }
 
-function getCompatibilityStyle(
-  score: number | null,
-) {
+function getCompatibilityData(score: number | null) {
   if (score === null) {
     return {
       label: "Unrated",
-      className:
-        "border-slate-500/30 bg-slate-500/15 text-slate-300",
+      style:
+        "border-slate-500/30 bg-slate-500/10 text-slate-300",
     };
   }
 
   if (score >= 90) {
     return {
       label: "Excellent",
-      className:
-        "border-green-400/30 bg-green-500/20 text-green-400",
+      style:
+        "border-green-500/30 bg-green-500/10 text-green-400",
     };
   }
 
   if (score >= 85) {
     return {
       label: "Great",
-      className:
-        "border-cyan-400/30 bg-cyan-500/20 text-cyan-400",
+      style:
+        "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
     };
   }
 
   if (score >= 75) {
     return {
       label: "Playable",
-      className:
-        "border-orange-400/30 bg-orange-500/20 text-orange-400",
+      style:
+        "border-orange-500/30 bg-orange-500/10 text-orange-400",
     };
   }
 
   return {
     label: "Tweaks Required",
-    className:
-      "border-red-400/30 bg-red-500/20 text-red-400",
+    style:
+      "border-red-500/30 bg-red-500/10 text-red-400",
   };
 }
 
@@ -302,26 +298,47 @@ function getPresetStyle(
 ) {
   switch (type) {
     case "Performance":
-      return "border-orange-500/30 bg-orange-500/15 text-orange-400";
+      return "border-red-500/30 bg-red-500/10 text-red-400";
 
     case "Balanced":
-      return "border-cyan-500/30 bg-cyan-500/15 text-cyan-400";
+      return "border-cyan-500/30 bg-cyan-500/10 text-cyan-400";
 
     case "Battery":
-      return "border-green-500/30 bg-green-500/15 text-green-400";
+      return "border-green-500/30 bg-green-500/10 text-green-400";
 
     case "Docked":
-      return "border-red-500/30 bg-red-500/15 text-red-400";
+      return "border-blue-500/30 bg-blue-500/10 text-blue-400";
 
     default:
-      return "border-purple-500/30 bg-purple-500/15 text-purple-400";
+      return "border-purple-500/30 bg-purple-500/10 text-purple-400";
   }
+}
+
+function getFpsStyle(value: number | null) {
+  if (value === null) {
+    return "text-slate-400";
+  }
+
+  if (value >= 60) {
+    return "text-green-400";
+  }
+
+  if (value >= 45) {
+    return "text-cyan-400";
+  }
+
+  if (value >= 30) {
+    return "text-orange-400";
+  }
+
+  return "text-red-400";
 }
 
 export default async function GamePage({
   params,
 }: GamePageProps) {
   const { slug } = await params;
+
   const game = await getGame(slug);
 
   if (!game) {
@@ -335,22 +352,35 @@ export default async function GamePage({
     ]);
 
   const compatibility =
-    getCompatibilityStyle(
-      game.atlas_score,
+    getCompatibilityData(game.atlas_score);
+
+  const validBenchmarkFps = gameBenchmarks
+    .map((benchmark) => benchmark.average_fps)
+    .filter(
+      (value): value is number =>
+        typeof value === "number",
     );
 
-  const bestBenchmark =
-    gameBenchmarks.find(
-      (benchmark) =>
-        benchmark.average_fps !== null,
-    );
+  const highestTestedFps =
+    validBenchmarkFps.length > 0
+      ? Math.max(...validBenchmarkFps)
+      : null;
 
-  const coverImage =
-    game.cover_image_url;
+  const averageTestedFps =
+    validBenchmarkFps.length > 0
+      ? Math.round(
+          validBenchmarkFps.reduce(
+            (total, value) => total + value,
+            0,
+          ) / validBenchmarkFps.length,
+        )
+      : null;
+
+  const coverImage = game.cover_image_url;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="relative min-h-[34rem] overflow-hidden border-b border-slate-800 bg-slate-950">
+    <main className="atlas-page pb-14 text-white">
+      <section className="relative overflow-hidden border-b border-white/[0.06]">
         {coverImage ? (
           <Image
             src={coverImage}
@@ -358,57 +388,155 @@ export default async function GamePage({
             fill
             priority
             sizes="100vw"
-            className="object-cover object-center"
+            className="object-cover object-center opacity-45"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-black" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(124,58,237,0.25),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.2),transparent_25%),linear-gradient(135deg,#05070d,#090d16_55%,#14090f)]" />
         )}
 
-        <div className="absolute inset-0 bg-slate-950/45" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/95 to-[#05070d]/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/25" />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/30" />
-
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/20" />
-
-        <div className="relative mx-auto flex min-h-[34rem] max-w-7xl items-end px-6 py-14">
-          <div className="max-w-3xl">
+        <div className="atlas-shell relative grid min-h-[38rem] items-end gap-10 py-12 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
             <Link
               href="/games"
-              className="inline-flex text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+              className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
             >
               ← Back to games
             </Link>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-2">
               <span
-                className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide backdrop-blur ${compatibility.className}`}
+                className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] backdrop-blur ${compatibility.style}`}
               >
                 {compatibility.label}
               </span>
 
-              <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-200 backdrop-blur">
+              <span className="atlas-chip">
                 {game.genre}
               </span>
 
               {game.release_year && (
-                <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-200 backdrop-blur">
+                <span className="atlas-chip">
                   {game.release_year}
                 </span>
               )}
             </div>
 
-            <h1 className="mt-5 text-5xl font-black leading-tight md:text-7xl">
+            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
               {game.name}
             </h1>
 
-            <p className="mt-4 text-lg text-slate-300">
-              {game.developer ??
-                "Unknown developer"}
+            <p className="mt-4 text-lg font-bold text-slate-300">
+              {game.developer ?? "Unknown developer"}
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <MetricCard
-                label="Atlas Score"
+            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-400">
+              {game.notes ??
+                "Detailed handheld performance notes and recommended settings will be added soon."}
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/presets"
+                className="atlas-button-primary"
+              >
+                Browse presets
+              </Link>
+
+              <Link
+                href="/benchmarks"
+                className="atlas-button-secondary"
+              >
+                View benchmarks
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+            <HeroMetric
+              label="Atlas score"
+              value={
+                game.atlas_score !== null
+                  ? `${game.atlas_score}`
+                  : "—"
+              }
+              suffix="/100"
+              highlighted
+            />
+
+            <HeroMetric
+              label="Best handheld"
+              value={game.best_handheld ?? "Not set"}
+            />
+
+            <HeroMetric
+              label="Recommended TDP"
+              value={game.recommended_tdp ?? "Not set"}
+            />
+
+            <HeroMetric
+              label="Highest tested"
+              value={
+                highestTestedFps !== null
+                  ? `${highestTestedFps}`
+                  : "—"
+              }
+              suffix={
+                highestTestedFps !== null
+                  ? "FPS"
+                  : undefined
+              }
+            />
+          </div>
+        </div>
+
+        <div className="atlas-shell relative pb-8">
+          <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-4">
+            <StripStat
+              label="Published presets"
+              value={gamePresets.length.toString()}
+            />
+
+            <StripStat
+              label="Published benchmarks"
+              value={gameBenchmarks.length.toString()}
+            />
+
+            <StripStat
+              label="Average tested FPS"
+              value={
+                averageTestedFps !== null
+                  ? `${averageTestedFps} FPS`
+                  : "No data"
+              }
+            />
+
+            <StripStat
+              label="Compatibility"
+              value={compatibility.label}
+            />
+          </div>
+        </div>
+      </section>
+
+      <div className="atlas-shell pt-6">
+        <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+          <article className="atlas-panel p-5">
+            <SectionHeading
+              eyebrow="Atlas notes"
+              title="Performance overview"
+            />
+
+            <p className="mt-5 text-base leading-8 text-slate-400">
+              {game.notes ??
+                "No detailed performance notes are available yet."}
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <OverviewStat
+                label="Score"
                 value={
                   game.atlas_score !== null
                     ? `${game.atlas_score}/100`
@@ -417,61 +545,46 @@ export default async function GamePage({
                 highlighted
               />
 
-              <MetricCard
-                label="Best Handheld"
+              <OverviewStat
+                label="Best FPS"
                 value={
-                  game.best_handheld ??
-                  "Not set"
+                  highestTestedFps !== null
+                    ? `${highestTestedFps}`
+                    : "—"
                 }
               />
 
-              <MetricCard
-                label="Recommended TDP"
+              <OverviewStat
+                label="Average FPS"
                 value={
-                  game.recommended_tdp ??
-                  "Not set"
+                  averageTestedFps !== null
+                    ? `${averageTestedFps}`
+                    : "—"
                 }
               />
 
-              {bestBenchmark?.average_fps !==
-                null &&
-                bestBenchmark?.average_fps !==
-                  undefined && (
-                  <MetricCard
-                    label="Highest Tested FPS"
-                    value={`${bestBenchmark.average_fps} FPS`}
-                  />
-                )}
+              <OverviewStat
+                label="TDP"
+                value={game.recommended_tdp ?? "Not set"}
+              />
             </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <article className="rounded-3xl border border-slate-800 bg-slate-900 p-7">
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-              Atlas Notes
-            </p>
-
-            <p className="mt-4 text-lg leading-8 text-slate-300">
-              {game.notes ??
-                "Detailed handheld notes for this game will be added soon."}
-            </p>
           </article>
 
-          <article className="rounded-3xl border border-slate-800 bg-slate-900 p-7">
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-              Quick Overview
-            </p>
+          <article className="atlas-panel p-5">
+            <SectionHeading
+              eyebrow="Quick facts"
+              title="Game profile"
+            />
 
-            <dl className="mt-5 space-y-4">
+            <dl className="mt-5">
               <OverviewRow
                 label="Developer"
-                value={
-                  game.developer ??
-                  "Not set"
-                }
+                value={game.developer ?? "Not set"}
+              />
+
+              <OverviewRow
+                label="Genre"
+                value={game.genre}
               />
 
               <OverviewRow
@@ -483,403 +596,348 @@ export default async function GamePage({
               />
 
               <OverviewRow
-                label="Published presets"
-                value={gamePresets.length.toString()}
+                label="Best handheld"
+                value={
+                  game.best_handheld ??
+                  "Not set"
+                }
               />
 
               <OverviewRow
-                label="Published benchmarks"
-                value={gameBenchmarks.length.toString()}
+                label="Recommended TDP"
+                value={
+                  game.recommended_tdp ??
+                  "Not set"
+                }
                 isLast
               />
             </dl>
           </article>
         </section>
 
-        <section className="mt-16">
+        <section className="atlas-panel mt-5 p-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-                Recommended Settings
-              </p>
-
-              <h2 className="mt-2 text-4xl font-black">
-                Presets
-              </h2>
-            </div>
+            <SectionHeading
+              eyebrow="Recommended settings"
+              title="Presets"
+              noBorder
+            />
 
             <Link
               href="/presets"
-              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+              className="text-xs font-black text-cyan-400 transition hover:text-white"
             >
-              Browse all presets →
+              View all presets →
             </Link>
           </div>
 
           {gamePresets.length === 0 ? (
-            <EmptySection
-              title="No presets available"
-              description="Published presets for this game will appear here automatically."
-            />
+            <EmptyState text="No published presets are available for this game." />
           ) : (
-            <div className="mt-8 space-y-6">
-              {gamePresets.map(
-                (preset) => {
-                  const sortedGroups = [
-                    ...(preset.preset_setting_groups ??
-                      []),
-                  ]
-                    .sort(
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {gamePresets.map((preset) => {
+                const sortedGroups = [
+                  ...(preset.preset_setting_groups ?? []),
+                ]
+                  .sort(
+                    (first, second) =>
+                      first.sort_order -
+                      second.sort_order,
+                  )
+                  .map((group) => ({
+                    ...group,
+
+                    preset_setting_items: [
+                      ...(group.preset_setting_items ?? []),
+                    ].sort(
                       (first, second) =>
                         first.sort_order -
                         second.sort_order,
-                    )
-                    .map((group) => ({
-                      ...group,
+                    ),
+                  }));
 
-                      preset_setting_items: [
-                        ...(group.preset_setting_items ??
-                          []),
-                      ].sort(
-                        (first, second) =>
-                          first.sort_order -
-                          second.sort_order,
-                      ),
-                    }));
+                const settingsCount =
+                  sortedGroups.reduce(
+                    (total, group) =>
+                      total +
+                      group.preset_setting_items.length,
+                    0,
+                  );
 
-                  const settingsCount =
-                    sortedGroups.reduce(
-                      (total, group) =>
-                        total +
-                        group
-                          .preset_setting_items
-                          .length,
-                      0,
-                    );
+                return (
+                  <details
+                    key={preset.id}
+                    className="group atlas-card atlas-card-hover"
+                  >
+                    <summary className="cursor-pointer list-none p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] ${getPresetStyle(
+                                preset.preset_type,
+                              )}`}
+                            >
+                              {preset.preset_type}
+                            </span>
 
-                  return (
-                    <details
-                      key={preset.id}
-                      className="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900"
-                    >
-                      <summary className="cursor-pointer list-none p-6 transition hover:bg-slate-800/40 md:p-8">
-                        <div className="flex flex-wrap items-start justify-between gap-5">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span
-                                className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${getPresetStyle(
-                                  preset.preset_type,
-                                )}`}
-                              >
-                                {
-                                  preset.preset_type
-                                }
-                              </span>
-
-                              <span className="text-sm font-bold text-slate-500">
-                                {preset
-                                  .handhelds
-                                  ?.manufacturer ??
-                                  "Unknown manufacturer"}
-                              </span>
-                            </div>
-
-                            <h3 className="mt-5 text-3xl font-black">
-                              {preset.name}
-                            </h3>
-
-                            <p className="mt-2 text-lg text-slate-400">
-                              {preset
-                                .handhelds
-                                ?.name ??
+                            <span className="text-[0.58rem] font-black uppercase tracking-[0.12em] text-cyan-400">
+                              {preset.handhelds?.name ??
                                 "Unknown handheld"}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                            {preset.community_rating !==
-                              null && (
-                              <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-right">
-                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
-                                  Rating
-                                </p>
-
-                                <p className="mt-1 font-black text-yellow-300">
-                                  ★{" "}
-                                  {preset.community_rating.toFixed(
-                                    1,
-                                  )}
-                                </p>
-                              </div>
-                            )}
-
-                            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-700 bg-slate-950 text-xl font-black text-cyan-400 transition group-open:rotate-45">
-                              +
                             </span>
                           </div>
-                        </div>
 
-                        {preset.summary && (
-                          <p className="mt-5 max-w-4xl leading-7 text-slate-400">
-                            {preset.summary}
+                          <h3 className="mt-3 text-xl font-black">
+                            {preset.name}
+                          </h3>
+
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                            {preset.summary ??
+                              "Detailed recommended settings for this game."}
                           </p>
-                        )}
-
-                        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-                          <PresetStat
-                            label="Resolution"
-                            value={
-                              preset.resolution ??
-                              "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="TDP"
-                            value={
-                              preset.tdp ??
-                              "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="Average FPS"
-                            value={
-                              preset.fps_average !==
-                              null
-                                ? `${preset.fps_average} FPS`
-                                : "Not set"
-                            }
-                            highlighted
-                          />
-
-                          <PresetStat
-                            label="1% Low"
-                            value={
-                              preset.one_percent_low !==
-                              null
-                                ? `${preset.one_percent_low} FPS`
-                                : "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="Upscaler"
-                            value={
-                              preset.upscaler ??
-                              "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="Battery"
-                            value={
-                              preset.battery_life ??
-                              "Not set"
-                            }
-                          />
-
-                          <PresetStat
-                            label="Settings"
-                            value={`${settingsCount} values`}
-                          />
                         </div>
-                      </summary>
 
-                      <div className="border-t border-slate-800 bg-slate-950/70 p-6 md:p-8">
-                        <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-                          Complete Configuration
-                        </p>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-black/20 text-lg font-black text-cyan-400 transition group-open:rotate-45">
+                          +
+                        </span>
+                      </div>
 
-                        <h4 className="mt-2 text-3xl font-black">
-                          Full settings
-                        </h4>
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <PresetStat
+                          label="Resolution"
+                          value={preset.resolution ?? "Not set"}
+                        />
 
-                        {sortedGroups.length ===
-                        0 ? (
-                          <div className="mt-6 rounded-2xl border border-dashed border-slate-700 p-8 text-center">
-                            <p className="font-bold text-slate-300">
-                              No detailed
-                              settings available
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="mt-7 grid gap-6 lg:grid-cols-2">
-                            {sortedGroups.map(
-                              (group) => (
-                                <section
-                                  key={group.id}
-                                  className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
-                                >
-                                  <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
-                                    <h5 className="text-xl font-black">
-                                      {group.name}
-                                    </h5>
-                                  </div>
+                        <PresetStat
+                          label="TDP"
+                          value={preset.tdp ?? "Not set"}
+                        />
 
-                                  <dl>
-                                    {group.preset_setting_items.map(
-                                      (
-                                        item,
-                                        itemIndex,
-                                      ) => (
-                                        <div
-                                          key={
-                                            item.id
-                                          }
-                                          className={`grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto] ${
-                                            itemIndex ===
-                                            group
-                                              .preset_setting_items
-                                              .length -
-                                              1
-                                              ? ""
-                                              : "border-b border-slate-800"
-                                          }`}
-                                        >
-                                          <div>
-                                            <dt className="font-semibold text-slate-300">
-                                              {
-                                                item.label
-                                              }
-                                            </dt>
+                        <PresetStat
+                          label="Average"
+                          value={
+                            preset.fps_average !== null
+                              ? `${preset.fps_average} FPS`
+                              : "Not set"
+                          }
+                          highlighted
+                        />
 
-                                            {item.note && (
-                                              <p className="mt-1 text-sm text-slate-500">
-                                                {
-                                                  item.note
-                                                }
-                                              </p>
-                                            )}
-                                          </div>
+                        <PresetStat
+                          label="1% Low"
+                          value={
+                            preset.one_percent_low !== null
+                              ? `${preset.one_percent_low} FPS`
+                              : "Not set"
+                          }
+                        />
+                      </div>
 
-                                          <dd className="font-black text-cyan-400">
-                                            {
-                                              item.value
-                                            }
-                                          </dd>
-                                        </div>
-                                      ),
-                                    )}
-                                  </dl>
-                                </section>
-                              ),
-                            )}
-                          </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[0.62rem] text-slate-600">
+                        <span>
+                          Upscaler:{" "}
+                          <strong className="text-slate-300">
+                            {preset.upscaler ?? "Not set"}
+                          </strong>
+                        </span>
+
+                        <span>•</span>
+
+                        <span>
+                          Battery:{" "}
+                          <strong className="text-slate-300">
+                            {preset.battery_life ??
+                              "Not set"}
+                          </strong>
+                        </span>
+
+                        <span>•</span>
+
+                        <span>
+                          {settingsCount} settings
+                        </span>
+
+                        {preset.community_rating !== null && (
+                          <>
+                            <span>•</span>
+
+                            <span className="text-yellow-400">
+                              ★{" "}
+                              {preset.community_rating.toFixed(
+                                1,
+                              )}
+                            </span>
+                          </>
                         )}
                       </div>
-                    </details>
-                  );
-                },
-              )}
+                    </summary>
+
+                    <div className="border-t border-white/[0.07] bg-[#060911] p-4">
+                      {sortedGroups.length === 0 ? (
+                        <p className="text-sm text-slate-500">
+                          No detailed settings available.
+                        </p>
+                      ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {sortedGroups.map((group) => (
+                            <section
+                              key={group.id}
+                              className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
+                            >
+                              <div className="border-b border-white/[0.07] px-4 py-3">
+                                <h4 className="text-sm font-black">
+                                  {group.name}
+                                </h4>
+                              </div>
+
+                              <dl>
+                                {group.preset_setting_items.map(
+                                  (item, index) => (
+                                    <div
+                                      key={item.id}
+                                      className={`grid grid-cols-[1fr_auto] gap-4 px-4 py-3 ${
+                                        index ===
+                                        group
+                                          .preset_setting_items
+                                          .length -
+                                          1
+                                          ? ""
+                                          : "border-b border-white/[0.06]"
+                                      }`}
+                                    >
+                                      <div>
+                                        <dt className="text-sm font-bold text-slate-300">
+                                          {item.label}
+                                        </dt>
+
+                                        {item.note && (
+                                          <p className="mt-1 text-xs leading-5 text-slate-600">
+                                            {item.note}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <dd className="text-sm font-black text-cyan-400">
+                                        {item.value}
+                                      </dd>
+                                    </div>
+                                  ),
+                                )}
+                              </dl>
+                            </section>
+                          ))}
+                        </div>
+                      )}
+
+                      {preset.handhelds && (
+                        <Link
+                          href={`/handhelds/${preset.handhelds.slug}`}
+                          className="atlas-button-secondary mt-4"
+                        >
+                          Open handheld profile
+                        </Link>
+                      )}
+                    </div>
+                  </details>
+                );
+              })}
             </div>
           )}
         </section>
 
-        <section className="mt-16">
+        <section className="atlas-panel mt-5 p-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">
-                Performance Data
-              </p>
-
-              <h2 className="mt-2 text-4xl font-black">
-                Benchmarks
-              </h2>
-            </div>
+            <SectionHeading
+              eyebrow="Performance data"
+              title="Benchmark wall"
+              noBorder
+            />
 
             <Link
               href="/benchmarks"
-              className="text-sm font-semibold text-cyan-400 transition hover:text-cyan-300"
+              className="text-xs font-black text-cyan-400 transition hover:text-white"
             >
-              Browse all benchmarks →
+              View all benchmarks →
             </Link>
           </div>
 
           {gameBenchmarks.length === 0 ? (
-            <EmptySection
-              title="No benchmarks available"
-              description="Published benchmark results for this game will appear here automatically."
-            />
+            <EmptyState text="No published benchmark results are available for this game." />
           ) : (
-            <div className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
+            <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07]">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
-                  <thead className="border-b border-slate-800 bg-slate-950/60">
+                  <thead className="bg-black/30">
                     <tr>
                       <TableHeading label="Handheld" />
                       <TableHeading label="Preset" />
                       <TableHeading label="Resolution" />
                       <TableHeading label="TDP" />
-                      <TableHeading label="Average FPS" />
+                      <TableHeading label="Average" />
                       <TableHeading label="1% Low" />
                       <TableHeading label="Battery" />
                     </tr>
                   </thead>
 
                   <tbody>
-                    {gameBenchmarks.map(
-                      (benchmark) => (
-                        <tr
-                          key={benchmark.id}
-                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/40"
-                        >
-                          <td className="px-6 py-5">
-                            {benchmark.handhelds ? (
-                              <Link
-                                href={`/handhelds/${benchmark.handhelds.slug}`}
-                                className="font-semibold transition hover:text-cyan-400"
-                              >
-                                {
-                                  benchmark
-                                    .handhelds
-                                    .name
-                                }
-                              </Link>
-                            ) : (
-                              "Unknown handheld"
-                            )}
-                          </td>
-
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.presets
-                              ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
-                              : "Not linked"}
-                          </td>
-
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.resolution ??
-                              "Not set"}
-                          </td>
-
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.tdp ??
-                              "Not set"}
-                          </td>
-
-                          <td className="px-6 py-5">
-                            <span className="rounded-full bg-cyan-500/20 px-3 py-1 font-bold text-cyan-400">
-                              {benchmark.average_fps !==
-                              null
-                                ? `${benchmark.average_fps} FPS`
-                                : "Not set"}
+                    {gameBenchmarks.map((benchmark) => (
+                      <tr
+                        key={benchmark.id}
+                        className="border-t border-white/[0.06] transition hover:bg-white/[0.025]"
+                      >
+                        <td className="px-4 py-4">
+                          {benchmark.handhelds ? (
+                            <Link
+                              href={`/handhelds/${benchmark.handhelds.slug}`}
+                              className="font-black text-slate-200 transition hover:text-cyan-400"
+                            >
+                              {benchmark.handhelds.name}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-500">
+                              Unknown handheld
                             </span>
-                          </td>
+                          )}
+                        </td>
 
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.one_percent_low !==
-                            null
-                              ? `${benchmark.one_percent_low} FPS`
-                              : "Not set"}
-                          </td>
+                        <td className="px-4 py-4 text-sm text-slate-400">
+                          {benchmark.presets
+                            ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
+                            : "Custom"}
+                        </td>
 
-                          <td className="px-6 py-5 text-slate-300">
-                            {benchmark.battery_life ??
-                              "Not set"}
-                          </td>
-                        </tr>
-                      ),
-                    )}
+                        <td className="px-4 py-4 text-sm text-slate-400">
+                          {benchmark.resolution ?? "Not set"}
+                        </td>
+
+                        <td className="px-4 py-4 text-sm text-slate-400">
+                          {benchmark.tdp ?? "Not set"}
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <span
+                            className={`font-black ${getFpsStyle(
+                              benchmark.average_fps,
+                            )}`}
+                          >
+                            {benchmark.average_fps !== null
+                              ? `${benchmark.average_fps} FPS`
+                              : "—"}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4 font-black text-slate-300">
+                          {benchmark.one_percent_low !== null
+                            ? `${benchmark.one_percent_low} FPS`
+                            : "—"}
+                        </td>
+
+                        <td className="px-4 py-4 text-sm text-slate-400">
+                          {benchmark.battery_life ??
+                            "Not set"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -891,94 +949,186 @@ export default async function GamePage({
   );
 }
 
-interface MetricCardProps {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}
-
-function MetricCard({
+function HeroMetric({
   label,
   value,
+  suffix,
   highlighted = false,
-}: MetricCardProps) {
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  highlighted?: boolean;
+}) {
   return (
-    <div
-      className={`rounded-2xl px-5 py-4 backdrop-blur ${
+    <article
+      className={`rounded-xl border p-4 ${
         highlighted
-          ? "border border-cyan-500/30 bg-cyan-500/15"
-          : "border border-white/10 bg-black/30"
+          ? "border-red-500/30 bg-red-500/10"
+          : "border-white/[0.08] bg-black/20"
       }`}
     >
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
         {label}
       </p>
 
-      <p className="mt-1 text-lg font-black text-white">
+      <div className="mt-2 flex items-end gap-1">
+        <p
+          className={`text-3xl font-black ${
+            highlighted
+              ? "text-red-400"
+              : "text-white"
+          }`}
+        >
+          {value}
+        </p>
+
+        {suffix && (
+          <span className="pb-1 text-[0.62rem] font-black uppercase tracking-[0.1em] text-slate-600">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function StripStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 px-4 py-4">
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-sm font-black text-slate-200">
         {value}
       </p>
     </div>
   );
 }
 
-interface OverviewRowProps {
+function SectionHeading({
+  eyebrow,
+  title,
+  noBorder = false,
+}: {
+  eyebrow: string;
+  title: string;
+  noBorder?: boolean;
+}) {
+  return (
+    <div
+      className={
+        noBorder
+          ? ""
+          : "border-b border-white/[0.07] pb-3"
+      }
+    >
+      <p className="atlas-section-label">
+        {eyebrow}
+      </p>
+
+      <h2 className="mt-1 text-xl font-black">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function OverviewStat({
+  label,
+  value,
+  highlighted = false,
+}: {
   label: string;
   value: string;
-  isLast?: boolean;
+  highlighted?: boolean;
+}) {
+  return (
+    <article
+      className={`rounded-xl border p-4 ${
+        highlighted
+          ? "border-red-500/25 bg-red-500/[0.07]"
+          : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 text-xl font-black ${
+          highlighted
+            ? "text-red-400"
+            : "text-white"
+        }`}
+      >
+        {value}
+      </p>
+    </article>
+  );
 }
 
 function OverviewRow({
   label,
   value,
   isLast = false,
-}: OverviewRowProps) {
+}: {
+  label: string;
+  value: string;
+  isLast?: boolean;
+}) {
   return (
     <div
-      className={`flex items-center justify-between gap-4 ${
+      className={`flex items-start justify-between gap-5 py-4 ${
         isLast
           ? ""
-          : "border-b border-slate-800 pb-4"
+          : "border-b border-white/[0.06]"
       }`}
     >
-      <dt className="text-sm text-slate-500">
+      <dt className="text-sm text-slate-600">
         {label}
       </dt>
 
-      <dd className="text-right font-bold">
+      <dd className="max-w-[65%] text-right text-sm font-black text-slate-300">
         {value}
       </dd>
     </div>
   );
 }
 
-interface PresetStatProps {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}
-
 function PresetStat({
   label,
   value,
   highlighted = false,
-}: PresetStatProps) {
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
   return (
     <div
-      className={`rounded-2xl border p-4 ${
+      className={`rounded-lg border p-3 ${
         highlighted
-          ? "border-cyan-500/30 bg-cyan-500/10"
-          : "border-slate-800 bg-slate-950"
+          ? "border-red-500/25 bg-red-500/[0.07]"
+          : "border-white/[0.07] bg-black/20"
       }`}
     >
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
+      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
         {label}
       </p>
 
       <p
-        className={`mt-2 font-black ${
+        className={`mt-1 text-xs font-black ${
           highlighted
-            ? "text-cyan-400"
-            : "text-slate-200"
+            ? "text-red-400"
+            : "text-slate-300"
         }`}
       >
         {value}
@@ -987,22 +1137,14 @@ function PresetStat({
   );
 }
 
-function EmptySection({
-  title,
-  description,
+function EmptyState({
+  text,
 }: {
-  title: string;
-  description: string;
+  text: string;
 }) {
   return (
-    <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-8">
-      <h3 className="text-xl font-bold">
-        {title}
-      </h3>
-
-      <p className="mt-2 text-slate-400">
-        {description}
-      </p>
+    <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
+      {text}
     </div>
   );
 }
@@ -1013,7 +1155,7 @@ function TableHeading({
   label: string;
 }) {
   return (
-    <th className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-500">
+    <th className="whitespace-nowrap px-4 py-3 text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
       {label}
     </th>
   );
