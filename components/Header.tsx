@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 interface NavigationItem {
   label: string;
   href: string;
-  accent?: boolean;
 }
 
 const primaryNavigation: NavigationItem[] = [
@@ -38,7 +37,6 @@ const primaryNavigation: NavigationItem[] = [
   {
     label: "News",
     href: "/news",
-    accent: true,
   },
 ];
 
@@ -53,7 +51,7 @@ export default function Header() {
 
   useEffect(() => {
     function handleScroll() {
-      setIsScrolled(window.scrollY > 12);
+      setIsScrolled(window.scrollY > 10);
     }
 
     handleScroll();
@@ -100,11 +98,13 @@ export default function Header() {
     <header
       className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ${
         isScrolled
-          ? "border-slate-800 bg-slate-950/95 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl"
-          : "border-slate-800/70 bg-slate-950/85 backdrop-blur-lg"
+          ? "border-white/[0.08] bg-[#05070d]/95 shadow-[0_16px_45px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          : "border-white/[0.06] bg-[#05070d]/88 backdrop-blur-lg"
       }`}
     >
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-red-500/35 to-transparent" />
+
+      <nav className="atlas-shell">
         <div className="flex min-h-[4.5rem] items-center justify-between gap-4">
           <Link
             href="/"
@@ -112,26 +112,26 @@ export default function Header() {
             className="group flex min-w-0 items-center gap-3"
             aria-label="HandheldAtlas homepage"
           >
-            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-500/30 bg-cyan-500/10 shadow-[0_0_25px_rgba(6,182,212,0.1)] transition duration-300 group-hover:border-cyan-400 group-hover:bg-cyan-500 group-hover:shadow-[0_0_30px_rgba(6,182,212,0.35)]">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-red-500/30 bg-red-500/[0.08] shadow-[0_0_28px_rgba(239,35,60,0.12)] transition duration-300 group-hover:border-red-400 group-hover:bg-red-500 group-hover:shadow-[0_0_34px_rgba(239,35,60,0.3)]">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-transparent" />
 
-              <span className="relative text-sm font-black tracking-[-0.08em] text-cyan-400 transition group-hover:text-slate-950">
+              <span className="relative text-sm font-black tracking-[-0.08em] text-red-400 transition group-hover:text-white">
                 HA
               </span>
             </div>
 
             <div className="min-w-0">
-              <span className="block truncate text-lg font-black tracking-tight text-white transition group-hover:text-cyan-400 sm:text-xl">
+              <span className="block truncate text-lg font-black tracking-[-0.04em] text-white transition group-hover:text-red-400">
                 HandheldAtlas
               </span>
 
-              <span className="hidden text-[0.6rem] font-black uppercase tracking-[0.25em] text-slate-600 sm:block">
+              <span className="hidden text-[0.52rem] font-black uppercase tracking-[0.22em] text-slate-600 sm:block">
                 Performance intelligence
               </span>
             </div>
           </Link>
 
-          <div className="hidden items-center gap-1 xl:flex">
+          <div className="hidden items-center gap-0.5 xl:flex">
             {primaryNavigation.map((item) => {
               const isActive =
                 isActiveRoute(item.href);
@@ -140,37 +140,30 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative rounded-xl px-3 py-2 text-sm font-bold transition ${
+                  className={`relative rounded-lg px-3 py-2 text-xs font-black uppercase tracking-[0.06em] transition ${
                     isActive
-                      ? "bg-cyan-500/15 text-cyan-400"
-                      : item.accent
-                        ? "text-yellow-400 hover:bg-yellow-500/10 hover:text-yellow-300"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                      ? "bg-red-500/[0.09] text-red-400"
+                      : "text-slate-500 hover:bg-white/[0.035] hover:text-white"
                   }`}
                 >
                   {item.label}
 
                   {isActive && (
-                    <span className="absolute inset-x-3 -bottom-[1.13rem] h-0.5 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+                    <span className="absolute inset-x-3 -bottom-[1.17rem] h-0.5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,35,60,0.8)]" />
                   )}
-
-                  {item.accent &&
-                    !isActive && (
-                      <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]" />
-                    )}
                 </Link>
               );
             })}
           </div>
 
-          <div className="hidden items-center gap-3 xl:flex">
+          <div className="hidden items-center gap-2 xl:flex">
             <Link
               href="/search"
               aria-label="Search HandheldAtlas"
-              className={`flex h-10 w-10 items-center justify-center rounded-xl border transition ${
+              className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${
                 isSearchActive
-                  ? "border-cyan-500 bg-cyan-500 text-slate-950"
-                  : "border-slate-700 bg-slate-900 text-slate-300 hover:border-cyan-500 hover:text-cyan-400"
+                  ? "border-cyan-500 bg-cyan-500 text-[#05070d] shadow-[0_0_24px_rgba(24,215,255,0.24)]"
+                  : "border-white/[0.08] bg-black/20 text-slate-400 hover:border-cyan-500/50 hover:text-cyan-400"
               }`}
             >
               <SearchIcon />
@@ -178,9 +171,10 @@ export default function Header() {
 
             <Link
               href="/presets"
-              className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-black text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+              className="atlas-button-primary py-2.5"
             >
               Find settings
+              <ArrowIcon />
             </Link>
           </div>
 
@@ -189,10 +183,10 @@ export default function Header() {
               href="/search"
               onClick={closeMenu}
               aria-label="Search HandheldAtlas"
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
                 isSearchActive
-                  ? "border-cyan-500 bg-cyan-500 text-slate-950"
-                  : "border-slate-700 bg-slate-900 text-white hover:border-cyan-500 hover:text-cyan-400"
+                  ? "border-cyan-500 bg-cyan-500 text-[#05070d]"
+                  : "border-white/[0.08] bg-black/20 text-slate-300 hover:border-cyan-500/50 hover:text-cyan-400"
               }`}
             >
               <SearchIcon />
@@ -213,10 +207,10 @@ export default function Header() {
                   ? "Close navigation menu"
                   : "Open navigation menu"
               }
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
                 isMenuOpen
-                  ? "border-cyan-500 bg-cyan-500 text-slate-950"
-                  : "border-slate-700 bg-slate-900 text-white hover:border-cyan-500 hover:text-cyan-400"
+                  ? "border-red-500 bg-red-500 text-white"
+                  : "border-white/[0.08] bg-black/20 text-slate-300 hover:border-red-500/50 hover:text-red-400"
               }`}
             >
               <span className="sr-only">
@@ -261,7 +255,7 @@ export default function Header() {
           }`}
         >
           <div className="overflow-hidden">
-            <div className="border-t border-slate-800 py-4">
+            <div className="border-t border-white/[0.06] py-4">
               <div className="grid gap-2 sm:grid-cols-2">
                 {primaryNavigation.map(
                   (item) => {
@@ -275,12 +269,10 @@ export default function Header() {
                         key={item.href}
                         href={item.href}
                         onClick={closeMenu}
-                        className={`flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm font-bold transition ${
+                        className={`flex items-center justify-between rounded-lg border px-4 py-3 text-xs font-black uppercase tracking-[0.08em] transition ${
                           isActive
-                            ? "border-cyan-500/30 bg-cyan-500/15 text-cyan-400"
-                            : item.accent
-                              ? "border-yellow-500/20 bg-yellow-500/5 text-yellow-400 hover:bg-yellow-500/10"
-                              : "border-transparent bg-slate-900/70 text-slate-300 hover:border-slate-700 hover:text-white"
+                            ? "border-red-500/30 bg-red-500/[0.09] text-red-400"
+                            : "border-white/[0.06] bg-black/20 text-slate-400 hover:border-white/[0.14] hover:text-white"
                         }`}
                       >
                         <span>
@@ -290,8 +282,8 @@ export default function Header() {
                         <span
                           className={
                             isActive
-                              ? "text-cyan-400"
-                              : "text-slate-600"
+                              ? "text-red-400"
+                              : "text-slate-700"
                           }
                         >
                           →
@@ -305,10 +297,10 @@ export default function Header() {
               <Link
                 href="/search"
                 onClick={closeMenu}
-                className={`mt-3 flex items-center justify-between rounded-xl border px-4 py-3.5 text-sm font-black transition ${
+                className={`mt-3 flex items-center justify-between rounded-lg border px-4 py-3 text-xs font-black uppercase tracking-[0.08em] transition ${
                   isSearchActive
-                    ? "border-cyan-500 bg-cyan-500 text-slate-950"
-                    : "border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-slate-950"
+                    ? "border-cyan-500 bg-cyan-500 text-[#05070d]"
+                    : "border-cyan-500/25 bg-cyan-500/[0.06] text-cyan-400 hover:border-cyan-500/50"
                 }`}
               >
                 <span className="flex items-center gap-3">
@@ -319,26 +311,28 @@ export default function Header() {
                 <span>→</span>
               </Link>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <Link
                   href="/presets"
                   onClick={closeMenu}
-                  className="rounded-xl bg-cyan-500 px-5 py-3.5 text-center text-sm font-black text-slate-950 transition hover:bg-cyan-400"
+                  className="atlas-button-primary w-full"
                 >
-                  Find game settings
+                  Find settings
                 </Link>
 
                 <Link
-                  href="/benchmarks"
+                  href="/compare"
                   onClick={closeMenu}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-5 py-3.5 text-center text-sm font-black text-slate-200 transition hover:border-cyan-500 hover:text-cyan-400"
+                  className="atlas-button-secondary w-full"
                 >
-                  Browse benchmarks
+                  Compare devices
                 </Link>
               </div>
 
-              <div className="mt-4 rounded-xl border border-slate-800 bg-black/20 px-4 py-3 text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
+              <div className="mt-4 flex items-center justify-center gap-2 border-t border-white/[0.06] pt-4">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,35,60,0.8)]" />
+
+                <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-slate-700">
                   Tested settings · Real data · No filler
                 </p>
               </div>
@@ -355,7 +349,7 @@ function SearchIcon() {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className="h-5 w-5"
+      className="h-4 w-4"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -369,6 +363,24 @@ function SearchIcon() {
       />
 
       <path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
     </svg>
   );
 }
