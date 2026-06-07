@@ -1,15 +1,82 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://handheldatlas.com"),
+
   title: {
-    default: "HandheldAtlas",
+    default:
+      "HandheldAtlas — Handheld Gaming Settings, Benchmarks and Guides",
     template: "%s | HandheldAtlas",
   },
+
   description:
-    "Find handheld gaming settings, presets, benchmarks, comparisons and practical guides.",
+    "Handheld gaming settings, performance presets, verified benchmarks, device comparisons, guides and news for Steam Deck, ROG Ally, Legion Go and more.",
+
+  applicationName: "HandheldAtlas",
+
+  keywords: [
+    "handheld gaming",
+    "Steam Deck settings",
+    "ROG Ally settings",
+    "Legion Go settings",
+    "handheld benchmarks",
+    "gaming presets",
+    "handheld guides",
+  ],
+
+  authors: [
+    {
+      name: "HandheldAtlas",
+    },
+  ],
+
+  creator: "HandheldAtlas",
+  publisher: "HandheldAtlas",
+
+  alternates: {
+    canonical: "/",
+  },
+
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://handheldatlas.com",
+    siteName: "HandheldAtlas",
+    title:
+      "HandheldAtlas — Handheld Gaming Settings, Benchmarks and Guides",
+    description:
+      "Tested settings, real benchmarks, handheld profiles, guides and news without the usual filler.",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title:
+      "HandheldAtlas — Handheld Gaming Settings, Benchmarks and Guides",
+    description:
+      "Tested settings, real benchmarks, handheld profiles, guides and news without the usual filler.",
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  colorScheme: "dark",
+  themeColor: "#020617",
 };
 
 export default function RootLayout({
@@ -18,15 +85,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-slate-950 text-white antialiased">
-        <Header />
+    <html lang="en" className="bg-slate-950">
+      <body className="min-h-screen bg-slate-950 text-white antialiased">
+        <div className="flex min-h-screen flex-col">
+          <Header />
 
-        <div className="min-h-screen pt-16">
-          {children}
+          <div className="flex-1 pt-[4.5rem]">
+            {children}
+          </div>
+
+          <Footer />
         </div>
-
-        <Footer />
       </body>
     </html>
   );
