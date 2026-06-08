@@ -621,7 +621,7 @@ export async function createPreset(
   );
 
   redirect(
-    "/admin/presets?success=Preset%20created",
+    `/admin/presets/${preset.id}/edit?success=Preset%20saved`,
   );
 }
 

@@ -52,11 +52,19 @@ export default function PresetCreateForm({
     createGroup(),
   ]);
 
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<string[]>([]);
+
   function addGroup() {
+    const newGroup = createGroup();
+
     setGroups((currentGroups) => [
       ...currentGroups,
-      createGroup(),
+      newGroup,
     ]);
+
+    setCollapsedGroupIds((currentIds) =>
+      currentIds.filter((groupId) => groupId !== newGroup.id),
+    );
   }
 
   function updateGroupName(
@@ -81,6 +89,32 @@ export default function PresetCreateForm({
         (group) => group.id !== groupId,
       ),
     );
+
+    setCollapsedGroupIds((currentIds) =>
+      currentIds.filter(
+        (currentGroupId) => currentGroupId !== groupId,
+      ),
+    );
+  }
+
+  function toggleGroup(groupId: string) {
+    setCollapsedGroupIds((currentIds) =>
+      currentIds.includes(groupId)
+        ? currentIds.filter(
+            (currentGroupId) => currentGroupId !== groupId,
+          )
+        : [...currentIds, groupId],
+    );
+  }
+
+  function collapseAllGroups() {
+    setCollapsedGroupIds(
+      groups.map((group) => group.id),
+    );
+  }
+
+  function expandAllGroups() {
+    setCollapsedGroupIds([]);
   }
 
   function addItem(groupId: string) {
@@ -192,25 +226,11 @@ export default function PresetCreateForm({
             required
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
           >
-            <option value="Performance">
-              Performance
-            </option>
-
-            <option value="Balanced">
-              Balanced
-            </option>
-
-            <option value="Battery">
-              Battery
-            </option>
-
-            <option value="Docked">
-              Docked
-            </option>
-
-            <option value="Custom">
-              Custom
-            </option>
+            <option value="Performance">Performance</option>
+            <option value="Balanced">Balanced</option>
+            <option value="Battery">Battery</option>
+            <option value="Docked">Docked</option>
+            <option value="Custom">Custom</option>
           </select>
         </div>
 
@@ -288,12 +308,8 @@ export default function PresetCreateForm({
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
           >
             <option value="draft">Draft</option>
-            <option value="published">
-              Published
-            </option>
-            <option value="archived">
-              Archived
-            </option>
+            <option value="published">Published</option>
+            <option value="archived">Archived</option>
           </select>
         </div>
       </div>
@@ -332,13 +348,35 @@ export default function PresetCreateForm({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={addGroup}
-            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-5 py-3 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
-          >
-            + Add settings group
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {groups.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={collapseAllGroups}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-300 transition hover:border-cyan-500/50 hover:text-cyan-400"
+                >
+                  Collapse all
+                </button>
+
+                <button
+                  type="button"
+                  onClick={expandAllGroups}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-300 transition hover:border-cyan-500/50 hover:text-cyan-400"
+                >
+                  Expand all
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={addGroup}
+              className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-5 py-3 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+            >
+              + Add settings group
+            </button>
+          </div>
         </div>
 
         {groups.length === 0 ? (
@@ -354,154 +392,188 @@ export default function PresetCreateForm({
           </div>
         ) : (
           <div className="mt-6 space-y-6">
-            {groups.map((group, groupIndex) => (
-              <article
-                key={group.id}
-                className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5"
-              >
-                <div className="flex flex-wrap items-end gap-4">
-                  <div className="min-w-60 flex-1">
-                    <label
-                      htmlFor={`group-${group.id}`}
-                      className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-                    >
-                      Group {groupIndex + 1}
-                    </label>
+            {groups.map((group, groupIndex) => {
+              const isCollapsed =
+                collapsedGroupIds.includes(group.id);
 
-                    <input
-                      id={`group-${group.id}`}
-                      type="text"
-                      value={group.name}
-                      onChange={(event) =>
-                        updateGroupName(
-                          group.id,
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Graphics"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-bold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-                    />
+              return (
+                <article
+                  key={group.id}
+                  className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/70"
+                >
+                  <div className="flex flex-wrap items-end gap-4 p-5">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      aria-expanded={!isCollapsed}
+                      aria-controls={`group-content-${group.id}`}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-xl font-black text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+                    >
+                      {isCollapsed ? "+" : "−"}
+                    </button>
+
+                    <div className="min-w-60 flex-1">
+                      <label
+                        htmlFor={`group-${group.id}`}
+                        className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
+                      >
+                        Group {groupIndex + 1}
+                      </label>
+
+                      <input
+                        id={`group-${group.id}`}
+                        type="text"
+                        value={group.name}
+                        onChange={(event) =>
+                          updateGroupName(
+                            group.id,
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Graphics"
+                        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-bold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
+                      />
+
+                      <p className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
+                        {group.items.length}{" "}
+                        {group.items.length === 1
+                          ? "setting"
+                          : "settings"}
+                        {isCollapsed
+                          ? " · collapsed"
+                          : " · expanded"}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => addItem(group.id)}
+                      className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+                    >
+                      + Add setting
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => removeGroup(group.id)}
+                      className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500 hover:text-white"
+                    >
+                      Delete group
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => addItem(group.id)}
-                    className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
+                  <div
+                    id={`group-content-${group.id}`}
+                    className={`grid transition-all duration-300 ${
+                      isCollapsed
+                        ? "grid-rows-[0fr] opacity-0"
+                        : "grid-rows-[1fr] opacity-100"
+                    }`}
                   >
-                    + Add setting
-                  </button>
+                    <div className="overflow-hidden">
+                      <div className="space-y-4 border-t border-slate-800 p-5">
+                        {group.items.map(
+                          (item, itemIndex) => (
+                            <div
+                              key={item.id}
+                              className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:grid-cols-[1fr_1fr_1fr_auto]"
+                            >
+                              <div>
+                                <label
+                                  htmlFor={`label-${item.id}`}
+                                  className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500"
+                                >
+                                  Setting {itemIndex + 1}
+                                </label>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeGroup(group.id)
-                    }
-                    className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500 hover:text-white"
-                  >
-                    Delete group
-                  </button>
-                </div>
+                                <input
+                                  id={`label-${item.id}`}
+                                  type="text"
+                                  value={item.label}
+                                  onChange={(event) =>
+                                    updateItem(
+                                      group.id,
+                                      item.id,
+                                      "label",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Texture Quality"
+                                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
+                                />
+                              </div>
 
-                <div className="mt-5 space-y-4">
-                  {group.items.map(
-                    (item, itemIndex) => (
-                      <div
-                        key={item.id}
-                        className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:grid-cols-[1fr_1fr_1fr_auto]"
-                      >
-                        <div>
-                          <label
-                            htmlFor={`label-${item.id}`}
-                            className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500"
-                          >
-                            Setting {itemIndex + 1}
-                          </label>
+                              <div>
+                                <label
+                                  htmlFor={`value-${item.id}`}
+                                  className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500"
+                                >
+                                  Value
+                                </label>
 
-                          <input
-                            id={`label-${item.id}`}
-                            type="text"
-                            value={item.label}
-                            onChange={(event) =>
-                              updateItem(
-                                group.id,
-                                item.id,
-                                "label",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Texture Quality"
-                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-                          />
-                        </div>
+                                <input
+                                  id={`value-${item.id}`}
+                                  type="text"
+                                  value={item.value}
+                                  onChange={(event) =>
+                                    updateItem(
+                                      group.id,
+                                      item.id,
+                                      "value",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="High"
+                                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
+                                />
+                              </div>
 
-                        <div>
-                          <label
-                            htmlFor={`value-${item.id}`}
-                            className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500"
-                          >
-                            Value
-                          </label>
+                              <div>
+                                <label
+                                  htmlFor={`note-${item.id}`}
+                                  className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500"
+                                >
+                                  Note
+                                </label>
 
-                          <input
-                            id={`value-${item.id}`}
-                            type="text"
-                            value={item.value}
-                            onChange={(event) =>
-                              updateItem(
-                                group.id,
-                                item.id,
-                                "value",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="High"
-                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-                          />
-                        </div>
+                                <input
+                                  id={`note-${item.id}`}
+                                  type="text"
+                                  value={item.note}
+                                  onChange={(event) =>
+                                    updateItem(
+                                      group.id,
+                                      item.id,
+                                      "note",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Optional note"
+                                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
+                                />
+                              </div>
 
-                        <div>
-                          <label
-                            htmlFor={`note-${item.id}`}
-                            className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500"
-                          >
-                            Note
-                          </label>
-
-                          <input
-                            id={`note-${item.id}`}
-                            type="text"
-                            value={item.note}
-                            onChange={(event) =>
-                              updateItem(
-                                group.id,
-                                item.id,
-                                "note",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Optional note"
-                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeItem(
-                              group.id,
-                              item.id,
-                            )
-                          }
-                          className="self-end rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500 hover:text-white"
-                        >
-                          Delete
-                        </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeItem(
+                                    group.id,
+                                    item.id,
+                                  )
+                                }
+                                className="self-end rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500 hover:text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ),
+                        )}
                       </div>
-                    ),
-                  )}
-                </div>
-              </article>
-            ))}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
