@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabase/client";
 
 interface NavigationItem {
   label: string;
   href: string;
+}
+
+interface HeaderUser {
+  id: string;
+  displayName: string;
+  isAdmin: boolean;
 }
 
 const primaryNavigation: NavigationItem[] = [
@@ -42,12 +49,19 @@ const primaryNavigation: NavigationItem[] = [
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const [isMenuOpen, setIsMenuOpen] =
     useState(false);
 
   const [isScrolled, setIsScrolled] =
     useState(false);
+
+  const [currentUser, setCurrentUser] =
+    useState<HeaderUser | null>(null);
+
+  const [isAuthLoading, setIsAuthLoading] =
+    useState(true);
 
   useEffect(() => {
     function handleScroll() {
@@ -93,6 +107,54 @@ export default function Header() {
     };
   }, [isMenuOpen]);
 
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function loadUser() {
+      setIsAuthLoading(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setCurrentUser(null);
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name, is_admin")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setCurrentUser({
+        id: user.id,
+        displayName:
+          profile?.display_name ??
+          user.user_metadata?.display_name ??
+          user.email?.split("@")[0] ??
+          "Atlas member",
+        isAdmin: profile?.is_admin ?? false,
+      });
+
+      setIsAuthLoading(false);
+    }
+
+    void loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void loadUser();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   function closeMenu() {
     setIsMenuOpen(false);
   }
@@ -108,8 +170,26 @@ export default function Header() {
     );
   }
 
+  async function handleLogout() {
+    const supabase = createClient();
+
+    await supabase.auth.signOut();
+
+    setCurrentUser(null);
+    setIsMenuOpen(false);
+
+    router.push("/");
+    router.refresh();
+  }
+
   const isSearchActive =
     isActiveRoute("/search");
+
+  const profileInitial =
+    currentUser?.displayName
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "A";
 
   return (
     <header
@@ -186,13 +266,64 @@ export default function Header() {
               <SearchIcon />
             </Link>
 
-            <Link
-              href="/presets"
-              className="atlas-button-primary py-2.5"
-            >
-              Find settings
-              <ArrowIcon />
-            </Link>
+            {isAuthLoading ? (
+              <div className="h-10 w-28 animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.03]" />
+            ) : currentUser ? (
+              <>
+                <Link
+                  href="/profile"
+                  className="group flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 transition hover:border-cyan-500/40 hover:bg-cyan-500/[0.06]"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-xs font-black text-cyan-400">
+                    {profileInitial}
+                  </span>
+
+                  <span className="max-w-28 truncate text-xs font-black text-slate-300 transition group-hover:text-white">
+                    {currentUser.displayName}
+                  </span>
+                </Link>
+
+                <Link
+                  href="/my-submissions"
+                  className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                >
+                  My submissions
+                </Link>
+
+                {currentUser.isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="rounded-lg border border-purple-500/25 bg-purple-500/[0.07] px-3 py-2.5 text-xs font-black text-purple-300 transition hover:bg-purple-500 hover:text-white"
+                  >
+                    Admin
+                  </Link>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-lg border border-red-500/25 bg-red-500/[0.07] px-3 py-2.5 text-xs font-black text-red-400 transition hover:bg-red-500 hover:text-white"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                >
+                  Login
+                </Link>
+
+                <Link
+                  href="/register"
+                  className="atlas-button-primary py-2.5"
+                >
+                  Create account
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-2 xl:hidden">
@@ -208,6 +339,17 @@ export default function Header() {
             >
               <SearchIcon />
             </Link>
+
+            {currentUser && !isAuthLoading && (
+              <Link
+                href="/profile"
+                onClick={closeMenu}
+                aria-label="Open profile"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-sm font-black text-cyan-400"
+              >
+                {profileInitial}
+              </Link>
+            )}
 
             <button
               type="button"
@@ -328,6 +470,86 @@ export default function Header() {
                 <span>→</span>
               </Link>
 
+              {!isAuthLoading && (
+                <div className="mt-3 rounded-xl border border-white/[0.06] bg-black/20 p-3">
+                  {currentUser ? (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-sm font-black text-cyan-400">
+                          {profileInitial}
+                        </span>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-white">
+                            {currentUser.displayName}
+                          </p>
+
+                          <p className="mt-1 text-[0.55rem] font-black uppercase tracking-[0.12em] text-slate-600">
+                            {currentUser.isAdmin
+                              ? "Administrator"
+                              : "Community member"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <Link
+                          href="/profile"
+                          onClick={closeMenu}
+                          className="atlas-button-secondary w-full"
+                        >
+                          My profile
+                        </Link>
+
+                        <Link
+                          href="/my-submissions"
+                          onClick={closeMenu}
+                          className="atlas-button-secondary w-full"
+                        >
+                          My submissions
+                        </Link>
+
+                        {currentUser.isAdmin && (
+                          <Link
+                            href="/admin"
+                            onClick={closeMenu}
+                            className="rounded-xl border border-purple-500/25 bg-purple-500/[0.07] px-5 py-3 text-center text-sm font-black text-purple-300 transition hover:bg-purple-500 hover:text-white sm:col-span-2"
+                          >
+                            Admin dashboard
+                          </Link>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="w-full rounded-xl border border-red-500/25 bg-red-500/[0.07] px-5 py-3 text-sm font-black text-red-400 transition hover:bg-red-500 hover:text-white sm:col-span-2"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Link
+                        href="/login"
+                        onClick={closeMenu}
+                        className="atlas-button-secondary w-full"
+                      >
+                        Login
+                      </Link>
+
+                      <Link
+                        href="/register"
+                        onClick={closeMenu}
+                        className="atlas-button-primary w-full"
+                      >
+                        Create account
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <Link
                   href="/presets"
@@ -380,25 +602,6 @@ function SearchIcon() {
       />
 
       <path d="m20 20-3.5-3.5" />
-    </svg>
-  );
-}
-
-function ArrowIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-
-      <path d="m13 6 6 6-6 6" />
     </svg>
   );
 }
