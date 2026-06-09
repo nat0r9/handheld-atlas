@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import CommunityTopGamesPanel, {
+  type TopGamePanelItem,
+} from "../components/CommunityTopGamesPanel";
 import { createClient } from "../lib/supabase/server";
 
 interface FeaturedNews {
@@ -21,6 +24,56 @@ interface GameItem {
   best_handheld: string | null;
   recommended_tdp: string | null;
   cover_image_url: string | null;
+}
+
+interface MonthlyRatingRow {
+  rating: number;
+  game_id: string;
+  games:
+    | {
+        id: string;
+        name: string;
+        slug: string;
+        genre: string;
+        atlas_score: number | null;
+        best_handheld: string | null;
+        recommended_tdp: string | null;
+        cover_image_url: string | null;
+      }
+    | {
+        id: string;
+        name: string;
+        slug: string;
+        genre: string;
+        atlas_score: number | null;
+        best_handheld: string | null;
+        recommended_tdp: string | null;
+        cover_image_url: string | null;
+      }[]
+    | null;
+}
+
+interface MonthlyRatedGame {
+  id: string;
+  name: string;
+  slug: string;
+  genre: string;
+  atlas_score: number | null;
+  best_handheld: string | null;
+  recommended_tdp: string | null;
+  cover_image_url: string | null;
+}
+
+function getRelation<T>(
+  relation: T | T[] | null,
+): T | null {
+  if (!relation) {
+    return null;
+  }
+
+  return Array.isArray(relation)
+    ? relation[0] ?? null
+    : relation;
 }
 
 interface HandheldItem {
@@ -155,6 +208,31 @@ function getPresetStyle(
 export default async function HomePage() {
   const supabase = await createClient();
 
+  const now = new Date();
+
+  const monthStart = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      1,
+    ),
+  );
+
+  const nextMonthStart = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth() + 1,
+      1,
+    ),
+  );
+
+  const monthLabel =
+    new Intl.DateTimeFormat("en", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(monthStart);
+
   const [
     featuredNewsResult,
     gamesResult,
@@ -167,6 +245,7 @@ export default async function HomePage() {
     handheldsCountResult,
     presetsCountResult,
     benchmarksCountResult,
+    monthlyRatingsResult,
   ] = await Promise.all([
     supabase
       .from("news")
@@ -341,6 +420,31 @@ export default async function HomePage() {
         head: true,
       })
       .eq("status", "published"),
+
+    supabase
+      .from("game_ratings")
+      .select(`
+        rating,
+        game_id,
+        games (
+          id,
+          name,
+          slug,
+          genre,
+          atlas_score,
+          best_handheld,
+          recommended_tdp,
+          cover_image_url
+        )
+      `)
+      .gte(
+        "updated_at",
+        monthStart.toISOString(),
+      )
+      .lt(
+        "updated_at",
+        nextMonthStart.toISOString(),
+      ),
   ]);
 
   const featuredNews =
@@ -348,6 +452,156 @@ export default async function HomePage() {
 
   const games =
     (gamesResult.data ?? []) as GameItem[];
+
+  const monthlyRatings =
+    (monthlyRatingsResult.data ??
+      []) as unknown as MonthlyRatingRow[];
+
+  const monthlyGameMap =
+    new Map<
+      string,
+      {
+        game: MonthlyRatedGame;
+        ratings: number[];
+      }
+    >();
+
+  for (const row of monthlyRatings) {
+    const game =
+      getRelation<MonthlyRatedGame>(
+        row.games,
+      );
+
+    if (!game) {
+      continue;
+    }
+
+    const current =
+      monthlyGameMap.get(game.id);
+
+    if (current) {
+      current.ratings.push(
+        Number(row.rating),
+      );
+    } else {
+      monthlyGameMap.set(game.id, {
+        game,
+        ratings: [
+          Number(row.rating),
+        ],
+      });
+    }
+  }
+
+  const communityCandidates =
+    Array.from(
+      monthlyGameMap.values(),
+    )
+      .map(({ game, ratings }) => ({
+        id: game.id,
+        name: game.name,
+        slug: game.slug,
+        genre: game.genre,
+        atlasScore:
+          game.atlas_score,
+        bestHandheld:
+          game.best_handheld,
+        recommendedTdp:
+          game.recommended_tdp,
+        coverImageUrl:
+          game.cover_image_url,
+        communityRating:
+          ratings.reduce(
+            (total, rating) =>
+              total + rating,
+            0,
+          ) / ratings.length,
+        ratingCount:
+          ratings.length,
+      }))
+      .filter(
+        (game) =>
+          game.ratingCount >= 2,
+      )
+      .sort(
+        (first, second) => {
+          const ratingDifference =
+            second.communityRating -
+            first.communityRating;
+
+          if (
+            ratingDifference !== 0
+          ) {
+            return ratingDifference;
+          }
+
+          const countDifference =
+            second.ratingCount -
+            first.ratingCount;
+
+          if (
+            countDifference !== 0
+          ) {
+            return countDifference;
+          }
+
+          return (
+            (second.atlasScore ?? -1) -
+            (first.atlasScore ?? -1)
+          );
+        },
+      )
+      .slice(0, 5);
+
+  const useCommunityRanking =
+    communityCandidates.length >= 3;
+
+  const topGameItems: TopGamePanelItem[] =
+    useCommunityRanking
+      ? communityCandidates.map(
+          (game, index) => ({
+            rank: index + 1,
+            id: game.id,
+            name: game.name,
+            slug: game.slug,
+            genre: game.genre,
+            coverImageUrl:
+              game.coverImageUrl,
+            atlasScore:
+              game.atlasScore,
+            bestHandheld:
+              game.bestHandheld,
+            recommendedTdp:
+              game.recommendedTdp,
+            communityRating:
+              Number(
+                game.communityRating.toFixed(
+                  2,
+                ),
+              ),
+            ratingCount:
+              game.ratingCount,
+          }),
+        )
+      : games.map(
+          (game, index) => ({
+            rank: index + 1,
+            id: game.id,
+            name: game.name,
+            slug: game.slug,
+            genre: game.genre,
+            coverImageUrl:
+              game.cover_image_url,
+            atlasScore:
+              game.atlas_score,
+            bestHandheld:
+              game.best_handheld,
+            recommendedTdp:
+              game.recommended_tdp,
+            communityRating: null,
+            ratingCount: 0,
+          }),
+        );
 
   const handhelds =
     (handheldsResult.data ??
@@ -418,6 +672,7 @@ export default async function HomePage() {
     benchmarksResult.error?.message ??
     guidesResult.error?.message ??
     newsResult.error?.message ??
+    monthlyRatingsResult.error?.message ??
     null;
 
   return (
@@ -507,47 +762,19 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="relative hidden min-h-[29rem] lg:block">
-            <div className="absolute inset-8 rounded-full bg-purple-500/20 blur-[90px]" />
+          <div className="relative min-h-[31rem] min-w-0 sm:min-h-[34rem] lg:min-h-[29rem]">
+            <div className="absolute inset-6 rounded-full bg-purple-500/15 blur-[90px]" />
 
-            <div className="absolute bottom-12 right-0 w-[92%] rotate-[-4deg] rounded-[2rem] border border-red-500/20 bg-gradient-to-br from-slate-900/70 to-black/90 p-8 shadow-[0_0_80px_rgba(239,35,60,0.18)] backdrop-blur">
-              <div className="aspect-[16/9] overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_65%_40%,rgba(59,130,246,0.36),transparent_25%),radial-gradient(circle_at_35%_55%,rgba(239,35,60,0.28),transparent_30%),#080b13]">
-                {featuredNews?.cover_image_url ? (
-                  <div className="relative h-full">
-                    <Image
-                      src={featuredNews.cover_image_url}
-                      alt={featuredNews.title}
-                      fill
-                      sizes="50vw"
-                      className="object-cover object-center opacity-80"
-                    />
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-
-                    <div className="absolute inset-x-0 bottom-0 p-6">
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-red-400">
-                        {featuredNews.category}
-                      </p>
-
-                      <p className="mt-2 text-2xl font-black">
-                        {featuredNews.title}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <div className="text-center">
-                      <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-red-500/10 text-3xl font-black text-red-400">
-                        HA
-                      </div>
-
-                      <p className="mt-5 text-sm font-black uppercase tracking-[0.25em] text-slate-500">
-                        Handheld performance intelligence
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div className="relative h-full min-h-[31rem] sm:min-h-[34rem] lg:min-h-[29rem]">
+              <CommunityTopGamesPanel
+                items={topGameItems}
+                mode={
+                  useCommunityRanking
+                    ? "community"
+                    : "atlas"
+                }
+                monthLabel={monthLabel}
+              />
             </div>
           </div>
         </div>
