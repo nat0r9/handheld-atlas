@@ -140,6 +140,7 @@ export default async function AdminDashboardPage() {
     recentGuidesResult,
     recentPresetsResult,
     recentBenchmarksResult,
+    pendingSubmissionsResult,
   ] = await Promise.all([
     supabase
       .from("games")
@@ -254,6 +255,14 @@ export default async function AdminDashboardPage() {
         ascending: false,
       })
       .limit(4),
+
+    supabase
+      .from("preset_submissions")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "pending"),
   ]);
 
   const counts: DashboardCount[] = [
@@ -305,6 +314,14 @@ export default async function AdminDashboardPage() {
         "Write stories, updates and featured articles.",
       accent: "red",
     },
+    {
+      label: "Community submissions",
+      value: pendingSubmissionsResult.count ?? 0,
+      href: "/admin/submissions",
+      description:
+        "Review, approve and return community presets.",
+      accent: "purple",
+    },
   ];
 
   const recentNews =
@@ -334,6 +351,7 @@ export default async function AdminDashboardPage() {
     recentGuidesResult.error?.message ??
     recentPresetsResult.error?.message ??
     recentBenchmarksResult.error?.message ??
+    pendingSubmissionsResult.error?.message ??
     null;
 
   return (
