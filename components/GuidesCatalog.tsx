@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import GuideVoteButton from "./GuideVoteButton";
 
 export interface PublicGuide {
   id: string;
@@ -24,6 +25,9 @@ export interface PublicGuide {
     name: string;
     slug: string;
   } | null;
+
+  upvoteCount: number;
+  hasUpvoted: boolean;
 }
 
 interface GuidesCatalogProps {
@@ -31,7 +35,17 @@ interface GuidesCatalogProps {
   databaseError: string | null;
 }
 
-type SortOption = "Newest" | "Oldest" | "Title" | "Reading time";
+type SortOption =
+  | "Newest"
+  | "Most upvoted"
+  | "Oldest"
+  | "Title"
+  | "Reading time";
+
+interface VoteOverride {
+  count: number;
+  hasUpvoted: boolean;
+}
 
 function getDifficultyStyle(difficulty: string | null) {
   switch (difficulty?.toLowerCase()) {
@@ -74,6 +88,42 @@ export default function GuidesCatalog({
   const [gameFilter, setGameFilter] = useState("All");
   const [handheldFilter, setHandheldFilter] = useState("All");
   const [sortOption, setSortOption] = useState<SortOption>("Newest");
+
+  const [
+    voteOverrides,
+    setVoteOverrides,
+  ] = useState<
+    Record<string, VoteOverride>
+  >({});
+
+  function getVoteState(
+    guide: PublicGuide,
+  ): VoteOverride {
+    return (
+      voteOverrides[guide.id] ?? {
+        count:
+          guide.upvoteCount,
+        hasUpvoted:
+          guide.hasUpvoted,
+      }
+    );
+  }
+
+  function handleVoteChange(
+    guideId: string,
+    count: number,
+    hasUpvoted: boolean,
+  ) {
+    setVoteOverrides(
+      (current) => ({
+        ...current,
+        [guideId]: {
+          count,
+          hasUpvoted,
+        },
+      }),
+    );
+  }
 
   const categoryOptions = useMemo(
     () => [
@@ -163,6 +213,14 @@ export default function GuidesCatalog({
 
     return [...matchingGuides].sort((first, second) => {
       switch (sortOption) {
+        case "Most upvoted":
+          return (
+            getVoteState(second)
+              .count -
+            getVoteState(first)
+              .count
+          );
+
         case "Oldest":
           return (
             new Date(first.publishedAt ?? 0).getTime() -
@@ -187,6 +245,7 @@ export default function GuidesCatalog({
     gameFilter,
     handheldFilter,
     sortOption,
+    voteOverrides,
   ]);
 
   const beginnerGuides = guides.filter(
@@ -330,7 +389,13 @@ export default function GuidesCatalog({
             <FilterSelect
               label="Sort"
               value={sortOption}
-              options={["Newest", "Oldest", "Title", "Reading time"]}
+              options={[
+                "Newest",
+                "Most upvoted",
+                "Oldest",
+                "Title",
+                "Reading time",
+              ]}
               onChange={(value) => setSortOption(value as SortOption)}
             />
 
@@ -383,13 +448,20 @@ export default function GuidesCatalog({
             </div>
           ) : (
             <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredGuides.map((guide) => (
-                <Link
+              {filteredGuides.map((guide) => {
+                const voteState =
+                  getVoteState(guide);
+
+                return (
+                <article
                   key={guide.id}
-                  href={`/guides/${guide.slug}`}
-                  className="group min-w-0"
+                  className="atlas-card atlas-card-hover atlas-card-cyan group flex h-full min-w-0 flex-col"
                 >
-                  <article className="atlas-card atlas-card-hover atlas-card-cyan flex h-full min-w-0 flex-col">
+                  <Link
+                  
+                  href={`/guides/${guide.slug}`}
+                  className="block min-w-0"
+                >
                     <div className="relative aspect-[16/9] overflow-hidden border-b border-white/[0.07] sm:aspect-[16/10]">
                       {guide.coverImageUrl ? (
                         <Image
@@ -427,6 +499,7 @@ export default function GuidesCatalog({
                         </h3>
                       </div>
                     </div>
+                  </Link>
 
                     <div className="flex flex-1 flex-col p-4">
                       <p className="line-clamp-2 text-sm leading-6 text-slate-500 sm:line-clamp-3">
@@ -462,14 +535,33 @@ export default function GuidesCatalog({
                           </p>
                         </div>
 
-                        <span className="shrink-0 text-xs font-black text-cyan-400 transition group-hover:text-white">
+                        <Link
+                          href={`/guides/${guide.slug}`}
+                          className="shrink-0 text-xs font-black text-cyan-400 transition group-hover:text-white"
+                        >
                           Read guide →
-                        </span>
+                        </Link>
+                      </div>
+
+                      <div className="mt-4">
+                        <GuideVoteButton
+                          guideId={guide.id}
+                          initialCount={
+                            voteState.count
+                          }
+                          initialHasUpvoted={
+                            voteState.hasUpvoted
+                          }
+                          onVoteChange={
+                            handleVoteChange
+                          }
+                          compact
+                        />
                       </div>
                     </div>
-                  </article>
-                </Link>
-              ))}
+                </article>
+                );
+              })}
             </div>
           )}
         </section>

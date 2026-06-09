@@ -15,10 +15,17 @@ interface DatabaseGuide {
   related_game_slug: string | null;
   related_handheld_slug: string | null;
   published_at: string | null;
+  guide_votes: Array<{
+    user_id: string;
+  }>;
 }
 
 export default async function GuidesPage() {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
     .from("guides")
@@ -33,7 +40,10 @@ export default async function GuidesPage() {
       cover_image_url,
       related_game_slug,
       related_handheld_slug,
-      published_at
+      published_at,
+      guide_votes (
+        user_id
+      )
     `)
     .eq("status", "published")
     .order("published_at", {
@@ -144,6 +154,16 @@ export default async function GuidesPage() {
                 guide.related_handheld_slug,
             }
           : null,
+
+      upvoteCount:
+        guide.guide_votes?.length ?? 0,
+
+      hasUpvoted:
+        user !== null &&
+        (guide.guide_votes ?? []).some(
+          (vote) =>
+            vote.user_id === user.id,
+        ),
     }));
 
   const databaseError =

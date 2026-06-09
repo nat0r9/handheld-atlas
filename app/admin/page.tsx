@@ -141,6 +141,7 @@ export default async function AdminDashboardPage() {
     recentPresetsResult,
     recentBenchmarksResult,
     pendingSubmissionsResult,
+    pendingGuideSubmissionsResult,
   ] = await Promise.all([
     supabase
       .from("games")
@@ -263,6 +264,14 @@ export default async function AdminDashboardPage() {
         head: true,
       })
       .eq("status", "pending"),
+
+    supabase
+      .from("guide_submissions")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "pending"),
   ]);
 
   const counts: DashboardCount[] = [
@@ -322,6 +331,14 @@ export default async function AdminDashboardPage() {
         "Review, approve and return community presets.",
       accent: "purple",
     },
+    {
+      label: "Guide submissions",
+      value: pendingGuideSubmissionsResult.count ?? 0,
+      href: "/admin/guide-submissions",
+      description:
+        "Review, approve and return community guides.",
+      accent: "yellow",
+    },
   ];
 
   const recentNews =
@@ -352,6 +369,7 @@ export default async function AdminDashboardPage() {
     recentPresetsResult.error?.message ??
     recentBenchmarksResult.error?.message ??
     pendingSubmissionsResult.error?.message ??
+    pendingGuideSubmissionsResult.error?.message ??
     null;
 
   return (

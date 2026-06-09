@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import GuideVoteButton from "../../../components/GuideVoteButton";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 
@@ -24,6 +25,9 @@ interface DatabaseGuide {
   related_handheld_slug: string | null;
   published_at: string | null;
   updated_at: string | null;
+  guide_votes: Array<{
+    user_id: string;
+  }>;
 }
 
 interface RelatedContent {
@@ -49,7 +53,10 @@ async function getGuide(slug: string) {
       related_game_slug,
       related_handheld_slug,
       published_at,
-      updated_at
+      updated_at,
+      guide_votes (
+        user_id
+      )
     `)
     .eq("slug", slug)
     .eq("status", "published")
@@ -310,6 +317,25 @@ export default async function GuidePage({
     notFound();
   }
 
+  const supabase =
+    await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const upvoteCount =
+    guide.guide_votes?.length ??
+    0;
+
+  const hasUpvoted =
+    user !== null &&
+    (guide.guide_votes ??
+      []).some(
+      (vote) =>
+        vote.user_id === user.id,
+    );
+
   const {
     relatedGame,
     relatedHandheld,
@@ -423,6 +449,18 @@ export default async function GuidePage({
               value={formatDate(
                 guide.published_at,
               )}
+            />
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <GuideVoteButton
+              guideId={guide.id}
+              initialCount={
+                upvoteCount
+              }
+              initialHasUpvoted={
+                hasUpvoted
+              }
             />
           </div>
         </div>
