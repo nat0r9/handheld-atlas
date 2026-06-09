@@ -21,8 +21,6 @@ interface GameItem {
   genre: string;
   developer: string | null;
   atlas_score: number | null;
-  best_handheld: string | null;
-  recommended_tdp: string | null;
   cover_image_url: string | null;
 }
 
@@ -59,8 +57,6 @@ interface MonthlyRatedGame {
   slug: string;
   genre: string;
   atlas_score: number | null;
-  best_handheld: string | null;
-  recommended_tdp: string | null;
   cover_image_url: string | null;
 }
 
@@ -504,10 +500,6 @@ export default async function HomePage() {
         genre: game.genre,
         atlasScore:
           game.atlas_score,
-        bestHandheld:
-          game.best_handheld,
-        recommendedTdp:
-          game.recommended_tdp,
         coverImageUrl:
           game.cover_image_url,
         communityRating:
@@ -569,10 +561,6 @@ export default async function HomePage() {
               game.coverImageUrl,
             atlasScore:
               game.atlasScore,
-            bestHandheld:
-              game.bestHandheld,
-            recommendedTdp:
-              game.recommendedTdp,
             communityRating:
               Number(
                 game.communityRating.toFixed(
@@ -594,10 +582,6 @@ export default async function HomePage() {
               game.cover_image_url,
             atlasScore:
               game.atlas_score,
-            bestHandheld:
-              game.best_handheld,
-            recommendedTdp:
-              game.recommended_tdp,
             communityRating: null,
             ratingCount: 0,
           }),
@@ -857,28 +841,13 @@ export default async function HomePage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2 p-4 text-xs">
-                      <p className="text-slate-400">
-                        Best:{" "}
-                        <strong className="text-slate-200">
-                          {game.best_handheld ??
-                            "Not set"}
+                    <div className="p-4 text-xs">
+                      <span className="text-slate-500">
+                        Avg FPS:{" "}
+                        <strong className="text-slate-300">
+                          —
                         </strong>
-                      </p>
-
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-slate-500">
-                          Avg FPS:{" "}
-                          <strong className="text-slate-300">
-                            —
-                          </strong>
-                        </span>
-
-                        <span className="text-slate-500">
-                          {game.recommended_tdp ??
-                            "TDP n/a"}
-                        </span>
-                      </div>
+                      </span>
                     </div>
                   </article>
                 </Link>

@@ -4,8 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { PublicGame } from "../app/games/page";
-import GameRatingControl from "./GameRatingControl";
-import AtlasScore from "./AtlasScore";
 
 type RatingFilter =
   | "All"
@@ -15,18 +13,7 @@ type RatingFilter =
   | "Mixed"
   | "Unrated";
 
-type SortOption =
-  | "Score"
-  | "Community"
-  | "Name"
-  | "Newest"
-  | "Oldest";
-
-interface RatingOverride {
-  averageRating: number | null;
-  ratingCount: number;
-  userRating: number | null;
-}
+type SortOption = "Score" | "Name" | "Newest" | "Oldest";
 
 interface GamesCatalogProps {
   games: PublicGame[];
@@ -87,69 +74,10 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
   const [searchQuery, setSearchQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("All");
   const [genreFilter, setGenreFilter] = useState("All");
-  const [handheldFilter, setHandheldFilter] = useState("All");
-  const [tdpFilter, setTdpFilter] = useState("All");
   const [sortOption, setSortOption] = useState<SortOption>("Score");
-  const [ratingOverrides, setRatingOverrides] =
-    useState<Record<string, RatingOverride>>({});
-
-  function getCommunityRating(
-    game: PublicGame,
-  ): RatingOverride {
-    return (
-      ratingOverrides[game.id] ?? {
-        averageRating:
-          game.communityRating,
-        ratingCount:
-          game.ratingCount,
-        userRating:
-          game.userRating,
-      }
-    );
-  }
-
-  function handleRatingChange(
-    gameId: string,
-    result: RatingOverride,
-  ) {
-    setRatingOverrides(
-      (current) => ({
-        ...current,
-        [gameId]: result,
-      }),
-    );
-  }
 
   const genreOptions = useMemo(
     () => ["All", ...Array.from(new Set(games.map((game) => game.genre).filter(Boolean))).sort()],
-    [games],
-  );
-
-  const handheldOptions = useMemo(
-    () => [
-      "All",
-      ...Array.from(
-        new Set(
-          games
-            .map((game) => game.bestHandheld)
-            .filter((value): value is string => typeof value === "string" && value.length > 0),
-        ),
-      ).sort(),
-    ],
-    [games],
-  );
-
-  const tdpOptions = useMemo(
-    () => [
-      "All",
-      ...Array.from(
-        new Set(
-          games
-            .map((game) => game.recommendedTdp)
-            .filter((value): value is string => typeof value === "string" && value.length > 0),
-        ),
-      ).sort(),
-    ],
     [games],
   );
 
@@ -162,8 +90,6 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
         game.name,
         game.genre,
         game.developer ?? "",
-        game.bestHandheld ?? "",
-        game.recommendedTdp ?? "",
         game.notes ?? "",
       ]
         .join(" ")
@@ -172,65 +98,23 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
       return (
         (normalizedQuery.length === 0 || searchableText.includes(normalizedQuery)) &&
         (ratingFilter === "All" || rating.label === ratingFilter) &&
-        (genreFilter === "All" || game.genre === genreFilter) &&
-        (handheldFilter === "All" || game.bestHandheld === handheldFilter) &&
-        (tdpFilter === "All" || game.recommendedTdp === tdpFilter)
+        (genreFilter === "All" || game.genre === genreFilter)
       );
     });
 
     return [...matchingGames].sort((first, second) => {
       switch (sortOption) {
-        case "Community": {
-          const firstRating =
-            getCommunityRating(first);
-
-          const secondRating =
-            getCommunityRating(second);
-
-          const averageDifference =
-            (secondRating.averageRating ?? -1) -
-            (firstRating.averageRating ?? -1);
-
-          if (averageDifference !== 0) {
-            return averageDifference;
-          }
-
-          const countDifference =
-            secondRating.ratingCount -
-            firstRating.ratingCount;
-
-          if (countDifference !== 0) {
-            return countDifference;
-          }
-
-          return (
-            (second.atlasScore ?? -1) -
-            (first.atlasScore ?? -1)
-          );
-        }
-
         case "Name":
           return first.name.localeCompare(second.name);
-
         case "Newest":
-          return (
-            (second.releaseYear ?? 0) -
-            (first.releaseYear ?? 0)
-          );
-
+          return (second.releaseYear ?? 0) - (first.releaseYear ?? 0);
         case "Oldest":
           return (
-            (first.releaseYear ??
-              Number.MAX_SAFE_INTEGER) -
-            (second.releaseYear ??
-              Number.MAX_SAFE_INTEGER)
+            (first.releaseYear ?? Number.MAX_SAFE_INTEGER) -
+            (second.releaseYear ?? Number.MAX_SAFE_INTEGER)
           );
-
         default:
-          return (
-            (second.atlasScore ?? -1) -
-            (first.atlasScore ?? -1)
-          );
+          return (second.atlasScore ?? -1) - (first.atlasScore ?? -1);
       }
     });
   }, [
@@ -238,10 +122,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
     searchQuery,
     ratingFilter,
     genreFilter,
-    handheldFilter,
-    tdpFilter,
     sortOption,
-    ratingOverrides,
   ]);
 
   const ratedGames = games.filter((game) => game.atlasScore !== null);
@@ -258,16 +139,12 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
     searchQuery.length > 0 ||
     ratingFilter !== "All" ||
     genreFilter !== "All" ||
-    handheldFilter !== "All" ||
-    tdpFilter !== "All" ||
     sortOption !== "Score";
 
   function resetFilters() {
     setSearchQuery("");
     setRatingFilter("All");
     setGenreFilter("All");
-    setHandheldFilter("All");
-    setTdpFilter("All");
     setSortOption("Score");
   }
 
@@ -340,22 +217,9 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
             />
             <FilterSelect label="Genre" value={genreFilter} options={genreOptions} onChange={setGenreFilter} />
             <FilterSelect
-              label="Handheld"
-              value={handheldFilter}
-              options={handheldOptions}
-              onChange={setHandheldFilter}
-            />
-            <FilterSelect label="TDP" value={tdpFilter} options={tdpOptions} onChange={setTdpFilter} />
-            <FilterSelect
               label="Sort"
               value={sortOption}
-              options={[
-                "Score",
-                "Community",
-                "Name",
-                "Newest",
-                "Oldest",
-              ]}
+              options={["Score", "Name", "Newest", "Oldest"]}
               onChange={(value) => setSortOption(value as SortOption)}
             />
 
@@ -404,14 +268,8 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                 const scoreWidth = getScoreWidth(game.atlasScore);
 
                 return (
-                  <article
-                    key={game.id}
-                    className="group atlas-card atlas-card-hover flex h-full min-w-0 flex-col"
-                  >
-                    <Link
-                      href={`/games/${game.slug}`}
-                      className="block"
-                    >
+                  <Link key={game.id} href={`/games/${game.slug}`} className="group min-w-0">
+                    <article className="atlas-card atlas-card-hover flex h-full min-w-0 flex-col">
                       <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[4/5]">
                         {game.coverImageUrl ? (
                           <Image
@@ -436,10 +294,16 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                         </div>
 
                         <div className="absolute right-3 top-3">
-                          <AtlasScore
-                            score={game.atlasScore}
-                            variant="compact"
-                          />
+                          <div
+                            className={`flex h-12 w-12 flex-col items-center justify-center rounded-xl border backdrop-blur sm:h-14 sm:w-14 ${rating.scoreClassName}`}
+                          >
+                            <span className="text-[0.42rem] font-black uppercase tracking-[0.1em] sm:text-[0.45rem]">
+                              Atlas
+                            </span>
+                            <strong className="mt-0.5 text-lg leading-none sm:text-xl">
+                              {game.atlasScore ?? "—"}
+                            </strong>
+                          </div>
                         </div>
 
                         <div className="absolute inset-x-0 bottom-0 p-4">
@@ -455,9 +319,8 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                           </p>
                         </div>
                       </div>
-                    </Link>
 
-                    <div className="flex flex-1 flex-col p-4">
+                      <div className="flex flex-1 flex-col p-4">
                         <div>
                           <div className="flex items-center justify-between text-[0.58rem] font-black uppercase tracking-[0.12em] text-slate-600 sm:text-[0.62rem]">
                             <span>Compatibility</span>
@@ -471,38 +334,13 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                           </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <InfoTile label="Best handheld" value={game.bestHandheld ?? "Not set"} />
-                          <InfoTile label="TDP" value={game.recommendedTdp ?? "Not set"} highlighted />
-                        </div>
 
-                        <div className="mt-4">
-                          <GameRatingControl
-                            gameId={game.id}
-                            initialAverageRating={
-                              game.communityRating
-                            }
-                            initialRatingCount={
-                              game.ratingCount
-                            }
-                            initialUserRating={
-                              game.userRating
-                            }
-                            compact
-                            onRatingChange={
-                              handleRatingChange
-                            }
-                          />
-                        </div>
-
-                        <Link
-                          href={`/games/${game.slug}`}
-                          className="mt-auto pt-4 text-xs font-black text-cyan-400 transition group-hover:text-white"
-                        >
+                        <p className="mt-auto pt-4 text-xs font-black text-cyan-400 transition group-hover:text-white">
                           Open game profile →
-                        </Link>
+                        </p>
                       </div>
-                  </article>
+                    </article>
+                  </Link>
                 );
               })}
             </div>

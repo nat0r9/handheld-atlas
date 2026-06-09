@@ -473,15 +473,7 @@ export default async function GamePage({ params }: GamePageProps) {
               variant="large"
               className="h-full"
             />
-            <HeroMetric
-              label="Best handheld"
-              value={game.best_handheld ?? "Not set"}
-            />
-            <HeroMetric
-              label="Recommended TDP"
-              value={game.recommended_tdp ?? "Not set"}
-            />
-            <HeroMetric
+<HeroMetric
               label="Highest tested"
               value={highestTestedFps !== null ? `${highestTestedFps}` : "—"}
               suffix={highestTestedFps !== null ? "FPS" : undefined}
@@ -540,11 +532,7 @@ export default async function GamePage({ params }: GamePageProps) {
                 label="Average FPS"
                 value={averageTestedFps !== null ? `${averageTestedFps}` : "—"}
               />
-              <OverviewStat
-                label="TDP"
-                value={game.recommended_tdp ?? "Not set"}
-              />
-            </div>
+</div>
 
             <div className="mt-5 border-t border-white/[0.07] pt-5">
               <p className="atlas-section-label">
@@ -588,17 +576,9 @@ export default async function GamePage({ params }: GamePageProps) {
               <OverviewRow
                 label="Release year"
                 value={game.release_year?.toString() ?? "Not set"}
-              />
-              <OverviewRow
-                label="Best handheld"
-                value={game.best_handheld ?? "Not set"}
-              />
-              <OverviewRow
-                label="Recommended TDP"
-                value={game.recommended_tdp ?? "Not set"}
                 isLast
               />
-            </dl>
+</dl>
           </article>
         </section>
 

@@ -17,8 +17,6 @@ export interface TopGamePanelItem {
   genre: string;
   coverImageUrl: string | null;
   atlasScore: number | null;
-  bestHandheld: string | null;
-  recommendedTdp: string | null;
   communityRating: number | null;
   ratingCount: number;
 }
@@ -215,7 +213,7 @@ export default function CommunityTopGamesPanel({
           ? `Community Top 5 Games for ${monthLabel}`
           : "Atlas Top 5 Games"
       }
-      className="group relative min-h-[28rem] overflow-hidden rounded-[2rem] border border-red-500/20 bg-[#070a11]/95 shadow-[0_0_70px_rgba(239,35,60,0.14)] backdrop-blur sm:min-h-[34rem] lg:min-h-[29rem]"
+      className="group relative min-h-[31rem] overflow-hidden rounded-[2rem] border border-red-500/20 bg-[#070a11]/95 shadow-[0_0_70px_rgba(239,35,60,0.14)] backdrop-blur sm:min-h-[34rem] lg:min-h-[29rem]"
     >
       {activeItem.coverImageUrl ? (
         <Image
@@ -236,7 +234,7 @@ export default function CommunityTopGamesPanel({
       <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/90 to-[#05070d]/25" />
       <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/40" />
 
-      <div className="relative flex min-h-[28rem] flex-col p-4 sm:min-h-[32rem] sm:p-6 lg:min-h-[29rem] lg:p-7">
+      <div className="relative flex min-h-[31rem] flex-col p-5 sm:min-h-[34rem] sm:p-7 lg:min-h-[29rem]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[0.58rem] font-black uppercase tracking-[0.18em] text-red-400">
@@ -248,7 +246,7 @@ export default function CommunityTopGamesPanel({
             <p className="mt-2 text-xs text-slate-500">
               {mode === "community"
                 ? "Ranked by this month's verified user ratings"
-                : "Atlas-ranked until the community takes over"}
+                : "Editorial fallback until enough community votes arrive"}
             </p>
           </div>
 
@@ -258,7 +256,7 @@ export default function CommunityTopGamesPanel({
           </span>
         </div>
 
-        <div className="mt-auto max-w-xl pt-8 sm:pt-12 lg:max-w-md lg:pt-16">
+        <div className="mt-auto max-w-xl pt-12 sm:pt-16 lg:max-w-md">
           <div className="flex items-end gap-4">
             <span className="text-6xl font-black leading-none tracking-[-0.08em] text-white/10 sm:text-7xl">
               #
@@ -276,7 +274,7 @@ export default function CommunityTopGamesPanel({
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric
               label={
                 mode === "community"
@@ -298,30 +296,22 @@ export default function CommunityTopGamesPanel({
               label={
                 mode === "community"
                   ? "Monthly votes"
-                  : "Genre"
+                  : "Atlas score"
               }
               value={
                 mode === "community"
                   ? activeItem.ratingCount.toString()
-                  : activeItem.genre
+                  : activeItem.atlasScore !==
+                      null
+                    ? `${activeItem.atlasScore}`
+                    : "—"
               }
             />
 
             <Metric
-              label="Best handheld"
-              value={
-                activeItem.bestHandheld ??
-                "Not set"
-              }
+              label="Genre"
+              value={activeItem.genre}
               wide
-            />
-
-            <Metric
-              label="Recommended"
-              value={
-                activeItem.recommendedTdp ??
-                "Not set"
-              }
             />
           </div>
 
@@ -350,7 +340,7 @@ export default function CommunityTopGamesPanel({
         </div>
 
         {safeItems.length > 1 && (
-          <div className="mt-4 flex items-center justify-between gap-4 border-t sm:mt-5 border-white/[0.07] pt-4">
+          <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/[0.07] pt-4">
             <button
               type="button"
               onClick={showPrevious}
