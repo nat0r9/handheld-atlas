@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import GameRatingControl from "../../../components/GameRatingControl";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 
@@ -195,6 +196,74 @@ async function getGameBenchmarks(gameId: string) {
   return (data ?? []) as unknown as DatabaseBenchmark[];
 }
 
+async function getGameRatings(
+  gameId: string,
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("game_ratings")
+    .select("rating, user_id")
+    .eq("game_id", gameId);
+
+  if (error) {
+    console.error(
+      "Could not load game ratings:",
+      error.message,
+    );
+
+    return {
+      averageRating: null,
+      ratingCount: 0,
+      userRating: null,
+    };
+  }
+
+  const ratingValues =
+    (data ?? []).map(
+      (row) => Number(row.rating),
+    );
+
+  const averageRating =
+    ratingValues.length > 0
+      ? ratingValues.reduce(
+          (total, value) =>
+            total + value,
+          0,
+        ) / ratingValues.length
+      : null;
+
+  const userRating =
+    user !== null
+      ? (data ?? []).find(
+          (row) =>
+            row.user_id === user.id,
+        )?.rating ?? null
+      : null;
+
+  return {
+    averageRating:
+      averageRating !== null
+        ? Number(
+            averageRating.toFixed(2),
+          )
+        : null,
+    ratingCount:
+      ratingValues.length,
+    userRating:
+      userRating !== null
+        ? Number(userRating)
+        : null,
+  };
+}
+
 export async function generateMetadata({
   params,
 }: GamePageProps): Promise<Metadata> {
@@ -298,9 +367,14 @@ export default async function GamePage({ params }: GamePageProps) {
     notFound();
   }
 
-  const [gamePresets, gameBenchmarks] = await Promise.all([
+  const [
+    gamePresets,
+    gameBenchmarks,
+    gameRatings,
+  ] = await Promise.all([
     getGamePresets(game.id),
     getGameBenchmarks(game.id),
+    getGameRatings(game.id),
   ]);
 
   const compatibility = getCompatibilityData(game.atlas_score);
@@ -473,6 +547,35 @@ export default async function GamePage({ params }: GamePageProps) {
                 label="TDP"
                 value={game.recommended_tdp ?? "Not set"}
               />
+            </div>
+
+            <div className="mt-5 border-t border-white/[0.07] pt-5">
+              <p className="atlas-section-label">
+                Community rating
+              </p>
+
+              <h3 className="mt-2 text-xl font-black">
+                Rate this game
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Community ratings are separate from the editorial Atlas Score.
+              </p>
+
+              <div className="mt-4">
+                <GameRatingControl
+                  gameId={game.id}
+                  initialAverageRating={
+                    gameRatings.averageRating
+                  }
+                  initialRatingCount={
+                    gameRatings.ratingCount
+                  }
+                  initialUserRating={
+                    gameRatings.userRating
+                  }
+                />
+              </div>
             </div>
           </article>
 
