@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import PresetVoteButton from "./PresetVoteButton";
 
 export type PublicPresetType =
   | "Performance"
@@ -36,6 +37,8 @@ export interface PublicPreset {
   communityRating: number | null;
   summary: string | null;
   publishedAt: string | null;
+  upvoteCount: number;
+  hasUpvoted: boolean;
 
   game: {
     name: string;
@@ -58,7 +61,17 @@ interface PresetsCatalogProps {
 
 type PresetFilter = "All" | PublicPresetType;
 
-type SortOption = "Newest" | "Rating" | "FPS" | "Name";
+type SortOption =
+  | "Newest"
+  | "Most upvoted"
+  | "Rating"
+  | "FPS"
+  | "Name";
+
+interface VoteOverride {
+  count: number;
+  hasUpvoted: boolean;
+}
 
 const presetFilters: PresetFilter[] = [
   "All",
@@ -127,6 +140,34 @@ export default function PresetsCatalog({
   const [handheldFilter, setHandheldFilter] = useState("All");
   const [sortOption, setSortOption] = useState<SortOption>("Newest");
   const [expandedPresetIds, setExpandedPresetIds] = useState<string[]>([]);
+  const [voteOverrides, setVoteOverrides] = useState<
+    Record<string, VoteOverride>
+  >({});
+
+  function getVoteState(
+    preset: PublicPreset,
+  ): VoteOverride {
+    return (
+      voteOverrides[preset.id] ?? {
+        count: preset.upvoteCount,
+        hasUpvoted: preset.hasUpvoted,
+      }
+    );
+  }
+
+  function handleVoteChange(
+    presetId: string,
+    count: number,
+    hasUpvoted: boolean,
+  ) {
+    setVoteOverrides((current) => ({
+      ...current,
+      [presetId]: {
+        count,
+        hasUpvoted,
+      },
+    }));
+  }
 
   const gameOptions = useMemo(
     () => [
@@ -204,6 +245,11 @@ export default function PresetsCatalog({
 
     return [...matchingPresets].sort((first, second) => {
       switch (sortOption) {
+        case "Most upvoted":
+          return (
+            getVoteState(second).count -
+            getVoteState(first).count
+          );
         case "Rating":
           return (
             (second.communityRating ?? -1) -
@@ -227,6 +273,7 @@ export default function PresetsCatalog({
     gameFilter,
     handheldFilter,
     sortOption,
+    voteOverrides,
   ]);
 
   const hasActiveFilters =
@@ -364,7 +411,13 @@ export default function PresetsCatalog({
             <FilterSelect
               label="Sort"
               value={sortOption}
-              options={["Newest", "Rating", "FPS", "Name"]}
+              options={[
+                "Newest",
+                "Most upvoted",
+                "Rating",
+                "FPS",
+                "Name",
+              ]}
               onChange={(value) => setSortOption(value as SortOption)}
             />
 
@@ -438,6 +491,9 @@ export default function PresetsCatalog({
                   0,
                 );
 
+                const voteState =
+                  getVoteState(preset);
+
                 return (
                   <article
                     key={preset.id}
@@ -502,7 +558,7 @@ export default function PresetsCatalog({
                         />
                       </div>
 
-                      <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-end">
+                      <div className="flex flex-wrap items-center justify-between gap-3 lg:flex-col lg:items-end">
                         {preset.communityRating !== null ? (
                           <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:px-4 lg:py-3 lg:text-right">
                             <p className="text-[0.5rem] font-black uppercase tracking-[0.1em] text-yellow-500 sm:text-[0.52rem] sm:tracking-[0.12em]">
@@ -522,6 +578,15 @@ export default function PresetsCatalog({
                             </p>
                           </div>
                         )}
+
+                        <PresetVoteButton
+                          presetId={preset.id}
+                          initialCount={preset.upvoteCount}
+                          initialHasUpvoted={preset.hasUpvoted}
+                          count={voteState.count}
+                          hasUpvoted={voteState.hasUpvoted}
+                          onVoteChange={handleVoteChange}
+                        />
 
                         <button
                           type="button"

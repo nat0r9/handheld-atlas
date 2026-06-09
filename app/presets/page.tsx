@@ -46,10 +46,17 @@ interface DatabasePreset {
     manufacturer: string;
   } | null;
   preset_setting_groups: DatabaseSettingGroup[];
+  preset_votes: Array<{
+    user_id: string;
+  }>;
 }
 
 export default async function PresetsPage() {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
     .from("presets")
@@ -86,6 +93,9 @@ export default async function PresetsPage() {
           note,
           sort_order
         )
+      ),
+      preset_votes (
+        user_id
       )
     `)
     .eq("status", "published")
@@ -111,6 +121,14 @@ export default async function PresetsPage() {
       communityRating: preset.community_rating,
       summary: preset.summary,
       publishedAt: preset.published_at,
+      upvoteCount:
+        preset.preset_votes?.length ?? 0,
+      hasUpvoted:
+        user !== null &&
+        (preset.preset_votes ?? []).some(
+          (vote) =>
+            vote.user_id === user.id,
+        ),
       game: preset.games,
       handheld: preset.handhelds,
       groups: [...(preset.preset_setting_groups ?? [])]
