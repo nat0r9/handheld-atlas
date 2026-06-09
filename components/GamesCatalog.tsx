@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { PublicGame } from "../app/games/page";
 import GameRatingControl from "./GameRatingControl";
+import AtlasScore from "./AtlasScore";
 
 type RatingFilter =
   | "All"
@@ -435,16 +436,10 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                         </div>
 
                         <div className="absolute right-3 top-3">
-                          <div
-                            className={`flex h-12 w-12 flex-col items-center justify-center rounded-xl border backdrop-blur sm:h-14 sm:w-14 ${rating.scoreClassName}`}
-                          >
-                            <span className="text-[0.42rem] font-black uppercase tracking-[0.1em] sm:text-[0.45rem]">
-                              Atlas
-                            </span>
-                            <strong className="mt-0.5 text-lg leading-none sm:text-xl">
-                              {game.atlasScore ?? "—"}
-                            </strong>
-                          </div>
+                          <AtlasScore
+                            score={game.atlasScore}
+                            variant="compact"
+                          />
                         </div>
 
                         <div className="absolute inset-x-0 bottom-0 p-4">

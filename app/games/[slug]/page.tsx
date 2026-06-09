@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import GameRatingControl from "../../../components/GameRatingControl";
+import AtlasScore from "../../../components/AtlasScore";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 
@@ -467,11 +468,10 @@ export default async function GamePage({ params }: GamePageProps) {
           </div>
 
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-            <HeroMetric
-              label="Atlas score"
-              value={game.atlas_score !== null ? `${game.atlas_score}` : "—"}
-              suffix="/100"
-              highlighted
+            <AtlasScore
+              score={game.atlas_score}
+              variant="large"
+              className="h-full"
             />
             <HeroMetric
               label="Best handheld"
@@ -526,14 +526,11 @@ export default async function GamePage({ params }: GamePageProps) {
             </p>
 
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <OverviewStat
+              <AtlasScore
+                score={game.atlas_score}
+                variant="card"
                 label="Score"
-                value={
-                  game.atlas_score !== null
-                    ? `${game.atlas_score}/100`
-                    : "Unrated"
-                }
-                highlighted
+                className="h-full"
               />
               <OverviewStat
                 label="Best FPS"
