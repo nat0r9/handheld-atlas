@@ -559,22 +559,13 @@ export default function PresetsCatalog({
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-3 lg:flex-col lg:items-end">
-                        {preset.communityRating !== null ? (
+                        {preset.communityRating !== null && (
                           <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:px-4 lg:py-3 lg:text-right">
                             <p className="text-[0.5rem] font-black uppercase tracking-[0.1em] text-yellow-500 sm:text-[0.52rem] sm:tracking-[0.12em]">
                               Rating
                             </p>
                             <p className="mt-1 text-lg font-black text-yellow-300 sm:text-xl">
                               ★ {preset.communityRating.toFixed(1)}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5 text-left lg:px-4 lg:py-3 lg:text-right">
-                            <p className="text-[0.5rem] font-black uppercase tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.12em]">
-                              Rating
-                            </p>
-                            <p className="mt-1 font-black text-slate-400">
-                              Unrated
                             </p>
                           </div>
                         )}
