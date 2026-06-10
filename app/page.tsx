@@ -3,6 +3,7 @@ import Link from "next/link";
 import CommunityTopGamesPanel, {
   type TopGamePanelItem,
 } from "../components/CommunityTopGamesPanel";
+import HandheldSpotlight from "../components/HandheldSpotlight";
 import { createClient } from "../lib/supabase/server";
 
 interface FeaturedNews {
@@ -296,8 +297,7 @@ export default async function HomePage() {
       .eq("status", "published")
       .order("created_at", {
         ascending: false,
-      })
-      .limit(3),
+      }),
 
     supabase
       .from("presets")
@@ -943,64 +943,23 @@ export default async function HomePage() {
               compact
             />
 
-            {handhelds.length === 0 ? (
-              <EmptyState text="No published handhelds yet." />
-            ) : (
-              <div className="mt-4 flex w-full min-w-0 max-w-full snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:snap-none sm:grid-cols-3 sm:overflow-visible sm:pb-0">
-                {handhelds.map(
-                  (handheld, index) => (
-                    <Link
-                      key={handheld.id}
-                      href={`/handhelds/${handheld.slug}`}
-                      className="group min-w-[10.5rem] snap-start overflow-hidden rounded-xl border border-white/[0.07] bg-black/20 transition hover:border-cyan-500/35"
-                    >
-                      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-900 to-black">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_60%,rgba(24,215,255,0.12),transparent_50%)]" />
-
-                        {handheld.image_url ? (
-                          <Image
-                            src={
-                              handheld.image_url
-                            }
-                            alt={handheld.name}
-                            fill
-                            sizes="150px"
-                            className="object-contain p-3 transition duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-xs font-black text-slate-700">
-                            HA
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-3">
-                        <p className="truncate text-xs font-black">
-                          {handheld.name}
-                        </p>
-
-                        <p className="mt-1 truncate text-[0.62rem] text-slate-500">
-                          {handheld.processor ??
-                            handheld.manufacturer}
-                        </p>
-
-                        <p
-                          className={`mt-4 text-2xl font-black ${
-                            index === 0
-                              ? "text-red-400"
-                              : index === 1
-                                ? "text-cyan-400"
-                                : "text-slate-300"
-                          }`}
-                        >
-                          {92 - index * 4}
-                        </p>
-                      </div>
-                    </Link>
-                  ),
-                )}
-              </div>
-            )}
+            <HandheldSpotlight
+              handhelds={handhelds.map(
+                (handheld) => ({
+                  id: handheld.id,
+                  name: handheld.name,
+                  slug: handheld.slug,
+                  manufacturer:
+                    handheld.manufacturer,
+                  processor:
+                    handheld.processor,
+                  battery:
+                    handheld.battery,
+                  imageUrl:
+                    handheld.image_url,
+                }),
+              )}
+            />
           </div>
 
           <div className="atlas-panel min-w-0 max-w-full overflow-hidden p-4">
