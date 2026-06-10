@@ -287,7 +287,14 @@ export default function Header() {
                   href="/my-submissions"
                   className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
                 >
-                  My submissions
+                  My content
+                </Link>
+
+                <Link
+                  href="/my-guide-submissions"
+                  className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                >
+                  My guides
                 </Link>
 
                 {currentUser.isAdmin && (
@@ -506,7 +513,15 @@ export default function Header() {
                           onClick={closeMenu}
                           className="atlas-button-secondary w-full"
                         >
-                          My submissions
+                          My content
+                        </Link>
+
+                        <Link
+                          href="/my-guide-submissions"
+                          onClick={closeMenu}
+                          className="atlas-button-secondary w-full"
+                        >
+                          My guides
                         </Link>
 
                         {currentUser.isAdmin && (

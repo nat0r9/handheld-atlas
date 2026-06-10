@@ -136,22 +136,77 @@ export default async function MySubmissionsPage({
               </h1>
 
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-                Create, review and track your community presets
-                before they enter the public Atlas database.
+                Create, review and track both preset and guide
+                submissions before they enter the public Atlas.
               </p>
             </div>
 
-            <Link
-              href="/my-submissions/new"
-              className="atlas-button-primary w-full sm:w-auto"
-            >
-              + New preset submission
-            </Link>
+            <div className="grid w-full gap-3 sm:flex sm:w-auto">
+              <Link
+                href="/my-submissions/new"
+                className="atlas-button-primary w-full sm:w-auto"
+              >
+                + New preset
+              </Link>
+
+              <Link
+                href="/my-guide-submissions/new"
+                className="atlas-button-secondary w-full sm:w-auto"
+              >
+                + New guide
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
       <div className="atlas-shell pt-6">
+        <section className="mb-6 grid gap-3 md:grid-cols-2">
+          <Link
+            href="/my-submissions"
+            className="rounded-2xl border border-red-500/30 bg-red-500/[0.08] p-5 transition hover:border-red-400 hover:bg-red-500/[0.12]"
+          >
+            <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-red-400">
+              Preset workshop
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Preset submissions
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Create settings profiles, track moderation and publish
+              tested handheld presets.
+            </p>
+
+            <span className="mt-4 inline-block text-xs font-black uppercase tracking-[0.1em] text-red-400">
+              Current section
+            </span>
+          </Link>
+
+          <Link
+            href="/my-guide-submissions"
+            className="rounded-2xl border border-white/[0.08] bg-black/20 p-5 transition hover:border-cyan-500/40 hover:bg-cyan-500/[0.05]"
+          >
+            <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-cyan-400">
+              Knowledge base
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Guide submissions
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Write practical guides, respond to moderator feedback
+              and share community knowledge.
+            </p>
+
+            <span className="mt-4 inline-block text-xs font-black uppercase tracking-[0.1em] text-cyan-400">
+              Open my guides →
+            </span>
+          </Link>
+        </section>
+
         {success && (
           <div className="mb-5 rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300">
             {success}
