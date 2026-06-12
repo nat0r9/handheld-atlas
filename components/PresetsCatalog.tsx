@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import PresetVoteButton from "./PresetVoteButton";
 
 export type PublicPresetType =
@@ -130,6 +130,56 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+function renderTextWithLinks(text: string) {
+  const parts = text.split(
+    /((?:https?:\/\/|www\.)[^\s]+)/gi,
+  );
+
+  return parts.map((part, index) => {
+    const isUrl =
+      /^(?:https?:\/\/|www\.)/i.test(
+        part,
+      );
+
+    if (!isUrl) {
+      return (
+        <Fragment key={index}>
+          {part}
+        </Fragment>
+      );
+    }
+
+    const trailingMatch =
+      part.match(/^(.*?)([),.;!?]*)$/);
+
+    const cleanUrl =
+      trailingMatch?.[1] ?? part;
+
+    const trailingText =
+      trailingMatch?.[2] ?? "";
+
+    const href = cleanUrl.startsWith(
+      "www.",
+    )
+      ? `https://${cleanUrl}`
+      : cleanUrl;
+
+    return (
+      <Fragment key={index}>
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="break-all font-bold text-cyan-400 underline decoration-cyan-500/35 underline-offset-4 transition hover:text-white hover:decoration-cyan-300"
+        >
+          {cleanUrl}
+        </a>
+        {trailingText}
+      </Fragment>
+    );
+  });
+}
+
 export default function PresetsCatalog({
   presets,
   databaseError,
@@ -140,6 +190,11 @@ export default function PresetsCatalog({
   const [handheldFilter, setHandheldFilter] = useState("All");
   const [sortOption, setSortOption] = useState<SortOption>("Newest");
   const [expandedPresetIds, setExpandedPresetIds] = useState<string[]>([]);
+  const [expandedSummaryIds, setExpandedSummaryIds] = useState<string[]>([]);
+  const [activeGroupIds, setActiveGroupIds] = useState<
+    Record<string, string>
+  >({});
+  const [showAllSettingsIds, setShowAllSettingsIds] = useState<string[]>([]);
   const [voteOverrides, setVoteOverrides] = useState<
     Record<string, VoteOverride>
   >({});
@@ -327,6 +382,36 @@ export default function PresetsCatalog({
     );
   }
 
+  function toggleSummary(presetId: string) {
+    setExpandedSummaryIds((currentIds) =>
+      currentIds.includes(presetId)
+        ? currentIds.filter((id) => id !== presetId)
+        : [...currentIds, presetId],
+    );
+  }
+
+  function selectSettingsGroup(
+    presetId: string,
+    groupId: string,
+  ) {
+    setActiveGroupIds((current) => ({
+      ...current,
+      [presetId]: groupId,
+    }));
+  }
+
+  function toggleAllSettings(
+    presetId: string,
+  ) {
+    setShowAllSettingsIds((currentIds) =>
+      currentIds.includes(presetId)
+        ? currentIds.filter(
+            (id) => id !== presetId,
+          )
+        : [...currentIds, presetId],
+    );
+  }
+
   return (
     <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="border-b border-white/[0.06]">
@@ -486,10 +571,40 @@ export default function PresetsCatalog({
             <div className="mt-5 space-y-3">
               {filteredPresets.map((preset) => {
                 const isExpanded = expandedPresetIds.includes(preset.id);
+                const isSummaryExpanded =
+                  expandedSummaryIds.includes(preset.id);
+
+                const summaryText =
+                  preset.summary ??
+                  "Tested handheld performance configuration.";
+
+                const hasLongSummary =
+                  summaryText.length > 180 ||
+                  summaryText.includes("\n");
+
                 const settingsCount = preset.groups.reduce(
                   (total, group) => total + group.items.length,
                   0,
                 );
+
+                const activeGroupId =
+                  activeGroupIds[preset.id] ??
+                  preset.groups[0]?.id ??
+                  null;
+
+                const activeGroup =
+                  preset.groups.find(
+                    (group) =>
+                      group.id ===
+                      activeGroupId,
+                  ) ??
+                  preset.groups[0] ??
+                  null;
+
+                const showAllSettings =
+                  showAllSettingsIds.includes(
+                    preset.id,
+                  );
 
                 const voteState =
                   getVoteState(preset);
@@ -499,46 +614,106 @@ export default function PresetsCatalog({
                     key={preset.id}
                     className="atlas-card atlas-card-hover min-w-0"
                   >
-                    <div className="grid min-w-0 gap-4 p-4 lg:grid-cols-[1.5fr_1fr_auto] lg:items-center lg:gap-5">
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <span
-                            className={`rounded-full border px-2.5 py-1 text-[0.54rem] font-black uppercase tracking-[0.1em] ${getPresetStyle(
-                              preset.type,
-                            )}`}
-                          >
-                            {preset.type}
-                          </span>
+                    <div className="min-w-0 p-4 md:p-5">
+                      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-[0.54rem] font-black uppercase tracking-[0.1em] ${getPresetStyle(
+                                preset.type,
+                              )}`}
+                            >
+                              {preset.type}
+                            </span>
 
-                          <span className="min-w-0 truncate text-[0.58rem] font-black uppercase tracking-[0.1em] text-cyan-400 sm:text-[0.62rem] sm:tracking-[0.12em]">
-                            {preset.game?.name ?? "Unknown game"}
-                          </span>
+                            <span className="min-w-0 truncate text-[0.58rem] font-black uppercase tracking-[0.1em] text-cyan-400 sm:text-[0.62rem] sm:tracking-[0.12em]">
+                              {preset.game?.name ?? "Unknown game"}
+                            </span>
 
-                          <span className="text-[0.58rem] text-slate-600 sm:text-[0.62rem]">
-                            {formatDate(preset.publishedAt)}
-                          </span>
+                            <span className="text-[0.58rem] text-slate-600 sm:text-[0.62rem]">
+                              {formatDate(preset.publishedAt)}
+                            </span>
+                          </div>
+
+                          <h3 className="mt-3 break-words text-xl font-black leading-tight sm:text-2xl">
+                            {preset.name}
+                          </h3>
+
+                          <p className="mt-1 text-sm font-bold text-slate-400">
+                            {preset.handheld?.name ?? "Unknown handheld"}
+                          </p>
+
+                          <div className="mt-4 max-w-4xl rounded-xl border border-white/[0.06] bg-black/15 p-4">
+                            <p
+                              className={`whitespace-pre-line break-words [overflow-wrap:anywhere] text-sm leading-7 text-slate-400 ${
+                                isSummaryExpanded
+                                  ? ""
+                                  : "line-clamp-4"
+                              }`}
+                            >
+                              {renderTextWithLinks(
+                                summaryText,
+                              )}
+                            </p>
+
+                            {hasLongSummary && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleSummary(
+                                    preset.id,
+                                  )
+                                }
+                                className="mt-3 text-xs font-black text-cyan-400 transition hover:text-white"
+                              >
+                                {isSummaryExpanded
+                                  ? "Show less"
+                                  : "Show full summary"}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        <h3 className="mt-3 break-words text-xl font-black leading-tight sm:text-2xl">
-                          {preset.name}
-                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 lg:w-[10.5rem] lg:flex-col lg:items-stretch">
+                          {preset.communityRating !== null && (
+                            <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:text-center">
+                              <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-yellow-500">
+                                Rating
+                              </p>
+                              <p className="mt-1 text-lg font-black text-yellow-300 sm:text-xl">
+                                ★ {preset.communityRating.toFixed(1)}
+                              </p>
+                            </div>
+                          )}
 
-                        <p className="mt-1 text-sm font-bold text-slate-400">
-                          {preset.handheld?.name ?? "Unknown handheld"}
-                        </p>
+                          <PresetVoteButton
+                            presetId={preset.id}
+                            initialCount={preset.upvoteCount}
+                            initialHasUpvoted={preset.hasUpvoted}
+                            count={voteState.count}
+                            hasUpvoted={voteState.hasUpvoted}
+                            onVoteChange={handleVoteChange}
+                          />
 
-                        <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500">
-                          {preset.summary ??
-                            "Tested handheld performance configuration."}
-                        </p>
+                          <button
+                            type="button"
+                            onClick={() => togglePreset(preset.id)}
+                            className="atlas-button-primary whitespace-nowrap"
+                          >
+                            {isExpanded ? "Hide settings" : "View settings"}
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                         <PresetStat
                           label="Resolution"
                           value={preset.resolution ?? "Not set"}
                         />
-                        <PresetStat label="TDP" value={preset.tdp ?? "Not set"} />
+                        <PresetStat
+                          label="TDP"
+                          value={preset.tdp ?? "Not set"}
+                        />
                         <PresetStat
                           label="Average"
                           value={
@@ -556,36 +731,6 @@ export default function PresetsCatalog({
                               : "Not set"
                           }
                         />
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-3 lg:flex-col lg:items-end">
-                        {preset.communityRating !== null && (
-                          <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:px-4 lg:py-3 lg:text-right">
-                            <p className="text-[0.5rem] font-black uppercase tracking-[0.1em] text-yellow-500 sm:text-[0.52rem] sm:tracking-[0.12em]">
-                              Rating
-                            </p>
-                            <p className="mt-1 text-lg font-black text-yellow-300 sm:text-xl">
-                              ★ {preset.communityRating.toFixed(1)}
-                            </p>
-                          </div>
-                        )}
-
-                        <PresetVoteButton
-                          presetId={preset.id}
-                          initialCount={preset.upvoteCount}
-                          initialHasUpvoted={preset.hasUpvoted}
-                          count={voteState.count}
-                          hasUpvoted={voteState.hasUpvoted}
-                          onVoteChange={handleVoteChange}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => togglePreset(preset.id)}
-                          className="atlas-button-primary whitespace-nowrap"
-                        >
-                          {isExpanded ? "Hide settings" : "View settings"}
-                        </button>
                       </div>
                     </div>
 
@@ -618,9 +763,28 @@ export default function PresetsCatalog({
                             <h4 className="mt-1 text-xl font-black">
                               Full settings
                             </h4>
+                            <p className="mt-2 text-xs leading-5 text-slate-600">
+                              Browse one settings group at a time, or open the full configuration as a clean vertical list.
+                            </p>
                           </div>
 
                           <div className="grid gap-2 sm:flex sm:flex-wrap">
+                            {preset.groups.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleAllSettings(
+                                    preset.id,
+                                  )
+                                }
+                                className="atlas-button-secondary w-full sm:w-auto"
+                              >
+                                {showAllSettings
+                                  ? "Focused view"
+                                  : "Show all groups"}
+                              </button>
+                            )}
+
                             {preset.game && (
                               <Link
                                 href={`/games/${preset.game.slug}`}
@@ -645,52 +809,62 @@ export default function PresetsCatalog({
                           <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
                             No detailed settings available for this preset.
                           </div>
-                        ) : (
-                          <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                        ) : showAllSettings ? (
+                          <div className="mt-5 space-y-4">
                             {preset.groups.map((group) => (
-                              <section
+                              <SettingsGroupPanel
                                 key={group.id}
-                                className="min-w-0 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
-                              >
-                                <div className="border-b border-white/[0.07] px-4 py-3">
-                                  <h5 className="text-sm font-black">
-                                    {group.name}
-                                  </h5>
-                                  <p className="mt-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-600">
-                                    {group.items.length} settings
-                                  </p>
-                                </div>
-
-                                <dl>
-                                  {group.items.map((item, index) => (
-                                    <div
-                                      key={item.id}
-                                      className={`grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 ${
-                                        index === group.items.length - 1
-                                          ? ""
-                                          : "border-b border-white/[0.06]"
-                                      }`}
-                                    >
-                                      <div className="min-w-0">
-                                        <dt className="break-words text-sm font-bold text-slate-300">
-                                          {item.label}
-                                        </dt>
-
-                                        {item.note && (
-                                          <p className="mt-1 break-words text-xs leading-5 text-slate-600">
-                                            {item.note}
-                                          </p>
-                                        )}
-                                      </div>
-
-                                      <dd className="max-w-28 break-words text-right text-sm font-black text-cyan-400">
-                                        {item.value}
-                                      </dd>
-                                    </div>
-                                  ))}
-                                </dl>
-                              </section>
+                                group={group}
+                              />
                             ))}
+                          </div>
+                        ) : (
+                          <div className="mt-5 grid min-w-0 gap-4 xl:grid-cols-[16rem_minmax(0,1fr)] xl:items-start">
+                            <nav
+                              aria-label="Preset setting groups"
+                              className="flex gap-2 overflow-x-auto pb-2 xl:flex-col xl:overflow-visible xl:pb-0"
+                            >
+                              {preset.groups.map((group) => {
+                                const isActive =
+                                  group.id === activeGroup?.id;
+
+                                return (
+                                  <button
+                                    key={group.id}
+                                    type="button"
+                                    onClick={() =>
+                                      selectSettingsGroup(
+                                        preset.id,
+                                        group.id,
+                                      )
+                                    }
+                                    className={`flex min-w-[13rem] items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition xl:min-w-0 ${
+                                      isActive
+                                        ? "border-cyan-500/40 bg-cyan-500/[0.09] text-white"
+                                        : "border-white/[0.07] bg-black/20 text-slate-500 hover:border-white/[0.14] hover:text-white"
+                                    }`}
+                                  >
+                                    <span className="min-w-0 break-words text-sm font-black">
+                                      {group.name}
+                                    </span>
+
+                                    <span className={`shrink-0 rounded-full px-2 py-1 text-[0.52rem] font-black ${
+                                      isActive
+                                        ? "bg-cyan-500/15 text-cyan-300"
+                                        : "bg-white/[0.04] text-slate-600"
+                                    }`}>
+                                      {group.items.length}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </nav>
+
+                            {activeGroup && (
+                              <SettingsGroupPanel
+                                group={activeGroup}
+                              />
+                            )}
                           </div>
                         )}
                       </div>
@@ -703,6 +877,59 @@ export default function PresetsCatalog({
         </section>
       </div>
     </main>
+  );
+}
+
+function SettingsGroupPanel({
+  group,
+}: {
+  group: PublicPresetSettingGroup;
+}) {
+  return (
+    <section className="min-w-0 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20">
+      <div className="border-b border-white/[0.07] px-4 py-3">
+        <h5 className="break-words [overflow-wrap:anywhere] text-sm font-black">
+          {group.name}
+        </h5>
+
+        <p className="mt-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-600">
+          {group.items.length} settings
+        </p>
+      </div>
+
+      <dl>
+        {group.items.map((item, index) => (
+          <div
+            key={item.id}
+            className={`grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,38%)] sm:gap-4 ${
+              index === group.items.length - 1
+                ? ""
+                : "border-b border-white/[0.06]"
+            }`}
+          >
+            <div className="min-w-0">
+              <dt className="break-words [overflow-wrap:anywhere] text-sm font-bold text-slate-300">
+                {item.label}
+              </dt>
+
+              {item.note && (
+                <p className="mt-1 whitespace-pre-line break-words [overflow-wrap:anywhere] text-xs leading-5 text-slate-600">
+                  {renderTextWithLinks(
+                    item.note,
+                  )}
+                </p>
+              )}
+            </div>
+
+            <dd className="min-w-0 whitespace-pre-line break-words [overflow-wrap:anywhere] text-left text-sm font-black leading-5 text-cyan-400 sm:text-right">
+              {renderTextWithLinks(
+                item.value,
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
