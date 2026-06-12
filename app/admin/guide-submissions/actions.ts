@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
+import {
+  MODERATION_ROLES,
+} from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 
 interface GuideSubmission {
   id: string;
@@ -33,28 +36,11 @@ function slugify(value: string) {
     .slice(0, 90);
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !profile?.is_admin) {
-    redirect("/admin/login");
-  }
-
-  return { supabase, user };
+async function requireModerator() {
+  return requireRole(
+    MODERATION_ROLES,
+    "/",
+  );
 }
 
 function detailPath(submissionId: string) {
@@ -73,7 +59,7 @@ function redirectWithError(
 async function loadPendingGuideSubmission(
   submissionId: string,
 ) {
-  const { supabase, user } = await requireAdmin();
+  const { supabase, user } = await requireModerator();
 
   const { data, error } = await supabase
     .from("guide_submissions")
@@ -112,35 +98,6 @@ async function loadPendingGuideSubmission(
   return { supabase, user, submission };
 }
 
-async function createUniqueGuideSlug(
-  title: string,
-) {
-  const { supabase } = await requireAdmin();
-
-  const baseSlug = slugify(title) || "community-guide";
-  let slug = baseSlug;
-  let suffix = 2;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from("guides")
-      .select("id")
-      .eq("slug", slug)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    if (!data) {
-      return slug;
-    }
-
-    slug = `${baseSlug}-${suffix}`;
-    suffix += 1;
-  }
-}
-
 export async function approveGuideSubmission(
   formData: FormData,
 ) {
@@ -160,78 +117,54 @@ export async function approveGuideSubmission(
     );
   }
 
-  const { supabase, user, submission } =
-    await loadPendingGuideSubmission(submissionId);
-
-  let slug: string;
-
-  try {
-    slug = await createUniqueGuideSlug(submission.title);
-  } catch (error) {
-    redirectWithError(
+  const {
+    supabase,
+    submission,
+  } =
+    await loadPendingGuideSubmission(
       submissionId,
-      error instanceof Error
-        ? error.message
-        : "Could not create a unique guide slug.",
     );
-  }
 
-  const { data: guide, error: guideError } =
-    await supabase
-      .from("guides")
-      .insert({
-        title: submission.title,
-        slug,
-        category: submission.category,
-        excerpt: submission.excerpt,
-        content: submission.content,
-        reading_time: submission.reading_time,
-        difficulty: submission.difficulty,
-        cover_image_url: submission.cover_image_url,
-        related_game_slug: submission.related_game_slug,
-        related_handheld_slug:
-          submission.related_handheld_slug,
-        status: "published",
-        created_by: submission.user_id,
-        published_at: new Date().toISOString(),
-      })
-      .select("id, slug")
-      .single();
+  const baseSlug =
+    slugify(submission.title) ||
+    "community-guide";
 
-  if (guideError || !guide) {
+  const {
+    data,
+    error: approvalError,
+  } = await supabase.rpc(
+    "approve_guide_submission",
+    {
+      p_submission_id:
+        submission.id,
+      p_base_slug: baseSlug,
+      p_moderator_note:
+        moderatorNote || null,
+    },
+  );
+
+  const publishedGuide =
+    Array.isArray(data)
+      ? (data[0] as {
+          guide_id: string;
+          guide_slug: string;
+        } | undefined)
+      : undefined;
+
+  if (
+    approvalError ||
+    !publishedGuide
+  ) {
     redirectWithError(
       submissionId,
-      guideError?.message ?? "Could not publish the guide.",
-    );
-  }
-
-  const { error: reviewError } = await supabase
-    .from("guide_submissions")
-    .update({
-      status: "approved",
-      moderator_note: moderatorNote || null,
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", submission.id)
-    .eq("status", "pending");
-
-  if (reviewError) {
-    await supabase
-      .from("guides")
-      .delete()
-      .eq("id", guide.id);
-
-    redirectWithError(
-      submissionId,
-      reviewError.message,
+      approvalError?.message ??
+        "Could not approve and publish the guide.",
     );
   }
 
   revalidatePath("/");
   revalidatePath("/guides");
-  revalidatePath(`/guides/${guide.slug}`);
+  revalidatePath(`/guides/${publishedGuide.guide_slug}`);
   revalidatePath("/admin");
   revalidatePath("/admin/guide-submissions");
   revalidatePath("/my-guide-submissions");

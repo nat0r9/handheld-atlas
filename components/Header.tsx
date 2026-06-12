@@ -10,10 +10,38 @@ interface NavigationItem {
   href: string;
 }
 
+type HeaderRole =
+  | "user"
+  | "benchmark_tester"
+  | "moderator"
+  | "atlas_editor"
+  | "admin";
+
 interface HeaderUser {
   id: string;
   displayName: string;
-  isAdmin: boolean;
+  role: HeaderRole;
+}
+
+function getHeaderRoleLabel(
+  role: HeaderRole,
+) {
+  switch (role) {
+    case "benchmark_tester":
+      return "Benchmark Tester";
+
+    case "moderator":
+      return "Moderator";
+
+    case "atlas_editor":
+      return "Atlas Editor";
+
+    case "admin":
+      return "Administrator";
+
+    default:
+      return "Community member";
+  }
 }
 
 const primaryNavigation: NavigationItem[] = [
@@ -125,7 +153,7 @@ export default function Header() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name, is_admin")
+        .select("display_name, role, is_admin")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -136,7 +164,11 @@ export default function Header() {
           user.user_metadata?.display_name ??
           user.email?.split("@")[0] ??
           "Atlas member",
-        isAdmin: profile?.is_admin ?? false,
+        role:
+          (profile?.role as HeaderRole | null) ??
+          (profile?.is_admin
+            ? "admin"
+            : "user"),
       });
 
       setIsAuthLoading(false);
@@ -287,24 +319,8 @@ export default function Header() {
                   href="/my-submissions"
                   className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
                 >
-                  My content
+                  My submissions
                 </Link>
-
-                <Link
-                  href="/my-guide-submissions"
-                  className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
-                >
-                  My guides
-                </Link>
-
-                {currentUser.isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="rounded-lg border border-purple-500/25 bg-purple-500/[0.07] px-3 py-2.5 text-xs font-black text-purple-300 transition hover:bg-purple-500 hover:text-white"
-                  >
-                    Admin
-                  </Link>
-                )}
 
                 <button
                   type="button"
@@ -492,9 +508,9 @@ export default function Header() {
                           </p>
 
                           <p className="mt-1 text-[0.55rem] font-black uppercase tracking-[0.12em] text-slate-600">
-                            {currentUser.isAdmin
-                              ? "Administrator"
-                              : "Community member"}
+                            {getHeaderRoleLabel(
+                              currentUser.role,
+                            )}
                           </p>
                         </div>
                       </div>
@@ -513,26 +529,8 @@ export default function Header() {
                           onClick={closeMenu}
                           className="atlas-button-secondary w-full"
                         >
-                          My content
+                          My submissions
                         </Link>
-
-                        <Link
-                          href="/my-guide-submissions"
-                          onClick={closeMenu}
-                          className="atlas-button-secondary w-full"
-                        >
-                          My guides
-                        </Link>
-
-                        {currentUser.isAdmin && (
-                          <Link
-                            href="/admin"
-                            onClick={closeMenu}
-                            className="rounded-xl border border-purple-500/25 bg-purple-500/[0.07] px-5 py-3 text-center text-sm font-black text-purple-300 transition hover:bg-purple-500 hover:text-white sm:col-span-2"
-                          >
-                            Admin dashboard
-                          </Link>
-                        )}
 
                         <button
                           type="button"

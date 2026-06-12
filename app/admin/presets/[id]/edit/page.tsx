@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import PresetEditForm, {
   type EditablePreset,
 } from "../../../../../components/admin/PresetEditForm";
-import { createClient } from "../../../../../lib/supabase/server";
+import {
+  PRESET_EDITOR_ROLES,
+} from "../../../../../lib/auth/roles";
+import { requireRole } from "../../../../../lib/auth/require-role";
 import { updatePreset } from "../../actions";
 
 interface EditPresetPageProps {
@@ -52,6 +55,7 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   status: "draft" | "published" | "archived";
+  created_by: string | null;
   preset_setting_groups: DatabaseSettingGroup[];
   games: {
     name: string;
@@ -70,25 +74,17 @@ export default async function EditPresetPage({
   const { id } = await params;
   const { error, success } = await searchParams;
 
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    supabase,
+    user,
+    role,
+  } = await requireRole(
+    PRESET_EDITOR_ROLES,
+    "/",
+  );
 
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    redirect("/admin/login");
-  }
+  const isBenchmarkTester =
+    role === "benchmark_tester";
 
   const [
     gamesResult,
@@ -126,6 +122,7 @@ export default async function EditPresetPage({
         community_rating,
         summary,
         status,
+        created_by,
         games (
           name,
           slug
@@ -178,6 +175,20 @@ export default async function EditPresetPage({
 
   const databasePreset =
     presetResult.data as unknown as DatabasePreset;
+
+  if (
+    isBenchmarkTester &&
+    (
+      databasePreset.created_by !==
+        user.id ||
+      databasePreset.status !==
+        "draft"
+    )
+  ) {
+    redirect(
+      "/admin/presets?error=Benchmark%20testers%20can%20edit%20only%20their%20own%20draft%20presets",
+    );
+  }
 
   const sortedGroups = [
     ...(databasePreset.preset_setting_groups ?? []),
@@ -259,8 +270,9 @@ export default async function EditPresetPage({
             </h1>
 
             <p className="mt-4 max-w-3xl text-slate-400">
-              Update performance data, publishing state
-              and every game-specific setting group.
+              {isBenchmarkTester
+                ? "Update the tested settings and values for this draft preset. Benchmark Tester presets remain drafts."
+                : "Update performance data, publishing state and every game-specific setting group."}
             </p>
           </div>
 
@@ -280,6 +292,14 @@ export default async function EditPresetPage({
             </p>
           </div>
         </div>
+
+        {isBenchmarkTester && (
+          <div className="mt-8 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-5 text-sm leading-6 text-cyan-100">
+            This preset belongs to your Benchmark Tester workspace and
+            will remain a draft until an Atlas Editor or Administrator
+            publishes it.
+          </div>
+        )}
 
         {success && (
           <div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">

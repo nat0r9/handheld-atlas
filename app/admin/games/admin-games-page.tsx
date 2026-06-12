@@ -1,10 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import GameCoverUpload from "../../../components/admin/GameCoverUpload";
-import {
-  CONTENT_EDITOR_ROLES,
-} from "../../../lib/auth/roles";
-import { requireRole } from "../../../lib/auth/require-role";
+import { createClient } from "../../../lib/supabase/server";
 import { createGame, deleteGame } from "./actions";
 
 interface AdminGamesPageProps {
@@ -49,12 +47,25 @@ export default async function AdminGamesPage({
 }: AdminGamesPageProps) {
   const { error, success } = await searchParams;
 
+  const supabase = await createClient();
+
   const {
-    supabase,
-  } = await requireRole(
-    CONTENT_EDITOR_ROLES,
-    "/",
-  );
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) {
+    redirect("/admin/login");
+  }
 
   const { data, error: gamesError } = await supabase
     .from("games")

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
+import {
+  BENCHMARK_EDITOR_ROLES,
+} from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 import {
   createBenchmark,
   deleteBenchmark,
@@ -78,25 +81,17 @@ export default async function AdminBenchmarksPage({
 }: AdminBenchmarksPageProps) {
   const { error, success } = await searchParams;
 
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    supabase,
+    user,
+    role,
+  } = await requireRole(
+    BENCHMARK_EDITOR_ROLES,
+    "/",
+  );
 
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    redirect("/admin/login");
-  }
+  const isBenchmarkTester =
+    role === "benchmark_tester";
 
   const [
     gamesResult,
@@ -136,9 +131,10 @@ export default async function AdminBenchmarksPage({
         ascending: true,
       }),
 
-    supabase
-      .from("benchmarks")
-      .select(`
+    (() => {
+      let query = supabase
+        .from("benchmarks")
+        .select(`
         id,
         game_id,
         handheld_id,
@@ -164,9 +160,19 @@ export default async function AdminBenchmarksPage({
           preset_type
         )
       `)
-      .order("created_at", {
-        ascending: false,
-      }),
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (isBenchmarkTester) {
+        query = query.eq(
+          "created_by",
+          user.id,
+        );
+      }
+
+      return query;
+    })(),
   ]);
 
   const games =
@@ -227,6 +233,13 @@ export default async function AdminBenchmarksPage({
             </p>
           </div>
         </div>
+
+        {isBenchmarkTester && (
+          <div className="mt-6 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.07] p-5 text-sm text-cyan-200">
+            Benchmark Tester access: you can create and manage your own draft benchmarks.
+            Publishing remains reserved for Atlas Editors and Administrators.
+          </div>
+        )}
 
         {success && (
           <div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">

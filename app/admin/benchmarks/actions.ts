@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  BENCHMARK_EDITOR_ROLES,
+} from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 import { createClient } from "../../../lib/supabase/server";
 
 type ContentStatus =
@@ -15,6 +19,7 @@ interface RelationWithSlug {
 
 interface BenchmarkLookup {
   published_at: string | null;
+  created_by: string | null;
   games:
     | RelationWithSlug
     | RelationWithSlug[]
@@ -26,6 +31,7 @@ interface BenchmarkLookup {
 }
 
 interface BenchmarkDeleteLookup {
+  created_by: string | null;
   games:
     | RelationWithSlug
     | RelationWithSlug[]
@@ -36,32 +42,11 @@ interface BenchmarkDeleteLookup {
     | null;
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile, error } =
-    await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
-
-  if (error || !profile?.is_admin) {
-    redirect("/admin/login");
-  }
-
-  return {
-    supabase,
-    user,
-  };
+async function requireBenchmarkEditor() {
+  return requireRole(
+    BENCHMARK_EDITOR_ROLES,
+    "/",
+  );
 }
 
 function requiredText(
@@ -260,8 +245,12 @@ async function validatePresetRelation(
 export async function createBenchmark(
   formData: FormData,
 ) {
-  const { supabase, user } =
-    await requireAdmin();
+  const {
+    supabase,
+    user,
+    role,
+  } =
+    await requireBenchmarkEditor();
 
   const gameId = requiredText(
     formData,
@@ -278,8 +267,13 @@ export async function createBenchmark(
     "presetId",
   );
 
-  const status =
+  const requestedStatus =
     getStatus(formData);
+
+  const status =
+    role === "benchmark_tester"
+      ? "draft"
+      : requestedStatus;
 
   if (!gameId || !handheldId) {
     redirect(
@@ -418,8 +412,12 @@ export async function createBenchmark(
 export async function updateBenchmark(
   formData: FormData,
 ) {
-  const { supabase } =
-    await requireAdmin();
+  const {
+    supabase,
+    user,
+    role,
+  } =
+    await requireBenchmarkEditor();
 
   const benchmarkId = requiredText(
     formData,
@@ -441,8 +439,13 @@ export async function updateBenchmark(
     "presetId",
   );
 
-  const status =
+  const requestedStatus =
     getStatus(formData);
+
+  const status =
+    role === "benchmark_tester"
+      ? "draft"
+      : requestedStatus;
 
   if (!benchmarkId) {
     redirect(
@@ -495,6 +498,7 @@ export async function updateBenchmark(
     .from("benchmarks")
     .select(`
       published_at,
+      created_by,
       games (
         slug
       ),
@@ -516,6 +520,15 @@ export async function updateBenchmark(
 
   const currentBenchmark =
     currentData as unknown as BenchmarkLookup;
+
+  if (
+    role === "benchmark_tester" &&
+    currentBenchmark.created_by !== user.id
+  ) {
+    redirect(
+      "/admin/benchmarks?error=You%20can%20only%20edit%20your%20own%20benchmarks",
+    );
+  }
 
   const relatedSlugs =
     await getRelatedSlugs(
@@ -645,8 +658,12 @@ export async function updateBenchmark(
 export async function deleteBenchmark(
   formData: FormData,
 ) {
-  const { supabase } =
-    await requireAdmin();
+  const {
+    supabase,
+    user,
+    role,
+  } =
+    await requireBenchmarkEditor();
 
   const benchmarkId = requiredText(
     formData,
@@ -665,6 +682,7 @@ export async function deleteBenchmark(
   } = await supabase
     .from("benchmarks")
     .select(`
+      created_by,
       games (
         slug
       ),
@@ -686,6 +704,15 @@ export async function deleteBenchmark(
 
   const benchmark =
     lookupData as unknown as BenchmarkDeleteLookup;
+
+  if (
+    role === "benchmark_tester" &&
+    benchmark.created_by !== user.id
+  ) {
+    redirect(
+      "/admin/benchmarks?error=You%20can%20only%20delete%20your%20own%20benchmarks",
+    );
+  }
 
   const gameSlug =
     getRelationSlug(

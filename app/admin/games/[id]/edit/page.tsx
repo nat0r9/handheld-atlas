@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../../../lib/supabase/server";
+import {
+  CONTENT_EDITOR_ROLES,
+} from "../../../../../lib/auth/roles";
+import { requireRole } from "../../../../../lib/auth/require-role";
 import { updateGame } from "../../actions";
 import GameCoverUpload from "@/components/admin/GameCoverUpload";
 
@@ -37,25 +40,12 @@ export default async function EditGamePage({
   const { id } = await params;
   const { error, success } = await searchParams;
 
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    redirect("/admin/login");
-  }
+    supabase,
+  } = await requireRole(
+    CONTENT_EDITOR_ROLES,
+    "/",
+  );
 
   const { data, error: gameError } = await supabase
     .from("games")

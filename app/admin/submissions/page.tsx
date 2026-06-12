@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
+import { MODERATION_ROLES } from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 
 interface AdminSubmissionsPageProps {
   searchParams: Promise<{
@@ -110,28 +111,12 @@ export default async function AdminSubmissionsPage({
     status,
   } = await searchParams;
 
-  const supabase =
-    await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const {
-    data: profile,
-  } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    redirect("/admin/login");
-  }
+    supabase,
+  } = await requireRole(
+    MODERATION_ROLES,
+    "/",
+  );
 
   const validStatuses: SubmissionStatus[] =
     [

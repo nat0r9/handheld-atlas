@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "../../lib/supabase/server";
+import {
+  type AppRole,
+  CONTENT_EDITOR_ROLES,
+  MODERATION_ROLES,
+  hasAnyRole,
+  getRoleLabel,
+} from "../../lib/auth/roles";
+import { requireRole } from "../../lib/auth/require-role";
 
 interface RecentNewsItem {
   id: string;
@@ -101,29 +108,30 @@ function formatDate(value: string) {
 }
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    supabase,
+    user,
+    role,
+  } = await requireRole(
+    [
+      "moderator",
+      "atlas_editor",
+      "admin",
+    ],
+    "/",
+  );
 
-  if (!user) {
-    redirect("/admin/login");
-  }
+  const canEditContent =
+    hasAnyRole(
+      role,
+      CONTENT_EDITOR_ROLES,
+    );
 
-  const { data: profile, error: profileError } =
-    await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
-
-  if (
-    profileError ||
-    !profile?.is_admin
-  ) {
-    redirect("/admin/login");
-  }
+  const canModerate =
+    hasAnyRole(
+      role,
+      MODERATION_ROLES,
+    );
 
   const [
     gamesCountResult,
@@ -274,7 +282,7 @@ export default async function AdminDashboardPage() {
       .eq("status", "pending"),
   ]);
 
-  const counts: DashboardCount[] = [
+  const allCounts: DashboardCount[] = [
     {
       label: "Games",
       value: gamesCountResult.count ?? 0,
@@ -341,6 +349,18 @@ export default async function AdminDashboardPage() {
     },
   ];
 
+  const counts =
+    allCounts.filter((item) => {
+      if (
+        item.href === "/admin/submissions" ||
+        item.href === "/admin/guide-submissions"
+      ) {
+        return canModerate;
+      }
+
+      return canEditContent;
+    });
+
   const recentNews =
     (recentNewsResult.data ??
       []) as RecentNewsItem[];
@@ -385,13 +405,17 @@ export default async function AdminDashboardPage() {
               </p>
 
               <h1 className="mt-4 text-5xl font-black md:text-7xl">
-                Admin Dashboard
+                {role === "moderator"
+                  ? "Moderation Dashboard"
+                  : role === "atlas_editor"
+                    ? "Atlas Editor Dashboard"
+                    : "Admin Dashboard"}
               </h1>
 
               <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-                Manage the database, publishing pipeline,
-                performance data and editorial content from
-                one beautifully overpowered command deck.
+                {role === "moderator"
+                  ? "Review community submissions and keep published Atlas content clean."
+                  : "Manage the database, publishing pipeline, performance data and editorial content from one beautifully overpowered command deck."}
               </p>
             </div>
 
@@ -401,7 +425,11 @@ export default async function AdminDashboardPage() {
               </p>
 
               <p className="mt-2 max-w-xs break-all font-black text-slate-200">
-                {user.email ?? "Administrator"}
+                {user.email ?? "Atlas staff"}
+              </p>
+
+              <p className="mt-1 text-xs font-black uppercase tracking-[0.14em] text-purple-300">
+                {getRoleLabel(role as AppRole)}
               </p>
 
               <Link
@@ -477,6 +505,7 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
+        {canEditContent && (
         <section className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             label="Published presets"
@@ -506,6 +535,7 @@ export default async function AdminDashboardPage() {
             accent="purple"
           />
         </section>
+        )}
 
         <section className="mt-12">
           <div>

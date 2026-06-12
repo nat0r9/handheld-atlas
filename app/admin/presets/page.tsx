@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import PresetCreateForm from "../../../components/admin/PresetCreateForm";
-import { createClient } from "../../../lib/supabase/server";
+import {
+  PRESET_EDITOR_ROLES,
+} from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 import {
   createPreset,
   deletePreset,
@@ -32,6 +34,7 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   status: "draft" | "published" | "archived";
+  created_by: string | null;
   created_at: string;
   games: {
     name: string;
@@ -88,25 +91,17 @@ export default async function AdminPresetsPage({
 }: AdminPresetsPageProps) {
   const { error, success } = await searchParams;
 
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    supabase,
+    user,
+    role,
+  } = await requireRole(
+    PRESET_EDITOR_ROLES,
+    "/",
+  );
 
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    redirect("/admin/login");
-  }
+  const isBenchmarkTester =
+    role === "benchmark_tester";
 
   const [
     gamesResult,
@@ -127,38 +122,50 @@ export default async function AdminPresetsPage({
         ascending: true,
       }),
 
-    supabase
-      .from("presets")
-      .select(`
-        id,
-        name,
-        preset_type,
-        resolution,
-        tdp,
-        fps_average,
-        one_percent_low,
-        upscaler,
-        battery_life,
-        community_rating,
-        summary,
-        status,
-        created_at,
-        games (
-          name,
-          slug
-        ),
-        handhelds (
-          name,
-          slug
-        ),
-        preset_setting_groups (
+    (() => {
+      let query = supabase
+        .from("presets")
+        .select(`
           id,
-          name
-        )
-      `)
-      .order("created_at", {
-        ascending: false,
-      }),
+          name,
+          preset_type,
+          resolution,
+          tdp,
+          fps_average,
+          one_percent_low,
+          upscaler,
+          battery_life,
+          community_rating,
+          summary,
+          status,
+          created_by,
+          created_at,
+          games (
+            name,
+            slug
+          ),
+          handhelds (
+            name,
+            slug
+          ),
+          preset_setting_groups (
+            id,
+            name
+          )
+        `)
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (isBenchmarkTester) {
+        query = query.eq(
+          "created_by",
+          user.id,
+        );
+      }
+
+      return query;
+    })(),
   ]);
 
   const games = gamesResult.data ?? [];
@@ -181,14 +188,20 @@ export default async function AdminPresetsPage({
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <Link
-              href="/admin"
+              href={
+                isBenchmarkTester
+                  ? "/admin/tester"
+                  : "/admin"
+              }
               className="text-sm font-bold text-cyan-400 transition hover:text-cyan-300"
             >
               ← Back to dashboard
             </Link>
 
             <p className="mt-8 text-sm font-bold uppercase tracking-[0.3em] text-cyan-400">
-              Content Management
+              {isBenchmarkTester
+                ? "Benchmark workspace"
+                : "Content Management"}
             </p>
 
             <h1 className="mt-3 text-5xl font-black">
@@ -196,9 +209,9 @@ export default async function AdminPresetsPage({
             </h1>
 
             <p className="mt-4 max-w-3xl text-slate-400">
-              Create and edit detailed settings profiles
-              with completely flexible game-specific
-              groups and values.
+              {isBenchmarkTester
+                ? "Build draft presets for your benchmark tests. Only your own presets are shown here."
+                : "Create and edit detailed settings profiles with completely flexible game-specific groups and values."}
             </p>
           </div>
 
@@ -212,6 +225,27 @@ export default async function AdminPresetsPage({
             </p>
           </div>
         </div>
+
+        {isBenchmarkTester && (
+          <div className="mt-8 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-5 text-cyan-100">
+            <p className="font-black">
+              Benchmark Tester preset access
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-cyan-100/70">
+              Presets created with this role are always saved as drafts.
+              You can edit and delete only your own drafts, then select them
+              while building a benchmark.
+            </p>
+
+            <Link
+              href="/admin/benchmarks"
+              className="mt-4 inline-flex text-sm font-black text-white transition hover:text-cyan-300"
+            >
+              Open benchmark workspace →
+            </Link>
+          </div>
+        )}
 
         {success && (
           <div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">
@@ -235,7 +269,9 @@ export default async function AdminPresetsPage({
 
         <section className="mt-10 rounded-[2rem] border border-slate-800 bg-slate-900 p-6 md:p-8">
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-            New Preset
+            {isBenchmarkTester
+              ? "New Draft Preset"
+              : "New Preset"}
           </p>
 
           <h2 className="mt-3 text-3xl font-black">
@@ -253,7 +289,9 @@ export default async function AdminPresetsPage({
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-                Existing Content
+                {isBenchmarkTester
+                  ? "My Draft Presets"
+                  : "Existing Content"}
               </p>
 
               <h2 className="mt-2 text-3xl font-black">

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
+import { MODERATION_ROLES } from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 
 interface SubmissionItem {
   label: string;
@@ -44,37 +45,11 @@ function requiredText(
   ).trim();
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const {
-    data: profile,
-    error,
-  } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (
-    error ||
-    !profile?.is_admin
-  ) {
-    redirect("/admin/login");
-  }
-
-  return {
-    supabase,
-    user,
-  };
+async function requireModerator() {
+  return requireRole(
+    MODERATION_ROLES,
+    "/",
+  );
 }
 
 function submissionPath(
@@ -102,7 +77,7 @@ async function loadPendingSubmission(
   const {
     supabase,
     user,
-  } = await requireAdmin();
+  } = await requireModerator();
 
   const {
     data,

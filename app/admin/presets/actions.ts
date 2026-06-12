@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  PRESET_EDITOR_ROLES,
+} from "../../../lib/auth/roles";
+import { requireRole } from "../../../lib/auth/require-role";
 import { createClient } from "../../../lib/supabase/server";
 
 interface ParsedSettingItem {
@@ -23,6 +27,8 @@ interface RelationWithSlug {
 
 interface PresetLookup {
   published_at: string | null;
+  created_by: string | null;
+  status: ContentStatus;
   games:
     | RelationWithSlug
     | RelationWithSlug[]
@@ -34,6 +40,8 @@ interface PresetLookup {
 }
 
 interface PresetDeleteLookup {
+  created_by: string | null;
+  status: ContentStatus;
   games:
     | RelationWithSlug
     | RelationWithSlug[]
@@ -60,32 +68,11 @@ type ContentStatus =
   | "published"
   | "archived";
 
-async function requireAdmin() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile, error } =
-    await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
-
-  if (error || !profile?.is_admin) {
-    redirect("/admin/login");
-  }
-
-  return {
-    supabase,
-    user,
-  };
+async function requirePresetEditor() {
+  return requireRole(
+    PRESET_EDITOR_ROLES,
+    "/",
+  );
 }
 
 function requiredText(
@@ -435,8 +422,12 @@ function revalidatePresetPages(
 export async function createPreset(
   formData: FormData,
 ) {
-  const { supabase, user } =
-    await requireAdmin();
+  const {
+    supabase,
+    user,
+    role,
+  } =
+    await requirePresetEditor();
 
   const gameId = requiredText(
     formData,
@@ -456,8 +447,13 @@ export async function createPreset(
   const presetType =
     getPresetType(formData);
 
-  const status =
+  const requestedStatus =
     getStatus(formData);
+
+  const status =
+    role === "benchmark_tester"
+      ? "draft"
+      : requestedStatus;
 
   const settingGroups =
     parseSettings(formData);
@@ -473,10 +469,12 @@ export async function createPreset(
   }
 
   const communityRating =
-    optionalNumber(
-      formData,
-      "communityRating",
-    );
+    role === "benchmark_tester"
+      ? null
+      : optionalNumber(
+          formData,
+          "communityRating",
+        );
 
   validateCommunityRating(
     communityRating,
@@ -628,8 +626,12 @@ export async function createPreset(
 export async function updatePreset(
   formData: FormData,
 ) {
-  const { supabase } =
-    await requireAdmin();
+  const {
+    supabase,
+    user,
+    role,
+  } =
+    await requirePresetEditor();
 
   const presetId = requiredText(
     formData,
@@ -654,8 +656,13 @@ export async function updatePreset(
   const presetType =
     getPresetType(formData);
 
-  const status =
+  const requestedStatus =
     getStatus(formData);
+
+  const status =
+    role === "benchmark_tester"
+      ? "draft"
+      : requestedStatus;
 
   const settingGroups =
     parseSettings(formData);
@@ -680,10 +687,12 @@ export async function updatePreset(
   }
 
   const communityRating =
-    optionalNumber(
-      formData,
-      "communityRating",
-    );
+    role === "benchmark_tester"
+      ? null
+      : optionalNumber(
+          formData,
+          "communityRating",
+        );
 
   validateCommunityRating(
     communityRating,
@@ -697,6 +706,8 @@ export async function updatePreset(
     .from("presets")
     .select(`
       published_at,
+      created_by,
+      status,
       games (
         slug
       ),
@@ -718,6 +729,20 @@ export async function updatePreset(
 
   const currentPreset =
     currentData as unknown as PresetLookup;
+
+  if (
+    role === "benchmark_tester" &&
+    (
+      currentPreset.created_by !==
+        user.id ||
+      currentPreset.status !==
+        "draft"
+    )
+  ) {
+    redirect(
+      `${editPath}?error=Benchmark%20testers%20can%20edit%20only%20their%20own%20draft%20presets`,
+    );
+  }
 
   const {
     data: newGame,
@@ -937,8 +962,12 @@ export async function updatePreset(
 export async function deletePreset(
   formData: FormData,
 ) {
-  const { supabase } =
-    await requireAdmin();
+  const {
+    supabase,
+    user,
+    role,
+  } =
+    await requirePresetEditor();
 
   const presetId = requiredText(
     formData,
@@ -957,6 +986,8 @@ export async function deletePreset(
   } = await supabase
     .from("presets")
     .select(`
+      created_by,
+      status,
       games (
         slug
       ),
@@ -978,6 +1009,19 @@ export async function deletePreset(
 
   const preset =
     lookupData as unknown as PresetDeleteLookup;
+
+  if (
+    role === "benchmark_tester" &&
+    (
+      preset.created_by !==
+        user.id ||
+      preset.status !== "draft"
+    )
+  ) {
+    redirect(
+      "/admin/presets?error=Benchmark%20testers%20can%20delete%20only%20their%20own%20draft%20presets",
+    );
+  }
 
   const gameSlug =
     getRelationSlug(

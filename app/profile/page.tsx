@@ -13,9 +13,17 @@ interface ProfilePageProps {
   }>;
 }
 
+type ProfileRole =
+  | "user"
+  | "benchmark_tester"
+  | "moderator"
+  | "atlas_editor"
+  | "admin";
+
 interface ProfileRecord {
   email: string | null;
   display_name: string | null;
+  role: ProfileRole | null;
   is_admin: boolean;
   created_at: string;
 }
@@ -32,6 +40,46 @@ function formatDate(value: string) {
     month: "long",
     day: "numeric",
   }).format(date);
+}
+
+function getRoleLabel(
+  role: ProfileRole,
+) {
+  switch (role) {
+    case "benchmark_tester":
+      return "Benchmark Tester";
+
+    case "moderator":
+      return "Moderator";
+
+    case "atlas_editor":
+      return "Atlas Editor";
+
+    case "admin":
+      return "Administrator";
+
+    default:
+      return "Community member";
+  }
+}
+
+function getWorkspaceHref(
+  role: ProfileRole,
+) {
+  switch (role) {
+    case "benchmark_tester":
+      return "/admin/tester";
+
+    case "moderator":
+      return "/admin/submissions";
+
+    case "atlas_editor":
+    case "admin":
+      return "/admin";
+
+    default:
+      return null;
+  }
 }
 
 export default async function ProfilePage({
@@ -56,13 +104,25 @@ export default async function ProfilePage({
   } = await supabase
     .from("profiles")
     .select(
-      "email, display_name, is_admin, created_at",
+      "email, display_name, role, is_admin, created_at",
     )
     .eq("id", user.id)
     .single();
 
   const profile =
     data as ProfileRecord | null;
+
+  const role: ProfileRole =
+    profile?.role ??
+    (profile?.is_admin
+      ? "admin"
+      : "user");
+
+  const roleLabel =
+    getRoleLabel(role);
+
+  const workspaceHref =
+    getWorkspaceHref(role);
 
   return (
     <main className="atlas-page min-h-[calc(100vh-4rem)] pb-14 text-white">
@@ -77,9 +137,8 @@ export default async function ProfilePage({
           </h1>
 
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-            Manage your public name and account details.
-            Your submitted presets will live here once
-            community submissions are enabled.
+            Manage your public name, account details and
+            community contributions from one place.
           </p>
         </div>
       </section>
@@ -190,11 +249,7 @@ export default async function ProfilePage({
 
                 <ProfileRow
                   label="Role"
-                  value={
-                    profile?.is_admin
-                      ? "Administrator"
-                      : "Community member"
-                  }
+                  value={roleLabel}
                 />
 
                 <ProfileRow
@@ -209,27 +264,62 @@ export default async function ProfilePage({
             </section>
 
             <section className="atlas-panel p-5">
-              <p className="atlas-section-label">
-                Community tools
-              </p>
+              <div className="border-b border-white/[0.07] pb-4">
+                <p className="atlas-section-label">
+                  Atlas tools
+                </p>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Access:{" "}
+                  <span className="font-black text-slate-300">
+                    {roleLabel}
+                  </span>
+                </p>
+              </div>
 
               <div className="mt-4 grid gap-3">
                 <Link
                   href="/my-submissions"
-                  className="atlas-button-secondary w-full text-center"
+                  className="rounded-xl border border-white/[0.08] bg-black/20 p-4 transition hover:border-cyan-500/40 hover:bg-cyan-500/[0.05]"
                 >
-                  My submissions
+                  <p className="text-sm font-black text-white">
+                    My submissions
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Manage your preset submissions and moderation status.
+                  </p>
                 </Link>
 
-                {profile?.is_admin && (
+                <Link
+                  href="/my-guide-submissions"
+                  className="rounded-xl border border-white/[0.08] bg-black/20 p-4 transition hover:border-cyan-500/40 hover:bg-cyan-500/[0.05]"
+                >
+                  <p className="text-sm font-black text-white">
+                    My guides
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Write, edit and track your community guides.
+                  </p>
+                </Link>
+
+                {workspaceHref && (
                   <Link
-                    href="/admin"
-                    className="atlas-button-secondary w-full text-center"
+                    href={workspaceHref}
+                    className="rounded-xl border border-purple-500/25 bg-purple-500/[0.07] p-4 transition hover:border-purple-400 hover:bg-purple-500/[0.12]"
                   >
-                    Open admin
+                    <p className="text-sm font-black text-purple-200">
+                      Atlas Workspace
+                    </p>
+
+                    <p className="mt-1 text-xs leading-5 text-slate-400">
+                      Open your assigned staff tools and workspace.
+                    </p>
                   </Link>
                 )}
               </div>
+
             </section>
 
             <form action={logoutUser}>

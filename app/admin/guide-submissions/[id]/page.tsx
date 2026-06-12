@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
-  notFound,
-  redirect,
-} from "next/navigation";
-import { createClient } from "../../../../lib/supabase/server";
+  MODERATION_ROLES,
+} from "../../../../lib/auth/roles";
+import { requireRole } from "../../../../lib/auth/require-role";
 import {
   approveGuideSubmission,
   rejectGuideSubmission,
@@ -117,25 +117,12 @@ export default async function AdminGuideSubmissionDetailPage({
 }: AdminGuideSubmissionDetailPageProps) {
   const { id } = await params;
   const { error } = await searchParams;
-  const supabase = await createClient();
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!adminProfile?.is_admin) {
-    redirect("/admin/login");
-  }
+    supabase,
+  } = await requireRole(
+    MODERATION_ROLES,
+    "/",
+  );
 
   const { data, error: submissionError } =
     await supabase

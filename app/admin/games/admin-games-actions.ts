@@ -2,16 +2,33 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  CONTENT_EDITOR_ROLES,
-} from "../../../lib/auth/roles";
-import { requireRole } from "../../../lib/auth/require-role";
+import { createClient } from "../../../lib/supabase/server";
 
-async function requireContentEditor() {
-  return requireRole(
-    CONTENT_EDITOR_ROLES,
-    "/",
-  );
+async function requireAdmin() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !profile?.is_admin) {
+    redirect("/admin/login");
+  }
+
+  return {
+    supabase,
+    user,
+  };
 }
 
 function createSlug(value: string) {
@@ -43,7 +60,7 @@ function optionalNumber(formData: FormData, name: string) {
 }
 
 export async function createGame(formData: FormData) {
-  const { supabase, user } = await requireContentEditor();
+  const { supabase, user } = await requireAdmin();
 
   const name = String(formData.get("name") ?? "").trim();
   const manualSlug = String(formData.get("slug") ?? "").trim();
@@ -98,7 +115,7 @@ export async function createGame(formData: FormData) {
 }
 
 export async function updateGame(formData: FormData) {
-  const { supabase } = await requireContentEditor();
+  const { supabase } = await requireAdmin();
 
   const gameId = String(formData.get("gameId") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
@@ -183,7 +200,7 @@ export async function updateGame(formData: FormData) {
 }
 
 export async function deleteGame(formData: FormData) {
-  const { supabase } = await requireContentEditor();
+  const { supabase } = await requireAdmin();
 
   const gameId = String(formData.get("gameId") ?? "");
 
