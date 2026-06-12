@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import "./globals.css";
@@ -137,6 +138,7 @@ export default function RootLayout({
 
           <Footer />
         </div>
+        <SpeedInsights />
       </body>
     </html>
   );
