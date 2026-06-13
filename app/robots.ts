@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
-const baseUrl = "https://handheldatlas.com";
+const baseUrl =
+  "https://www.handheldatlas.com";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -9,14 +10,27 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: [
-          "/admin/",
           "/admin",
+          "/admin/",
+          "/api",
           "/api/",
+          "/auth",
+          "/auth/",
+          "/login",
+          "/register",
+          "/profile",
+          "/my-submissions",
+          "/my-submissions/",
+          "/my-guide-submissions",
+          "/my-guide-submissions/",
+          "/search",
         ],
       },
     ],
 
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap:
+      `${baseUrl}/sitemap.xml`,
+
     host: baseUrl,
   };
 }

@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import AnalyticsConsent from "../components/AnalyticsConsent";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://handheldatlas.com"),
+  metadataBase: new URL("https://www.handheldatlas.com"),
 
   title: {
     default:
@@ -35,10 +36,6 @@ export const metadata: Metadata = {
 
   creator: "HandheldAtlas",
   publisher: "HandheldAtlas",
-
-  alternates: {
-    canonical: "/",
-  },
 
   manifest: "/manifest.webmanifest",
 
@@ -75,7 +72,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://handheldatlas.com",
+    url: "https://www.handheldatlas.com",
     siteName: "HandheldAtlas",
     title:
       "HandheldAtlas — Handheld Gaming Settings, Benchmarks and Guides",
@@ -137,6 +134,10 @@ export default function RootLayout({
 
           <Footer />
         </div>
+
+        <AnalyticsConsent
+          measurementId="G-Z4145QK694"
+        />
       </body>
     </html>
   );
