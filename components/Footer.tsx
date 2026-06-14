@@ -70,7 +70,7 @@ const socialLinks: SocialLink[] = [
   {
     platform: "discord",
     title: "Discord",
-    href: "https://discord.gg/BvzjwxxUne",
+    href: "https://discord.gg/RdafdpbTXd",
   },
   {
     platform: "instagram",

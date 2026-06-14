@@ -268,9 +268,11 @@ export default function AnalyticsConsent({
             onClick={() =>
               setIsPanelOpen(true)
             }
-            className="fixed bottom-3 right-3 z-[90] rounded-full border border-white/[0.08] bg-[#070a12]/90 px-3 py-2 text-[0.55rem] font-black uppercase tracking-[0.12em] text-slate-500 shadow-lg backdrop-blur transition hover:border-cyan-500/40 hover:text-cyan-300"
+            aria-label="Open cookie settings"
+            title="Cookie settings"
+            className="fixed bottom-2 right-2 z-[90] rounded-full border border-white/[0.07] bg-[#070a12]/85 px-2 py-1 text-[0.46rem] font-black uppercase tracking-[0.08em] text-slate-600 shadow-sm backdrop-blur transition hover:border-cyan-500/35 hover:text-cyan-300 sm:bottom-3 sm:right-3"
           >
-            Cookie settings
+            Cookies
           </button>
         )}
     </>
