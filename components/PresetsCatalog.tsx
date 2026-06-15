@@ -131,36 +131,19 @@ function formatDate(value: string | null) {
 }
 
 function renderTextWithLinks(text: string) {
-  const parts = text.split(
-    /((?:https?:\/\/|www\.)[^\s]+)/gi,
-  );
+  const parts = text.split(/((?:https?:\/\/|www\.)[^\s]+)/gi);
 
   return parts.map((part, index) => {
-    const isUrl =
-      /^(?:https?:\/\/|www\.)/i.test(
-        part,
-      );
+    const isUrl = /^(?:https?:\/\/|www\.)/i.test(part);
 
     if (!isUrl) {
-      return (
-        <Fragment key={index}>
-          {part}
-        </Fragment>
-      );
+      return <Fragment key={index}>{part}</Fragment>;
     }
 
-    const trailingMatch =
-      part.match(/^(.*?)([),.;!?]*)$/);
-
-    const cleanUrl =
-      trailingMatch?.[1] ?? part;
-
-    const trailingText =
-      trailingMatch?.[2] ?? "";
-
-    const href = cleanUrl.startsWith(
-      "www.",
-    )
+    const trailingMatch = part.match(/^(.*?)([),.;!?]*)$/);
+    const cleanUrl = trailingMatch?.[1] ?? part;
+    const trailingText = trailingMatch?.[2] ?? "";
+    const href = cleanUrl.startsWith("www.")
       ? `https://${cleanUrl}`
       : cleanUrl;
 
@@ -189,19 +172,11 @@ export default function PresetsCatalog({
   const [gameFilter, setGameFilter] = useState("All");
   const [handheldFilter, setHandheldFilter] = useState("All");
   const [sortOption, setSortOption] = useState<SortOption>("Newest");
-  const [expandedPresetIds, setExpandedPresetIds] = useState<string[]>([]);
-  const [expandedSummaryIds, setExpandedSummaryIds] = useState<string[]>([]);
-  const [activeGroupIds, setActiveGroupIds] = useState<
-    Record<string, string>
-  >({});
-  const [showAllSettingsIds, setShowAllSettingsIds] = useState<string[]>([]);
   const [voteOverrides, setVoteOverrides] = useState<
     Record<string, VoteOverride>
   >({});
 
-  function getVoteState(
-    preset: PublicPreset,
-  ): VoteOverride {
+  function getVoteState(preset: PublicPreset): VoteOverride {
     return (
       voteOverrides[preset.id] ?? {
         count: preset.upvoteCount,
@@ -301,10 +276,7 @@ export default function PresetsCatalog({
     return [...matchingPresets].sort((first, second) => {
       switch (sortOption) {
         case "Most upvoted":
-          return (
-            getVoteState(second).count -
-            getVoteState(first).count
-          );
+          return getVoteState(second).count - getVoteState(first).count;
         case "Rating":
           return (
             (second.communityRating ?? -1) -
@@ -374,44 +346,6 @@ export default function PresetsCatalog({
     setSortOption("Newest");
   }
 
-  function togglePreset(presetId: string) {
-    setExpandedPresetIds((currentIds) =>
-      currentIds.includes(presetId)
-        ? currentIds.filter((id) => id !== presetId)
-        : [...currentIds, presetId],
-    );
-  }
-
-  function toggleSummary(presetId: string) {
-    setExpandedSummaryIds((currentIds) =>
-      currentIds.includes(presetId)
-        ? currentIds.filter((id) => id !== presetId)
-        : [...currentIds, presetId],
-    );
-  }
-
-  function selectSettingsGroup(
-    presetId: string,
-    groupId: string,
-  ) {
-    setActiveGroupIds((current) => ({
-      ...current,
-      [presetId]: groupId,
-    }));
-  }
-
-  function toggleAllSettings(
-    presetId: string,
-  ) {
-    setShowAllSettingsIds((currentIds) =>
-      currentIds.includes(presetId)
-        ? currentIds.filter(
-            (id) => id !== presetId,
-          )
-        : [...currentIds, presetId],
-    );
-  }
-
   return (
     <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="border-b border-white/[0.06]">
@@ -428,8 +362,8 @@ export default function PresetsCatalog({
               </h1>
 
               <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-                Reproduce tested handheld performance using exact graphics
-                settings, TDP targets, resolutions and measured FPS.
+                Browse verified performance profiles, compare the key numbers
+                and open any preset on its own shareable page.
               </p>
             </div>
 
@@ -544,7 +478,7 @@ export default function PresetsCatalog({
             </div>
 
             <p className="text-[0.64rem] font-bold uppercase tracking-[0.12em] text-slate-600 sm:text-xs sm:tracking-[0.15em]">
-              Exact settings from the live database
+              Open any preset for the full configuration
             </p>
           </div>
 
@@ -568,54 +502,26 @@ export default function PresetsCatalog({
               )}
             </div>
           ) : (
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 space-y-4">
               {filteredPresets.map((preset) => {
-                const isExpanded = expandedPresetIds.includes(preset.id);
-                const isSummaryExpanded =
-                  expandedSummaryIds.includes(preset.id);
-
                 const summaryText =
                   preset.summary ??
                   "Tested handheld performance configuration.";
-
-                const hasLongSummary =
-                  summaryText.length > 180 ||
-                  summaryText.includes("\n");
 
                 const settingsCount = preset.groups.reduce(
                   (total, group) => total + group.items.length,
                   0,
                 );
 
-                const activeGroupId =
-                  activeGroupIds[preset.id] ??
-                  preset.groups[0]?.id ??
-                  null;
-
-                const activeGroup =
-                  preset.groups.find(
-                    (group) =>
-                      group.id ===
-                      activeGroupId,
-                  ) ??
-                  preset.groups[0] ??
-                  null;
-
-                const showAllSettings =
-                  showAllSettingsIds.includes(
-                    preset.id,
-                  );
-
-                const voteState =
-                  getVoteState(preset);
+                const voteState = getVoteState(preset);
 
                 return (
                   <article
                     key={preset.id}
-                    className="atlas-card atlas-card-hover min-w-0"
+                    className="atlas-card atlas-card-hover min-w-0 overflow-hidden"
                   >
                     <div className="min-w-0 p-4 md:p-5">
-                      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_10.5rem] lg:items-start">
                         <div className="min-w-0">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
                             <span
@@ -635,46 +541,27 @@ export default function PresetsCatalog({
                             </span>
                           </div>
 
-                          <h3 className="mt-3 break-words text-xl font-black leading-tight sm:text-2xl">
-                            {preset.name}
-                          </h3>
+                          <Link
+                            href={`/presets/${preset.id}`}
+                            className="group mt-3 block w-fit max-w-full"
+                          >
+                            <h3 className="break-words text-xl font-black leading-tight transition group-hover:text-red-400 sm:text-2xl">
+                              {preset.name}
+                            </h3>
+                          </Link>
 
                           <p className="mt-1 text-sm font-bold text-slate-400">
                             {preset.handheld?.name ?? "Unknown handheld"}
                           </p>
 
                           <div className="mt-4 max-w-4xl rounded-xl border border-white/[0.06] bg-black/15 p-4">
-                            <p
-                              className={`whitespace-pre-line break-words [overflow-wrap:anywhere] text-sm leading-7 text-slate-400 ${
-                                isSummaryExpanded
-                                  ? ""
-                                  : "line-clamp-4"
-                              }`}
-                            >
-                              {renderTextWithLinks(
-                                summaryText,
-                              )}
+                            <p className="line-clamp-3 whitespace-pre-line break-words [overflow-wrap:anywhere] text-sm leading-7 text-slate-400">
+                              {renderTextWithLinks(summaryText)}
                             </p>
-
-                            {hasLongSummary && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleSummary(
-                                    preset.id,
-                                  )
-                                }
-                                className="mt-3 text-xs font-black text-cyan-400 transition hover:text-white"
-                              >
-                                {isSummaryExpanded
-                                  ? "Show less"
-                                  : "Show full summary"}
-                              </button>
-                            )}
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 lg:w-[10.5rem] lg:flex-col lg:items-stretch">
+                        <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">
                           {preset.communityRating !== null && (
                             <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:text-center">
                               <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-yellow-500">
@@ -695,13 +582,12 @@ export default function PresetsCatalog({
                             onVoteChange={handleVoteChange}
                           />
 
-                          <button
-                            type="button"
-                            onClick={() => togglePreset(preset.id)}
-                            className="atlas-button-primary whitespace-nowrap"
+                          <Link
+                            href={`/presets/${preset.id}`}
+                            className="atlas-button-primary whitespace-nowrap text-center"
                           >
-                            {isExpanded ? "Hide settings" : "View settings"}
-                          </button>
+                            View full preset
+                          </Link>
                         </div>
                       </div>
 
@@ -752,123 +638,6 @@ export default function PresetsCatalog({
                         value={`${settingsCount} values`}
                       />
                     </div>
-
-                    {isExpanded && (
-                      <div className="min-w-0 border-t border-white/[0.07] bg-[#060911] p-4 md:p-5">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                          <div>
-                            <p className="atlas-section-label">
-                              Complete configuration
-                            </p>
-                            <h4 className="mt-1 text-xl font-black">
-                              Full settings
-                            </h4>
-                            <p className="mt-2 text-xs leading-5 text-slate-600">
-                              Browse one settings group at a time, or open the full configuration as a clean vertical list.
-                            </p>
-                          </div>
-
-                          <div className="grid gap-2 sm:flex sm:flex-wrap">
-                            {preset.groups.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleAllSettings(
-                                    preset.id,
-                                  )
-                                }
-                                className="atlas-button-secondary w-full sm:w-auto"
-                              >
-                                {showAllSettings
-                                  ? "Focused view"
-                                  : "Show all groups"}
-                              </button>
-                            )}
-
-                            {preset.game && (
-                              <Link
-                                href={`/games/${preset.game.slug}`}
-                                className="atlas-button-secondary w-full sm:w-auto"
-                              >
-                                Open game
-                              </Link>
-                            )}
-
-                            {preset.handheld && (
-                              <Link
-                                href={`/handhelds/${preset.handheld.slug}`}
-                                className="atlas-button-secondary w-full sm:w-auto"
-                              >
-                                Open handheld
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-
-                        {preset.groups.length === 0 ? (
-                          <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
-                            No detailed settings available for this preset.
-                          </div>
-                        ) : showAllSettings ? (
-                          <div className="mt-5 space-y-4">
-                            {preset.groups.map((group) => (
-                              <SettingsGroupPanel
-                                key={group.id}
-                                group={group}
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="mt-5 grid min-w-0 gap-4 xl:grid-cols-[16rem_minmax(0,1fr)] xl:items-start">
-                            <nav
-                              aria-label="Preset setting groups"
-                              className="flex gap-2 overflow-x-auto pb-2 xl:flex-col xl:overflow-visible xl:pb-0"
-                            >
-                              {preset.groups.map((group) => {
-                                const isActive =
-                                  group.id === activeGroup?.id;
-
-                                return (
-                                  <button
-                                    key={group.id}
-                                    type="button"
-                                    onClick={() =>
-                                      selectSettingsGroup(
-                                        preset.id,
-                                        group.id,
-                                      )
-                                    }
-                                    className={`flex min-w-[13rem] items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition xl:min-w-0 ${
-                                      isActive
-                                        ? "border-cyan-500/40 bg-cyan-500/[0.09] text-white"
-                                        : "border-white/[0.07] bg-black/20 text-slate-500 hover:border-white/[0.14] hover:text-white"
-                                    }`}
-                                  >
-                                    <span className="min-w-0 break-words text-sm font-black">
-                                      {group.name}
-                                    </span>
-
-                                    <span className={`shrink-0 rounded-full px-2 py-1 text-[0.52rem] font-black ${
-                                      isActive
-                                        ? "bg-cyan-500/15 text-cyan-300"
-                                        : "bg-white/[0.04] text-slate-600"
-                                    }`}>
-                                      {group.items.length}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                            </nav>
-
-                            {activeGroup && (
-                              <SettingsGroupPanel
-                                group={activeGroup}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </article>
                 );
               })}
@@ -877,59 +646,6 @@ export default function PresetsCatalog({
         </section>
       </div>
     </main>
-  );
-}
-
-function SettingsGroupPanel({
-  group,
-}: {
-  group: PublicPresetSettingGroup;
-}) {
-  return (
-    <section className="min-w-0 overflow-hidden rounded-xl border border-white/[0.07] bg-black/20">
-      <div className="border-b border-white/[0.07] px-4 py-3">
-        <h5 className="break-words [overflow-wrap:anywhere] text-sm font-black">
-          {group.name}
-        </h5>
-
-        <p className="mt-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-600">
-          {group.items.length} settings
-        </p>
-      </div>
-
-      <dl>
-        {group.items.map((item, index) => (
-          <div
-            key={item.id}
-            className={`grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,38%)] sm:gap-4 ${
-              index === group.items.length - 1
-                ? ""
-                : "border-b border-white/[0.06]"
-            }`}
-          >
-            <div className="min-w-0">
-              <dt className="break-words [overflow-wrap:anywhere] text-sm font-bold text-slate-300">
-                {item.label}
-              </dt>
-
-              {item.note && (
-                <p className="mt-1 whitespace-pre-line break-words [overflow-wrap:anywhere] text-xs leading-5 text-slate-600">
-                  {renderTextWithLinks(
-                    item.note,
-                  )}
-                </p>
-              )}
-            </div>
-
-            <dd className="min-w-0 whitespace-pre-line break-words [overflow-wrap:anywhere] text-left text-sm font-black leading-5 text-cyan-400 sm:text-right">
-              {renderTextWithLinks(
-                item.value,
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </section>
   );
 }
 
@@ -1046,13 +762,7 @@ function PresetStat({
   );
 }
 
-function MetaItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 break-words">
       <span className="font-black uppercase tracking-[0.08em] text-slate-600 sm:tracking-[0.1em]">
