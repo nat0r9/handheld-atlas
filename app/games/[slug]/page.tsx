@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import GameRatingControl from "../../../components/GameRatingControl";
+import JsonLd from "../../../components/JsonLd";
 import AtlasScore from "../../../components/AtlasScore";
 import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import { getPresetProfileGuide } from "../../../lib/preset-guidance";
 import { calculatePresetTrust } from "../../../lib/preset-trust";
+import { absoluteUrl, siteConfig } from "../../../lib/site";
 
 interface GamePageProps {
   params: Promise<{
@@ -304,7 +306,11 @@ export async function generateMetadata({
   return {
     title: `${game.name} Handheld Settings`,
     description,
+    alternates: {
+      canonical: `/games/${game.slug}`,
+    },
     openGraph: {
+      url: `/games/${game.slug}`,
       title: `${game.name} Handheld Settings | HandheldAtlas`,
       description,
       images: game.cover_image_url
@@ -397,6 +403,58 @@ export default async function GamePage({ params }: GamePageProps) {
   ]);
 
   const compatibility = getCompatibilityData(game.atlas_score);
+  const gameUrl = absoluteUrl(`/games/${game.slug}`);
+  const gameJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "@id": `${gameUrl}#game`,
+    name: game.name,
+    url: gameUrl,
+    description:
+      game.notes ??
+      `${game.name} handheld presets, recommended settings and performance information.`,
+    genre: game.genre,
+    image: game.cover_image_url ?? undefined,
+    datePublished: game.release_year?.toString(),
+    author: game.developer
+      ? {
+          "@type": "Organization",
+          name: game.developer,
+        }
+      : undefined,
+    publisher: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    gamePlatform: ["PC", "Handheld gaming PC"],
+    aggregateRating:
+      gameRatings.averageRating !== null && gameRatings.ratingCount > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: gameRatings.averageRating,
+            ratingCount: gameRatings.ratingCount,
+            bestRating: 5,
+            worstRating: 1,
+          }
+        : undefined,
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Games",
+        item: absoluteUrl("/games"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: game.name,
+        item: gameUrl,
+      },
+    ],
+  };
 
   const validBenchmarkFps = gameBenchmarks
     .map((benchmark) => benchmark.average_fps)
@@ -414,7 +472,9 @@ export default async function GamePage({ params }: GamePageProps) {
       : null;
 
   return (
-    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
+    <>
+      <JsonLd data={[gameJsonLd, breadcrumbJsonLd]} />
+      <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
         {game.cover_image_url ? (
           <Image
@@ -877,7 +937,8 @@ export default async function GamePage({ params }: GamePageProps) {
           )}
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

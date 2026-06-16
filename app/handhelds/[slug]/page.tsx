@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PresetTrustBadge from "../../../components/PresetTrustBadge";
+import JsonLd from "../../../components/JsonLd";
 import { calculatePresetTrust } from "../../../lib/preset-trust";
+import { absoluteUrl, siteConfig } from "../../../lib/site";
 import { createClient } from "../../../lib/supabase/server";
 
 interface HandheldPageProps {
@@ -247,8 +249,12 @@ export async function generateMetadata({
   return {
     title: `${handheld.name} Specs and Benchmarks`,
     description,
+    alternates: {
+      canonical: `/handhelds/${handheld.slug}`,
+    },
 
     openGraph: {
+      url: `/handhelds/${handheld.slug}`,
       title: `${handheld.name} | HandheldAtlas`,
       description,
       images: handheld.image_url
@@ -357,9 +363,76 @@ export default async function HandheldPage({
 
   const handheldImage =
     handheld.image_url;
+  const handheldUrl = absoluteUrl(`/handhelds/${handheld.slug}`);
+  const additionalProperties = [
+    ["Operating system", handheld.operating_system],
+    ["Processor", handheld.processor],
+    ["Memory", handheld.memory],
+    ["Storage", handheld.storage],
+    ["Display size", handheld.display_size],
+    ["Resolution", handheld.resolution],
+    ["Refresh rate", handheld.refresh_rate],
+    ["Battery", handheld.battery],
+    ["Weight", handheld.weight],
+  ]
+    .filter((entry): entry is [string, string] => Boolean(entry[1]))
+    .map(([name, value]) => ({
+      "@type": "PropertyValue",
+      name,
+      value,
+    }));
+  const handheldJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": `${handheldUrl}#product`,
+    name: handheld.name,
+    url: handheldUrl,
+    image: handheld.image_url ?? undefined,
+    description:
+      handheld.tagline ??
+      `${handheld.name} specifications, presets and handheld gaming benchmarks.`,
+    model: handheld.name,
+    category: "Handheld gaming PC",
+    brand: {
+      "@type": "Brand",
+      name: handheld.manufacturer,
+    },
+    manufacturer: {
+      "@type": "Organization",
+      name: handheld.manufacturer,
+    },
+    additionalProperty: additionalProperties,
+    subjectOf: {
+      "@type": "WebPage",
+      "@id": handheldUrl,
+      publisher: {
+        "@id": `${siteConfig.url}/#organization`,
+      },
+    },
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Handhelds",
+        item: absoluteUrl("/handhelds"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: handheld.name,
+        item: handheldUrl,
+      },
+    ],
+  };
 
   return (
-    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
+    <>
+      <JsonLd data={[handheldJsonLd, breadcrumbJsonLd]} />
+      <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(24,215,255,0.14),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.13),transparent_26%),linear-gradient(135deg,#05070d,#090d16_55%,#120810)]" />
 
@@ -1056,7 +1129,8 @@ export default async function HandheldPage({
           )}
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

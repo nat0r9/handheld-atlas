@@ -49,6 +49,10 @@ const primaryLinks: FooterLink[] = [
 
 const secondaryLinks: FooterLink[] = [
   {
+    label: "Methodology",
+    href: "/methodology",
+  },
+  {
     label: "Search",
     href: "/search",
   },

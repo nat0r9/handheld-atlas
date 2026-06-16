@@ -3,12 +3,14 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import PresetDetailConfirmation from "../../../components/PresetDetailConfirmation";
+import JsonLd from "../../../components/JsonLd";
 import PresetDetailVote from "../../../components/PresetDetailVote";
 import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import {
   calculatePresetTrust,
 } from "../../../lib/preset-trust";
 import { createClient } from "../../../lib/supabase/server";
+import { absoluteUrl, siteConfig } from "../../../lib/site";
 import {
   getPresetProfileGuide,
   parseSettingNote,
@@ -126,6 +128,7 @@ export async function generateMetadata({
       title: `${preset.name} | HandheldAtlas`,
       description,
       type: "article",
+      url: `/presets/${id}`,
     },
     twitter: {
       card: "summary",
@@ -342,9 +345,89 @@ export default async function PresetDetailPage({
     atlasVerified,
     groups,
   });
+  const presetUrl = absoluteUrl(`/presets/${preset.id}`);
+  const presetJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": `${presetUrl}#preset`,
+    headline: preset.name,
+    description: summaryText,
+    url: presetUrl,
+    mainEntityOfPage: presetUrl,
+    datePublished: preset.published_at ?? undefined,
+    author: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    publisher: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    about: [
+      preset.games
+        ? {
+            "@type": "VideoGame",
+            name: preset.games.name,
+            url: absoluteUrl(`/games/${preset.games.slug}`),
+          }
+        : null,
+      preset.handhelds
+        ? {
+            "@type": "Product",
+            name: preset.handhelds.name,
+            brand: {
+              "@type": "Brand",
+              name: preset.handhelds.manufacturer,
+            },
+            url: absoluteUrl(`/handhelds/${preset.handhelds.slug}`),
+          }
+        : null,
+    ].filter(Boolean),
+    additionalProperty: [
+      ["Profile", preset.preset_type],
+      ["Resolution", preset.resolution],
+      ["TDP", preset.tdp],
+      [
+        "Average FPS",
+        preset.fps_average !== null ? `${preset.fps_average} FPS` : null,
+      ],
+      [
+        "1% Low",
+        preset.one_percent_low !== null
+          ? `${preset.one_percent_low} FPS`
+          : null,
+      ],
+      ["Upscaler", preset.upscaler],
+      ["Atlas Confidence", `${trustReport.score}/100`],
+    ]
+      .filter((entry): entry is [string, string] => Boolean(entry[1]))
+      .map(([name, value]) => ({
+        "@type": "PropertyValue",
+        name,
+        value,
+      })),
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Presets",
+        item: absoluteUrl("/presets"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: preset.name,
+        item: presetUrl,
+      },
+    ],
+  };
 
   return (
-    <main className="atlas-page min-w-0 overflow-x-hidden pb-16 text-white">
+    <>
+      <JsonLd data={[presetJsonLd, breadcrumbJsonLd]} />
+      <main className="atlas-page min-w-0 overflow-x-hidden pb-16 text-white">
       <section className="border-b border-white/[0.06]">
         <div className="atlas-shell py-7 sm:py-10">
           <Link
@@ -941,7 +1024,8 @@ export default async function PresetDetailPage({
           )}
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

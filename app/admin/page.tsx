@@ -385,6 +385,18 @@ export default async function AdminDashboardPage() {
         tone: "cyan",
       },
       {
+        label: "Launch readiness",
+        value:
+          (publishedPresetsResult.count ?? 0) +
+          (publishedBenchmarksResult.count ?? 0),
+        href: "/admin/launch-readiness",
+        description:
+          "Run the cross-site promo gate for content depth, coverage and SEO quality.",
+        actionLabel:
+          "Open control tower",
+        tone: "red",
+      },
+      {
         label: "Benchmarks",
         value:
           benchmarksCountResult.count ??

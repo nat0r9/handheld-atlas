@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
+import { siteConfig } from "../lib/site";
 import { createClient } from "../lib/supabase/server";
-
-const baseUrl =
-  "https://www.handheldatlas.com";
 
 export const revalidate = 3600;
 
@@ -14,6 +12,7 @@ interface SitemapRecord {
 
 interface PresetSitemapRecord {
   id: string;
+  updated_at: string | null;
   published_at: string | null;
 }
 
@@ -21,10 +20,7 @@ function getLastModified(
   updatedAt: string | null,
   publishedAt?: string | null,
 ) {
-  const value =
-    updatedAt ??
-    publishedAt ??
-    null;
+  const value = updatedAt ?? publishedAt ?? null;
 
   if (!value) {
     return undefined;
@@ -32,42 +28,36 @@ function getLastModified(
 
   const date = new Date(value);
 
-  return Number.isNaN(
-    date.getTime(),
-  )
-    ? undefined
-    : date;
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function createDynamicEntry(
   pathname: string,
   record: SitemapRecord,
-  changeFrequency:
-    | "daily"
-    | "weekly"
-    | "monthly",
+  changeFrequency: "daily" | "weekly" | "monthly",
   priority: number,
 ): MetadataRoute.Sitemap[number] {
-  const lastModified =
-    getLastModified(
-      record.updated_at,
-      record.published_at,
-    );
+  const lastModified = getLastModified(
+    record.updated_at,
+    record.published_at,
+  );
 
   return {
-    url:
-      `${baseUrl}${pathname}/${record.slug}`,
-    ...(lastModified
-      ? { lastModified }
-      : {}),
+    url: `${siteConfig.url}${pathname}/${record.slug}`,
+    ...(lastModified ? { lastModified } : {}),
     changeFrequency,
     priority,
   };
 }
 
+function reportSitemapError(label: string, error: { message: string } | null) {
+  if (error) {
+    console.error(`Could not load ${label} for sitemap:`, error.message);
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   const [
     gamesResult,
@@ -78,166 +68,115 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ] = await Promise.all([
     supabase
       .from("games")
-      .select(
-        "slug, updated_at, published_at",
-      )
+      .select("slug, updated_at, published_at")
       .eq("status", "published")
-      .order("updated_at", {
-        ascending: false,
-      }),
-
+      .order("updated_at", { ascending: false }),
     supabase
       .from("handhelds")
-      .select(
-        "slug, updated_at, published_at",
-      )
+      .select("slug, updated_at, published_at")
       .eq("status", "published")
-      .order("updated_at", {
-        ascending: false,
-      }),
-
+      .order("updated_at", { ascending: false }),
     supabase
       .from("guides")
-      .select(
-        "slug, updated_at, published_at",
-      )
+      .select("slug, updated_at, published_at")
       .eq("status", "published")
-      .order("updated_at", {
-        ascending: false,
-      }),
-
+      .order("updated_at", { ascending: false }),
     supabase
       .from("news")
-      .select(
-        "slug, updated_at, published_at",
-      )
+      .select("slug, updated_at, published_at")
       .eq("status", "published")
-      .order("updated_at", {
-        ascending: false,
-      }),
-
+      .order("updated_at", { ascending: false }),
     supabase
       .from("presets")
-      .select(
-        "id, published_at",
-      )
+      .select("id, updated_at, published_at")
       .eq("status", "published")
-      .order("updated_at", {
-        ascending: false,
-      }),
+      .order("updated_at", { ascending: false }),
   ]);
 
-  const games =
-    (gamesResult.data ??
-      []) as SitemapRecord[];
+  reportSitemapError("games", gamesResult.error);
+  reportSitemapError("handhelds", handheldsResult.error);
+  reportSitemapError("guides", guidesResult.error);
+  reportSitemapError("news", newsResult.error);
+  reportSitemapError("presets", presetsResult.error);
 
-  const handhelds =
-    (handheldsResult.data ??
-      []) as SitemapRecord[];
-
-  const guides =
-    (guidesResult.data ??
-      []) as SitemapRecord[];
-
-  const newsItems =
-    (newsResult.data ??
-      []) as SitemapRecord[];
-
-  const presets =
-    (presetsResult.data ??
-      []) as PresetSitemapRecord[];
+  const games = (gamesResult.data ?? []) as SitemapRecord[];
+  const handhelds = (handheldsResult.data ?? []) as SitemapRecord[];
+  const guides = (guidesResult.data ?? []) as SitemapRecord[];
+  const newsItems = (newsResult.data ?? []) as SitemapRecord[];
+  const presets = (presetsResult.data ?? []) as PresetSitemapRecord[];
 
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: baseUrl,
+      url: siteConfig.url,
       changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: `${baseUrl}/games`,
+      url: `${siteConfig.url}/games`,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/handhelds`,
+      url: `${siteConfig.url}/handhelds`,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/presets`,
+      url: `${siteConfig.url}/presets`,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/benchmarks`,
+      url: `${siteConfig.url}/benchmarks`,
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/compare`,
+      url: `${siteConfig.url}/compare`,
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/guides`,
+      url: `${siteConfig.url}/guides`,
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/news`,
+      url: `${siteConfig.url}/news`,
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${siteConfig.url}/methodology`,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
   ];
 
-  const gamePages =
-    games.map((record) =>
-      createDynamicEntry(
-        "/games",
-        record,
-        "weekly",
-        0.8,
-      ),
-    );
+  const gamePages = games.map((record) =>
+    createDynamicEntry("/games", record, "weekly", 0.8),
+  );
 
-  const handheldPages =
-    handhelds.map((record) =>
-      createDynamicEntry(
-        "/handhelds",
-        record,
-        "weekly",
-        0.8,
-      ),
-    );
+  const handheldPages = handhelds.map((record) =>
+    createDynamicEntry("/handhelds", record, "weekly", 0.8),
+  );
 
-  const guidePages =
-    guides.map((record) =>
-      createDynamicEntry(
-        "/guides",
-        record,
-        "monthly",
-        0.7,
-      ),
-    );
+  const guidePages = guides.map((record) =>
+    createDynamicEntry("/guides", record, "monthly", 0.7),
+  );
 
-  const newsPages =
-    newsItems.map((record) =>
-      createDynamicEntry(
-        "/news",
-        record,
-        "weekly",
-        0.8,
-      ),
-    );
+  const newsPages = newsItems.map((record) =>
+    createDynamicEntry("/news", record, "weekly", 0.8),
+  );
 
   const presetPages: MetadataRoute.Sitemap = presets.map((record) => {
     const lastModified = getLastModified(
-      null,
+      record.updated_at,
       record.published_at,
     );
 
     return {
-      url: `${baseUrl}/presets/${record.id}`,
+      url: `${siteConfig.url}/presets/${record.id}`,
       ...(lastModified ? { lastModified } : {}),
       changeFrequency: "weekly",
       priority: 0.8,

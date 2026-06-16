@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const baseUrl =
-  "https://www.handheldatlas.com";
+import { siteConfig } from "../lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -23,14 +21,11 @@ export default function robots(): MetadataRoute.Robots {
           "/my-submissions/",
           "/my-guide-submissions",
           "/my-guide-submissions/",
-          "/search",
+          "/supabase-test",
         ],
       },
     ],
-
-    sitemap:
-      `${baseUrl}/sitemap.xml`,
-
-    host: baseUrl,
+    sitemap: `${siteConfig.url}/sitemap.xml`,
+    host: siteConfig.url,
   };
 }

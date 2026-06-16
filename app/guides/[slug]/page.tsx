@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import GuideVoteButton from "../../../components/GuideVoteButton";
+import JsonLd from "../../../components/JsonLd";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
+import { absoluteUrl, siteConfig } from "../../../lib/site";
 
 interface GuidePageProps {
   params: Promise<{
@@ -140,8 +142,12 @@ export async function generateMetadata({
   return {
     title: guide.title,
     description: guide.excerpt,
+    alternates: {
+      canonical: `/guides/${guide.slug}`,
+    },
 
     openGraph: {
+      url: `/guides/${guide.slug}`,
       title: `${guide.title} | HandheldAtlas`,
       description: guide.excerpt,
       type: "article",
@@ -341,8 +347,68 @@ export default async function GuidePage({
     relatedHandheld,
   } = await getRelatedContent(guide);
 
+  const guideUrl = absoluteUrl(`/guides/${guide.slug}`);
+  const guideJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "@id": `${guideUrl}#article`,
+    headline: guide.title,
+    description: guide.excerpt,
+    url: guideUrl,
+    mainEntityOfPage: guideUrl,
+    image: guide.cover_image_url ?? undefined,
+    datePublished: guide.published_at ?? undefined,
+    dateModified: guide.updated_at ?? guide.published_at ?? undefined,
+    articleSection: guide.category,
+    proficiencyLevel: guide.difficulty ?? undefined,
+    timeRequired:
+      guide.reading_time !== null ? `PT${guide.reading_time}M` : undefined,
+    author: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    publisher: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    about: [
+      relatedGame
+        ? {
+            "@type": "VideoGame",
+            name: relatedGame.name,
+            url: absoluteUrl(`/games/${relatedGame.slug}`),
+          }
+        : null,
+      relatedHandheld
+        ? {
+            "@type": "Product",
+            name: relatedHandheld.name,
+            url: absoluteUrl(`/handhelds/${relatedHandheld.slug}`),
+          }
+        : null,
+    ].filter(Boolean),
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Guides",
+        item: absoluteUrl("/guides"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: guide.title,
+        item: guideUrl,
+      },
+    ],
+  };
+
   return (
-    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
+    <>
+      <JsonLd data={[guideJsonLd, breadcrumbJsonLd]} />
+      <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
         {guide.cover_image_url ? (
           <Image
@@ -635,7 +701,8 @@ export default async function GuidePage({
           </section>
         </aside>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

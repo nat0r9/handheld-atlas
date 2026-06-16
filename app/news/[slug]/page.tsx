@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import JsonLd from "../../../components/JsonLd";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
+import { absoluteUrl, siteConfig } from "../../../lib/site";
 
 interface NewsDetailPageProps {
   params: Promise<{
@@ -135,8 +137,12 @@ export async function generateMetadata({
   return {
     title: newsItem.title,
     description: newsItem.excerpt,
+    alternates: {
+      canonical: `/news/${newsItem.slug}`,
+    },
 
     openGraph: {
+      url: `/news/${newsItem.slug}`,
       title: `${newsItem.title} | HandheldAtlas`,
       description: newsItem.excerpt,
       type: "article",
@@ -306,9 +312,66 @@ export default async function NewsDetailPage({
   const authorName =
     newsItem.author_name ??
     "HandheldAtlas Team";
+  const newsUrl = absoluteUrl(`/news/${newsItem.slug}`);
+  const newsJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "@id": `${newsUrl}#article`,
+    headline: newsItem.title,
+    description: newsItem.excerpt,
+    url: newsUrl,
+    mainEntityOfPage: newsUrl,
+    image: newsItem.cover_image_url ?? undefined,
+    datePublished: newsItem.published_at ?? undefined,
+    dateModified: newsItem.updated_at ?? newsItem.published_at ?? undefined,
+    articleSection: newsItem.category,
+    author: {
+      "@type": "Organization",
+      name: authorName,
+    },
+    publisher: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    about: [
+      relatedGame
+        ? {
+            "@type": "VideoGame",
+            name: relatedGame.name,
+            url: absoluteUrl(`/games/${relatedGame.slug}`),
+          }
+        : null,
+      relatedHandheld
+        ? {
+            "@type": "Product",
+            name: relatedHandheld.name,
+            url: absoluteUrl(`/handhelds/${relatedHandheld.slug}`),
+          }
+        : null,
+    ].filter(Boolean),
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "News",
+        item: absoluteUrl("/news"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: newsItem.title,
+        item: newsUrl,
+      },
+    ],
+  };
 
   return (
-    <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
+    <>
+      <JsonLd data={[newsJsonLd, breadcrumbJsonLd]} />
+      <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
       <section className="relative overflow-hidden border-b border-white/[0.06]">
         {newsItem.cover_image_url ? (
           <Image
@@ -604,7 +667,8 @@ export default async function NewsDetailPage({
           </section>
         </aside>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 
