@@ -4,6 +4,13 @@ import CommunityTopGamesPanel, {
   type TopGamePanelItem,
 } from "../components/CommunityTopGamesPanel";
 import HandheldSpotlight from "../components/HandheldSpotlight";
+import {
+  COMMUNITY_MIN_QUALIFIED_GAMES,
+  COMMUNITY_MIN_VOTES_PER_GAME,
+  COMMUNITY_TOP_GAME_LIMIT,
+  getRatingConfidenceLabel,
+  parseMonthlyTopGames,
+} from "../lib/game-ratings";
 import { createClient } from "../lib/supabase/server";
 
 interface FeaturedNews {
@@ -23,54 +30,6 @@ interface GameItem {
   developer: string | null;
   atlas_score: number | null;
   cover_image_url: string | null;
-}
-
-interface MonthlyRatingRow {
-  rating: number;
-  game_id: string;
-  games:
-    | {
-        id: string;
-        name: string;
-        slug: string;
-        genre: string;
-        atlas_score: number | null;
-        best_handheld: string | null;
-        recommended_tdp: string | null;
-        cover_image_url: string | null;
-      }
-    | {
-        id: string;
-        name: string;
-        slug: string;
-        genre: string;
-        atlas_score: number | null;
-        best_handheld: string | null;
-        recommended_tdp: string | null;
-        cover_image_url: string | null;
-      }[]
-    | null;
-}
-
-interface MonthlyRatedGame {
-  id: string;
-  name: string;
-  slug: string;
-  genre: string;
-  atlas_score: number | null;
-  cover_image_url: string | null;
-}
-
-function getRelation<T>(
-  relation: T | T[] | null,
-): T | null {
-  if (!relation) {
-    return null;
-  }
-
-  return Array.isArray(relation)
-    ? relation[0] ?? null
-    : relation;
 }
 
 interface HandheldItem {
@@ -211,14 +170,6 @@ export default async function HomePage() {
     Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
-      1,
-    ),
-  );
-
-  const nextMonthStart = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth() + 1,
       1,
     ),
   );
@@ -417,30 +368,11 @@ export default async function HomePage() {
       })
       .eq("status", "published"),
 
-    supabase
-      .from("game_ratings")
-      .select(`
-        rating,
-        game_id,
-        games (
-          id,
-          name,
-          slug,
-          genre,
-          atlas_score,
-          best_handheld,
-          recommended_tdp,
-          cover_image_url
-        )
-      `)
-      .gte(
-        "updated_at",
-        monthStart.toISOString(),
-      )
-      .lt(
-        "updated_at",
-        nextMonthStart.toISOString(),
-      ),
+    supabase.rpc("get_monthly_top_games", {
+      p_month_start: monthStart.toISOString().slice(0, 10),
+      p_limit: COMMUNITY_TOP_GAME_LIMIT,
+      p_min_votes: COMMUNITY_MIN_VOTES_PER_GAME,
+    }),
   ]);
 
   const featuredNews =
@@ -449,143 +381,40 @@ export default async function HomePage() {
   const games =
     (gamesResult.data ?? []) as GameItem[];
 
-  const monthlyRatings =
-    (monthlyRatingsResult.data ??
-      []) as unknown as MonthlyRatingRow[];
+  const communityCandidates = parseMonthlyTopGames(
+    monthlyRatingsResult.data,
+  );
 
-  const monthlyGameMap =
-    new Map<
-      string,
-      {
-        game: MonthlyRatedGame;
-        ratings: number[];
-      }
-    >();
+  const useCommunityRanking =
+    communityCandidates.length >= COMMUNITY_MIN_QUALIFIED_GAMES;
 
-  for (const row of monthlyRatings) {
-    const game =
-      getRelation<MonthlyRatedGame>(
-        row.games,
-      );
-
-    if (!game) {
-      continue;
-    }
-
-    const current =
-      monthlyGameMap.get(game.id);
-
-    if (current) {
-      current.ratings.push(
-        Number(row.rating),
-      );
-    } else {
-      monthlyGameMap.set(game.id, {
-        game,
-        ratings: [
-          Number(row.rating),
-        ],
-      });
-    }
-  }
-
-  const communityCandidates =
-    Array.from(
-      monthlyGameMap.values(),
-    )
-      .map(({ game, ratings }) => ({
+  const topGameItems: TopGamePanelItem[] = useCommunityRanking
+    ? communityCandidates.map((game, index) => ({
+        rank: index + 1,
+        id: game.gameId,
+        name: game.name,
+        slug: game.slug,
+        genre: game.genre,
+        coverImageUrl: game.coverImageUrl,
+        atlasScore: game.atlasScore,
+        communityRating: game.averageRating,
+        ratingCount: game.ratingCount,
+        weightedScore: game.weightedScore,
+        confidenceLabel: getRatingConfidenceLabel(game.ratingCount),
+      }))
+    : games.map((game, index) => ({
+        rank: index + 1,
         id: game.id,
         name: game.name,
         slug: game.slug,
         genre: game.genre,
-        atlasScore:
-          game.atlas_score,
-        coverImageUrl:
-          game.cover_image_url,
-        communityRating:
-          ratings.reduce(
-            (total, rating) =>
-              total + rating,
-            0,
-          ) / ratings.length,
-        ratingCount:
-          ratings.length,
-      }))
-      .filter(
-        (game) =>
-          game.ratingCount >= 2,
-      )
-      .sort(
-        (first, second) => {
-          const ratingDifference =
-            second.communityRating -
-            first.communityRating;
-
-          if (
-            ratingDifference !== 0
-          ) {
-            return ratingDifference;
-          }
-
-          const countDifference =
-            second.ratingCount -
-            first.ratingCount;
-
-          if (
-            countDifference !== 0
-          ) {
-            return countDifference;
-          }
-
-          return (
-            (second.atlasScore ?? -1) -
-            (first.atlasScore ?? -1)
-          );
-        },
-      )
-      .slice(0, 5);
-
-  const useCommunityRanking =
-    communityCandidates.length >= 3;
-
-  const topGameItems: TopGamePanelItem[] =
-    useCommunityRanking
-      ? communityCandidates.map(
-          (game, index) => ({
-            rank: index + 1,
-            id: game.id,
-            name: game.name,
-            slug: game.slug,
-            genre: game.genre,
-            coverImageUrl:
-              game.coverImageUrl,
-            atlasScore:
-              game.atlasScore,
-            communityRating:
-              Number(
-                game.communityRating.toFixed(
-                  2,
-                ),
-              ),
-            ratingCount:
-              game.ratingCount,
-          }),
-        )
-      : games.map(
-          (game, index) => ({
-            rank: index + 1,
-            id: game.id,
-            name: game.name,
-            slug: game.slug,
-            genre: game.genre,
-            coverImageUrl:
-              game.cover_image_url,
-            atlasScore:
-              game.atlas_score,
-            communityRating: null,
-            ratingCount: 0,
-          }),
-        );
+        coverImageUrl: game.cover_image_url,
+        atlasScore: game.atlas_score,
+        communityRating: null,
+        ratingCount: 0,
+        weightedScore: null,
+        confidenceLabel: "Editorial",
+      }));
 
   const handhelds =
     (handheldsResult.data ??

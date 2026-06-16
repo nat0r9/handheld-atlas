@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import AtlasScore from "./AtlasScore";
 import {
   useEffect,
   useMemo,
@@ -19,6 +20,8 @@ export interface TopGamePanelItem {
   atlasScore: number | null;
   communityRating: number | null;
   ratingCount: number;
+  weightedScore: number | null;
+  confidenceLabel: string;
 }
 
 interface CommunityTopGamesPanelProps {
@@ -239,8 +242,8 @@ export default function CommunityTopGamesPanel({
 
             <p className="mt-2 text-xs text-slate-500">
               {mode === "community"
-                ? "Ranked by this month's verified user ratings"
-                : "Editorial fallback until enough community votes arrive"}
+                ? "One vote per account, game and month · ranked with a weighted score"
+                : "Editorial fallback until at least three games earn enough monthly votes"}
             </p>
           </div>
 
@@ -270,59 +273,47 @@ export default function CommunityTopGamesPanel({
 
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric
-              label={
-                mode === "community"
-                  ? "User rating"
-                  : "Ranking"
-              }
+              label={mode === "community" ? "User rating" : "Ranking"}
               value={
-                activeItem.communityRating !==
-                null
-                  ? `${activeItem.communityRating.toFixed(
-                      1,
-                    )}/5`
+                activeItem.communityRating !== null
+                  ? `${activeItem.communityRating.toFixed(1)}/5`
                   : `#${activeItem.rank}`
               }
               accent="cyan"
             />
 
             <Metric
-              label={
-                mode === "community"
-                  ? "Monthly votes"
-                  : "Atlas score"
-              }
+              label={mode === "community" ? "Monthly votes" : "Atlas score"}
               value={
                 mode === "community"
                   ? activeItem.ratingCount.toString()
-                  : activeItem.atlasScore !==
-                      null
+                  : activeItem.atlasScore !== null
                     ? `${activeItem.atlasScore}`
                     : "—"
               }
             />
 
             <Metric
-              label="Genre"
-              value={activeItem.genre}
-              wide
+              label={mode === "community" ? "Rank score" : "Source"}
+              value={
+                mode === "community" && activeItem.weightedScore !== null
+                  ? activeItem.weightedScore.toFixed(2)
+                  : "Editorial"
+              }
+            />
+
+            <Metric
+              label="Signal"
+              value={activeItem.confidenceLabel}
             />
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="rounded-xl border border-red-500/20 bg-[#04060a]/90 px-4 py-3 shadow-[0_0_24px_rgba(239,35,60,0.1)]">
-              <p className="text-[0.5rem] font-black uppercase tracking-[0.14em] text-slate-600">
-                Atlas Score
-              </p>
-
-              <p className="mt-1 text-2xl font-black text-white">
-                {activeItem.atlasScore ??
-                  "—"}
-                <span className="ml-1 text-xs text-red-400">
-                  /100
-                </span>
-              </p>
-            </div>
+            <AtlasScore
+              score={activeItem.atlasScore}
+              variant="card"
+              className="w-[8.5rem] shrink-0"
+            />
 
             <Link
               href={`/games/${activeItem.slug}`}
@@ -389,20 +380,14 @@ function Metric({
   label,
   value,
   accent = "default",
-  wide = false,
 }: {
   label: string;
   value: string;
   accent?: "default" | "cyan";
-  wide?: boolean;
 }) {
   return (
     <div
       className={`min-w-0 rounded-xl border p-3 ${
-        wide
-          ? "col-span-2 sm:col-span-1"
-          : ""
-      } ${
         accent === "cyan"
           ? "border-cyan-500/20 bg-cyan-500/[0.07]"
           : "border-white/[0.07] bg-black/30"

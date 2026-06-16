@@ -223,62 +223,63 @@ async function getGameRatings(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("game_ratings")
-    .select("rating, user_id")
-    .eq("game_id", gameId);
+  const [summaryResult, userRatingResult] = await Promise.all([
+    supabase.rpc("get_game_rating_summary", {
+      p_game_id: gameId,
+    }),
+    user
+      ? supabase
+          .from("game_ratings")
+          .select("rating")
+          .eq("game_id", gameId)
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({
+          data: null,
+          error: null,
+        }),
+  ]);
 
-  if (error) {
+  if (summaryResult.error) {
     console.error(
-      "Could not load game ratings:",
-      error.message,
+      "Could not load game rating summary:",
+      summaryResult.error.message,
     );
-
-    return {
-      averageRating: null,
-      ratingCount: 0,
-      userRating: null,
-    };
   }
 
-  const ratingValues =
-    (data ?? []).map(
-      (row) => Number(row.rating),
+  if (userRatingResult.error) {
+    console.error(
+      "Could not load the current user's game rating:",
+      userRatingResult.error.message,
     );
+  }
+
+  const summaryRow = Array.isArray(summaryResult.data)
+    ? summaryResult.data[0]
+    : summaryResult.data;
 
   const averageRating =
-    ratingValues.length > 0
-      ? ratingValues.reduce(
-          (total, value) =>
-            total + value,
-          0,
-        ) / ratingValues.length
+    summaryRow?.average_rating !== null &&
+    summaryRow?.average_rating !== undefined
+      ? Number(summaryRow.average_rating)
       : null;
 
-  const userRating =
-    user !== null
-      ? (data ?? []).find(
-          (row) =>
-            row.user_id === user.id,
-        )?.rating ?? null
-      : null;
+  const ratingCount = Number(summaryRow?.rating_count ?? 0);
+  const userRating = userRatingResult.data?.rating ?? null;
 
   return {
     averageRating:
-      averageRating !== null
-        ? Number(
-            averageRating.toFixed(2),
-          )
+      averageRating !== null && Number.isFinite(averageRating)
+        ? averageRating
         : null,
-    ratingCount:
-      ratingValues.length,
+    ratingCount: Number.isFinite(ratingCount)
+      ? Math.max(0, Math.trunc(ratingCount))
+      : 0,
     userRating:
       userRating !== null
         ? Number(userRating)
         : null,
+    isAuthenticated: user !== null,
   };
 }
 
@@ -561,7 +562,7 @@ export default async function GamePage({ params }: GamePageProps) {
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Community ratings are separate from the editorial Atlas Score.
+                Community ratings are separate from the editorial Atlas Score and use one live vote per account.
               </p>
 
               <div className="mt-4">
@@ -575,6 +576,9 @@ export default async function GamePage({ params }: GamePageProps) {
                   }
                   initialUserRating={
                     gameRatings.userRating
+                  }
+                  isAuthenticated={
+                    gameRatings.isAuthenticated
                   }
                 />
               </div>

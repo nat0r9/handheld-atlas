@@ -13,7 +13,7 @@ type RatingFilter =
   | "Mixed"
   | "Unrated";
 
-type SortOption = "Score" | "Name" | "Newest" | "Oldest";
+type SortOption = "Score" | "Community" | "Name" | "Newest" | "Oldest";
 
 interface GamesCatalogProps {
   games: PublicGame[];
@@ -104,6 +104,17 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
 
     return [...matchingGames].sort((first, second) => {
       switch (sortOption) {
+        case "Community": {
+          const ratingDifference =
+            (second.communityRating ?? -1) -
+            (first.communityRating ?? -1);
+
+          if (ratingDifference !== 0) {
+            return ratingDifference;
+          }
+
+          return second.ratingCount - first.ratingCount;
+        }
         case "Name":
           return first.name.localeCompare(second.name);
         case "Newest":
@@ -133,7 +144,10 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
             ratedGames.length,
         )
       : null;
-  const excellentGames = games.filter((game) => (game.atlasScore ?? 0) >= 90).length;
+  const communityVotes = games.reduce(
+    (total, game) => total + game.ratingCount,
+    0,
+  );
 
   const hasActiveFilters =
     searchQuery.length > 0 ||
@@ -176,7 +190,10 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                 value={averageScore !== null ? averageScore.toString() : "—"}
                 highlighted
               />
-              <HeroStat label="Excellent" value={excellentGames.toString()} />
+              <HeroStat
+                label="Community votes"
+                value={communityVotes.toString()}
+              />
             </div>
           </div>
         </div>
@@ -219,7 +236,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
             <FilterSelect
               label="Sort"
               value={sortOption}
-              options={["Score", "Name", "Newest", "Oldest"]}
+              options={["Score", "Community", "Name", "Newest", "Oldest"]}
               onChange={(value) => setSortOption(value as SortOption)}
             />
 
@@ -334,6 +351,16 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                           </div>
                         </div>
 
+                        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
+                          <span className="text-[0.52rem] font-black uppercase tracking-[0.1em] text-slate-600">
+                            Community
+                          </span>
+                          <span className="text-xs font-black text-yellow-300">
+                            {game.communityRating !== null
+                              ? `★ ${game.communityRating.toFixed(1)} · ${game.ratingCount}`
+                              : "Warming up"}
+                          </span>
+                        </div>
 
                         <p className="mt-auto pt-4 text-xs font-black text-cyan-400 transition group-hover:text-white">
                           Open game profile →

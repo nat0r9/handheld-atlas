@@ -8,6 +8,23 @@ export interface GameRatingResult {
   averageRating: number | null;
   ratingCount: number;
   userRating: number | null;
+  monthlyRatingCount: number;
+}
+
+interface RatingRpcRow {
+  average_rating: number | string | null;
+  rating_count: number | string | null;
+  user_rating: number | string | null;
+  monthly_rating_count: number | string | null;
+}
+
+function toNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export async function setGameRating(
@@ -24,118 +41,54 @@ export async function setGameRating(
     redirect("/login");
   }
 
-  const {
-    data: game,
-    error: gameError,
-  } = await supabase
+  if (
+    rating !== null &&
+    (!Number.isInteger(rating) || rating < 1 || rating > 5)
+  ) {
+    throw new Error("Rating must be a whole number from 1 to 5.");
+  }
+
+  const { data, error } = await supabase.rpc("set_game_rating", {
+    p_game_id: gameId,
+    p_rating: rating,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | RatingRpcRow
+    | null;
+
+  if (!row) {
+    throw new Error("The rating was saved, but its summary could not be loaded.");
+  }
+
+  const averageRating = toNumber(row.average_rating);
+  const ratingCount = toNumber(row.rating_count) ?? 0;
+  const userRating = toNumber(row.user_rating);
+  const monthlyRatingCount = toNumber(row.monthly_rating_count) ?? 0;
+
+  revalidatePath("/");
+  revalidatePath("/games");
+  revalidatePath(`/games/${gameId}`);
+
+  const { data: game } = await supabase
     .from("games")
-    .select("id, slug, status")
+    .select("slug")
     .eq("id", gameId)
     .maybeSingle();
 
-  if (
-    gameError ||
-    !game ||
-    game.status !== "published"
-  ) {
-    throw new Error(
-      gameError?.message ??
-        "This game is not available for rating.",
-    );
+  if (game?.slug) {
+    revalidatePath(`/games/${game.slug}`);
   }
-
-  if (rating === null) {
-    const { error } = await supabase
-      .from("game_ratings")
-      .delete()
-      .eq("game_id", gameId)
-      .eq("user_id", user.id);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-  } else {
-    if (
-      !Number.isInteger(rating) ||
-      rating < 1 ||
-      rating > 5
-    ) {
-      throw new Error(
-        "Rating must be a whole number from 1 to 5.",
-      );
-    }
-
-    const { error } = await supabase
-      .from("game_ratings")
-      .upsert(
-        {
-          game_id: gameId,
-          user_id: user.id,
-          rating,
-          updated_at:
-            new Date().toISOString(),
-        },
-        {
-          onConflict: "game_id,user_id",
-        },
-      );
-
-    if (error) {
-      throw new Error(error.message);
-    }
-  }
-
-  const {
-    data: ratings,
-    error: ratingsError,
-  } = await supabase
-    .from("game_ratings")
-    .select("rating, user_id")
-    .eq("game_id", gameId);
-
-  if (ratingsError) {
-    throw new Error(
-      ratingsError.message,
-    );
-  }
-
-  const ratingValues =
-    (ratings ?? []).map(
-      (row) => Number(row.rating),
-    );
-
-  const averageRating =
-    ratingValues.length > 0
-      ? Number(
-          (
-            ratingValues.reduce(
-              (total, value) =>
-                total + value,
-              0,
-            ) / ratingValues.length
-          ).toFixed(2),
-        )
-      : null;
-
-  const userRating =
-    (ratings ?? []).find(
-      (row) =>
-        row.user_id === user.id,
-    )?.rating ?? null;
-
-  revalidatePath("/games");
-  revalidatePath(
-    `/games/${game.slug}`,
-  );
-  revalidatePath("/");
 
   return {
     averageRating,
-    ratingCount:
-      ratingValues.length,
+    ratingCount: Math.max(0, Math.trunc(ratingCount)),
     userRating:
-      userRating !== null
-        ? Number(userRating)
-        : null,
+      userRating === null ? null : Math.trunc(userRating),
+    monthlyRatingCount: Math.max(0, Math.trunc(monthlyRatingCount)),
   };
 }
