@@ -77,17 +77,6 @@ export default function CommunityTopGamesPanel({
     safeItems.length,
   ]);
 
-  useEffect(() => {
-    if (
-      activeIndex >= safeItems.length
-    ) {
-      setActiveIndex(0);
-    }
-  }, [
-    activeIndex,
-    safeItems.length,
-  ]);
-
   function showPrevious() {
     if (
       safeItems.length === 0
@@ -165,8 +154,13 @@ export default function CommunityTopGamesPanel({
     }
   }
 
+  const safeActiveIndex =
+    safeItems.length > 0
+      ? activeIndex % safeItems.length
+      : 0;
+
   const activeItem =
-    safeItems[activeIndex];
+    safeItems[safeActiveIndex];
 
   if (!activeItem) {
     return (
@@ -223,7 +217,7 @@ export default function CommunityTopGamesPanel({
           }
           alt=""
           fill
-          priority={activeIndex === 0}
+          priority={safeActiveIndex === 0}
           sizes="(max-width: 1024px) 100vw, 48vw"
           className="object-cover object-center opacity-55 transition duration-700 group-hover:scale-[1.02]"
         />
@@ -251,7 +245,7 @@ export default function CommunityTopGamesPanel({
           </div>
 
           <span className="rounded-full border border-white/[0.1] bg-black/40 px-3 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] text-slate-300">
-            {activeIndex + 1} /{" "}
+            {safeActiveIndex + 1} /{" "}
             {safeItems.length}
           </span>
         </div>
@@ -361,13 +355,13 @@ export default function CommunityTopGamesPanel({
                     }
                     aria-label={`Show ${item.name}`}
                     aria-current={
-                      index === activeIndex
+                      index === safeActiveIndex
                         ? "true"
                         : undefined
                     }
                     className={`h-1.5 rounded-full transition-all ${
                       index ===
-                      activeIndex
+                      safeActiveIndex
                         ? "w-8 bg-red-500 shadow-[0_0_10px_rgba(239,35,60,0.7)]"
                         : "w-3 bg-slate-700 hover:bg-slate-500"
                     }`}

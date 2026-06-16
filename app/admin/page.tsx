@@ -374,6 +374,17 @@ export default async function AdminDashboardPage() {
         tone: "cyan",
       },
       {
+        label: "Preset quality",
+        value:
+          publishedPresetsResult.count ?? 0,
+        href: "/admin/preset-quality",
+        description:
+          "Audit launch readiness, evidence and configuration quality.",
+        actionLabel:
+          "Run quality audit",
+        tone: "cyan",
+      },
+      {
         label: "Benchmarks",
         value:
           benchmarksCountResult.count ??
@@ -616,7 +627,7 @@ export default async function AdminDashboardPage() {
               description="Jump directly into the most common editorial workflows."
             />
 
-            <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               <QuickAction
                 href="/admin/games"
                 label="Add game"
@@ -630,6 +641,11 @@ export default async function AdminDashboardPage() {
               <QuickAction
                 href="/admin/presets"
                 label="Build preset"
+              />
+
+              <QuickAction
+                href="/admin/preset-quality"
+                label="Audit presets"
               />
 
               <QuickAction

@@ -328,6 +328,8 @@ export default async function EditPresetPage({
             handhelds={handhelds}
             action={updatePreset}
             canSetAtlasVerified={canSetAtlasVerified}
+            lockToDraft={isBenchmarkTester}
+            clearLocalDraftOnLoad={Boolean(success)}
           />
 
           <div className="mt-8 flex flex-wrap gap-3 border-t border-slate-800 pt-6">

@@ -36,10 +36,14 @@ function ensureGtag() {
 
   window.gtag =
     window.gtag ??
-    function gtag() {
-      window.dataLayer.push(
-        arguments,
-      );
+    function gtag(
+      ...args: [
+        string,
+        string,
+        Record<string, unknown>?,
+      ]
+    ) {
+      window.dataLayer.push(args);
     };
 }
 
@@ -153,32 +157,36 @@ export default function AnalyticsConsent({
         STORAGE_KEY,
       );
 
+    const readyTimer = window.setTimeout(() => {
+      if (
+        storedValue === "granted" ||
+        storedValue === "denied"
+      ) {
+        setConsentState(storedValue);
+        setIsPanelOpen(false);
+      } else {
+        setIsPanelOpen(true);
+      }
+
+      setIsReady(true);
+    }, 0);
+
     if (
-      storedValue ===
-        "granted" ||
+      storedValue === "granted" ||
       storedValue === "denied"
     ) {
-      setConsentState(
-        storedValue,
-      );
+      setConsent(storedValue);
 
-      setConsent(
-        storedValue,
-      );
-
-      if (
-        storedValue ===
-        "granted"
-      ) {
+      if (storedValue === "granted") {
         loadGoogleAnalytics(
           measurementId,
         );
       }
-    } else {
-      setIsPanelOpen(true);
     }
 
-    setIsReady(true);
+    return () => {
+      window.clearTimeout(readyTimer);
+    };
   }, [measurementId]);
 
   function saveConsent(

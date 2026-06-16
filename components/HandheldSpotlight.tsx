@@ -65,14 +65,6 @@ export default function HandheldSpotlight({
       window.clearInterval(timer);
   }, [isPaused, items.length]);
 
-  useEffect(() => {
-    if (
-      activeIndex >= items.length
-    ) {
-      setActiveIndex(0);
-    }
-  }, [activeIndex, items.length]);
-
   function showPrevious() {
     if (items.length === 0) {
       return;
@@ -144,8 +136,13 @@ export default function HandheldSpotlight({
     }
   }
 
+  const safeActiveIndex =
+    items.length > 0
+      ? activeIndex % items.length
+      : 0;
+
   const activeItem =
-    items[activeIndex];
+    items[safeActiveIndex];
 
   if (!activeItem) {
     return (
@@ -262,12 +259,12 @@ export default function HandheldSpotlight({
                   }
                   aria-label={`Show ${item.name}`}
                   aria-current={
-                    index === activeIndex
+                    index === safeActiveIndex
                       ? "true"
                       : undefined
                   }
                   className={`h-1.5 rounded-full transition-all ${
-                    index === activeIndex
+                    index === safeActiveIndex
                       ? "w-8 bg-cyan-400 shadow-[0_0_10px_rgba(24,215,255,0.65)]"
                       : "w-3 bg-slate-700 hover:bg-slate-500"
                   }`}

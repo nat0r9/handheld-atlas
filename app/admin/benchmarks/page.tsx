@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   BENCHMARK_EDITOR_ROLES,
 } from "../../../lib/auth/roles";

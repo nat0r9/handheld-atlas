@@ -325,6 +325,80 @@ function validateCommunityRating(
   }
 }
 
+function validatePublishedPreset({
+  status,
+  resolution,
+  tdp,
+  fpsAverage,
+  onePercentLow,
+  summary,
+  settingGroups,
+  errorPath,
+}: {
+  status: ContentStatus;
+  resolution: string | null;
+  tdp: string | null;
+  fpsAverage: number | null;
+  onePercentLow: number | null;
+  summary: string | null;
+  settingGroups: ParsedSettingGroup[];
+  errorPath: string;
+}) {
+  if (status !== "published") {
+    return;
+  }
+
+  const missing: string[] = [];
+  const completeSettingCount = settingGroups.reduce(
+    (total, group) => total + group.items.length,
+    0,
+  );
+
+  if (!resolution) {
+    missing.push("resolution");
+  }
+
+  if (!tdp) {
+    missing.push("TDP");
+  }
+
+  if (fpsAverage === null) {
+    missing.push("average FPS");
+  }
+
+  if (onePercentLow === null) {
+    missing.push("1% low");
+  }
+
+  if (!summary || summary.length < 60) {
+    missing.push("a summary of at least 60 characters");
+  }
+
+  if (completeSettingCount < 3) {
+    missing.push("at least three complete settings");
+  }
+
+  if (
+    fpsAverage !== null &&
+    onePercentLow !== null &&
+    onePercentLow > fpsAverage
+  ) {
+    redirect(
+      `${errorPath}?error=${encodeURIComponent(
+        "1% low cannot be higher than average FPS",
+      )}`,
+    );
+  }
+
+  if (missing.length > 0) {
+    redirect(
+      `${errorPath}?error=${encodeURIComponent(
+        `Published presets require ${missing.join(", ")}`,
+      )}`,
+    );
+  }
+}
+
 async function createSettingGroups(
   supabase: Awaited<
     ReturnType<typeof createClient>
@@ -509,6 +583,25 @@ export async function createPreset(
     "/admin/presets",
   );
 
+  const resolution = optionalText(formData, "resolution");
+  const tdp = optionalText(formData, "tdp");
+  const fpsAverage = optionalNumber(formData, "fpsAverage");
+  const onePercentLow = optionalNumber(formData, "onePercentLow");
+  const upscaler = optionalText(formData, "upscaler");
+  const batteryLife = optionalText(formData, "batteryLife");
+  const summary = optionalText(formData, "summary");
+
+  validatePublishedPreset({
+    status,
+    resolution,
+    tdp,
+    fpsAverage,
+    onePercentLow,
+    summary,
+    settingGroups,
+    errorPath: "/admin/presets",
+  });
+
   const {
     data: gameRelation,
     error: gameRelationError,
@@ -556,44 +649,22 @@ export async function createPreset(
       name,
       preset_type: presetType,
 
-      resolution: optionalText(
-        formData,
-        "resolution",
-      ),
+      resolution,
 
-      tdp: optionalText(
-        formData,
-        "tdp",
-      ),
+      tdp,
 
-      fps_average: optionalNumber(
-        formData,
-        "fpsAverage",
-      ),
+      fps_average: fpsAverage,
 
-      one_percent_low:
-        optionalNumber(
-          formData,
-          "onePercentLow",
-        ),
+      one_percent_low: onePercentLow,
 
-      upscaler: optionalText(
-        formData,
-        "upscaler",
-      ),
+      upscaler,
 
-      battery_life: optionalText(
-        formData,
-        "batteryLife",
-      ),
+      battery_life: batteryLife,
 
       community_rating:
         communityRating,
 
-      summary: optionalText(
-        formData,
-        "summary",
-      ),
+      summary,
 
       atlas_verified: atlasVerified,
       verified_at:
@@ -743,6 +814,25 @@ export async function updatePreset(
     editPath,
   );
 
+  const resolution = optionalText(formData, "resolution");
+  const tdp = optionalText(formData, "tdp");
+  const fpsAverage = optionalNumber(formData, "fpsAverage");
+  const onePercentLow = optionalNumber(formData, "onePercentLow");
+  const upscaler = optionalText(formData, "upscaler");
+  const batteryLife = optionalText(formData, "batteryLife");
+  const summary = optionalText(formData, "summary");
+
+  validatePublishedPreset({
+    status,
+    resolution,
+    tdp,
+    fpsAverage,
+    onePercentLow,
+    summary,
+    settingGroups,
+    errorPath: editPath,
+  });
+
   const {
     data: currentData,
     error: currentPresetError,
@@ -889,44 +979,22 @@ export async function updatePreset(
         name,
         preset_type: presetType,
 
-        resolution: optionalText(
-          formData,
-          "resolution",
-        ),
+        resolution,
 
-        tdp: optionalText(
-          formData,
-          "tdp",
-        ),
+        tdp,
 
-        fps_average: optionalNumber(
-          formData,
-          "fpsAverage",
-        ),
+        fps_average: fpsAverage,
 
-        one_percent_low:
-          optionalNumber(
-            formData,
-            "onePercentLow",
-          ),
+        one_percent_low: onePercentLow,
 
-        upscaler: optionalText(
-          formData,
-          "upscaler",
-        ),
+        upscaler,
 
-        battery_life: optionalText(
-          formData,
-          "batteryLife",
-        ),
+        battery_life: batteryLife,
 
         community_rating:
           communityRating,
 
-        summary: optionalText(
-          formData,
-          "summary",
-        ),
+        summary,
 
         atlas_verified: atlasVerified,
         verified_at: verifiedAt,

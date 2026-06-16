@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import GuideVoteButton from "./GuideVoteButton";
 
 export interface PublicGuide {
@@ -96,18 +96,14 @@ export default function GuidesCatalog({
     Record<string, VoteOverride>
   >({});
 
-  function getVoteState(
-    guide: PublicGuide,
-  ): VoteOverride {
-    return (
+  const getVoteState = useCallback(
+    (guide: PublicGuide): VoteOverride =>
       voteOverrides[guide.id] ?? {
-        count:
-          guide.upvoteCount,
-        hasUpvoted:
-          guide.hasUpvoted,
-      }
-    );
-  }
+        count: guide.upvoteCount,
+        hasUpvoted: guide.hasUpvoted,
+      },
+    [voteOverrides],
+  );
 
   function handleVoteChange(
     guideId: string,
@@ -245,7 +241,7 @@ export default function GuidesCatalog({
     gameFilter,
     handheldFilter,
     sortOption,
-    voteOverrides,
+    getVoteState,
   ]);
 
   const beginnerGuides = guides.filter(

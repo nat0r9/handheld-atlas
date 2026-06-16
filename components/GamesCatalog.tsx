@@ -416,33 +416,6 @@ function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
   );
 }
 
-function InfoTile({
-  label,
-  value,
-  highlighted = false,
-}: {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}) {
-  return (
-    <div
-      className={`min-w-0 rounded-lg border p-3 ${
-        highlighted ? "border-red-500/25 bg-red-500/[0.07]" : "border-white/[0.07] bg-black/20"
-      }`}
-    >
-      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">{label}</p>
-      <p
-        className={`mt-1 line-clamp-2 break-words text-xs font-black leading-5 ${
-          highlighted ? "text-red-400" : "text-slate-300"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function SearchIcon() {
   return (
     <svg

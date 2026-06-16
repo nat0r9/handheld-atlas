@@ -221,14 +221,30 @@ export default async function AdminPresetsPage({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-              Database total
-            </p>
+          <div className="flex flex-wrap items-stretch gap-3">
+            {!isBenchmarkTester && (
+              <Link
+                href="/admin/preset-quality"
+                className="flex min-w-48 flex-col justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.07] px-5 py-4 transition hover:border-cyan-400/50 hover:bg-cyan-500/[0.12]"
+              >
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">
+                  Launch readiness
+                </p>
+                <p className="mt-2 font-black text-white">
+                  Audit preset quality →
+                </p>
+              </Link>
+            )}
 
-            <p className="mt-2 text-3xl font-black">
-              {presets.length}
-            </p>
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                Database total
+              </p>
+
+              <p className="mt-2 text-3xl font-black">
+                {presets.length}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -289,6 +305,7 @@ export default async function AdminPresetsPage({
             handhelds={handhelds}
             action={createPreset}
             canSetAtlasVerified={canSetAtlasVerified}
+            lockToDraft={isBenchmarkTester}
           />
         </section>
 

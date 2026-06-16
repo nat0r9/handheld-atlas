@@ -115,10 +115,6 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (!isMenuOpen) {
       return;
     }
