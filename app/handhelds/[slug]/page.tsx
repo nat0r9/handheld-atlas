@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import PresetTrustBadge from "../../../components/PresetTrustBadge";
+import { calculatePresetTrust } from "../../../lib/preset-trust";
 import { createClient } from "../../../lib/supabase/server";
 
 interface HandheldPageProps {
@@ -61,11 +63,18 @@ interface DatabasePreset {
   battery_life: string | null;
   community_rating: number | null;
   summary: string | null;
+  atlas_verified: boolean;
   games: {
     name: string;
     slug: string;
   } | null;
   preset_setting_groups: DatabaseSettingGroup[];
+  preset_votes: Array<{
+    user_id: string;
+  }>;
+  preset_confirmations: Array<{
+    user_id: string;
+  }>;
 }
 
 interface DatabaseBenchmark {
@@ -129,6 +138,7 @@ async function getHandheldPresets(
       battery_life,
       community_rating,
       summary,
+      atlas_verified,
       games (
         name,
         slug
@@ -144,6 +154,12 @@ async function getHandheldPresets(
           note,
           sort_order
         )
+      ),
+      preset_votes (
+        user_id
+      ),
+      preset_confirmations (
+        user_id
       )
     `)
     .eq("handheld_id", handheldId)
@@ -698,6 +714,42 @@ export default async function HandheldPage({
                       0,
                     );
 
+                  const trustReport =
+                    calculatePresetTrust({
+                      averageFps:
+                        preset.fps_average,
+                      onePercentLow:
+                        preset.one_percent_low,
+                      resolution:
+                        preset.resolution,
+                      tdp: preset.tdp,
+                      upscaler:
+                        preset.upscaler,
+                      batteryLife:
+                        preset.battery_life,
+                      summary:
+                        preset.summary,
+                      communityRating:
+                        preset.community_rating,
+                      upvoteCount:
+                        preset.preset_votes
+                          ?.length ?? 0,
+                      confirmationCount:
+                        preset
+                          .preset_confirmations
+                          ?.length ?? 0,
+                      atlasVerified:
+                        preset.atlas_verified ??
+                        false,
+                      groups:
+                        sortedGroups.map(
+                          (group) => ({
+                            items:
+                              group.preset_setting_items,
+                          }),
+                        ),
+                    });
+
                   return (
                     <details
                       key={preset.id}
@@ -715,6 +767,13 @@ export default async function HandheldPage({
                                 {preset.preset_type}
                               </span>
 
+                              <PresetTrustBadge
+                                score={trustReport.score}
+                                label={trustReport.label}
+                                tone={trustReport.tone}
+                                compact
+                              />
+
                               <span className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-400">
                                 {preset.games?.name ??
                                   "Unknown game"}
@@ -728,6 +787,10 @@ export default async function HandheldPage({
                             <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
                               {preset.summary ??
                                 "Detailed recommended settings for this handheld."}
+                            </p>
+
+                            <p className="mt-3 text-[0.62rem] font-black uppercase tracking-[0.11em] text-slate-600">
+                              Confidence {trustReport.score}/100 · {preset.preset_confirmations?.length ?? 0} confirmed
                             </p>
                           </div>
 

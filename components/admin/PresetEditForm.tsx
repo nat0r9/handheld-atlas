@@ -40,6 +40,7 @@ export interface EditablePreset {
   communityRating: string;
   summary: string;
   status: "draft" | "published" | "archived";
+  atlasVerified: boolean;
   groups: PresetEditSettingGroup[];
 }
 
@@ -48,6 +49,7 @@ interface PresetEditFormProps {
   games: PresetEditSelectOption[];
   handhelds: PresetEditSelectOption[];
   action: (formData: FormData) => Promise<void>;
+  canSetAtlasVerified?: boolean;
 }
 
 function createItem(): PresetEditSettingItem {
@@ -72,6 +74,7 @@ export default function PresetEditForm({
   games,
   handhelds,
   action,
+  canSetAtlasVerified = false,
 }: PresetEditFormProps) {
   const [groups, setGroups] = useState<
     PresetEditSettingGroup[]
@@ -411,6 +414,26 @@ export default function PresetEditForm({
           </select>
         </div>
       </div>
+
+      {canSetAtlasVerified && (
+        <label className="mt-6 flex cursor-pointer items-start gap-4 rounded-2xl border border-green-500/25 bg-green-500/[0.06] p-5">
+          <input
+            type="checkbox"
+            name="atlasVerified"
+            defaultChecked={preset.atlasVerified}
+            className="mt-1 h-5 w-5 rounded border-slate-700 bg-slate-950 accent-green-500"
+          />
+          <span>
+            <span className="block text-sm font-black text-green-300">
+              Atlas Verified
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              This is an editorial trust signal, not a community vote. Keep it
+              enabled only while the published target and evidence remain valid.
+            </span>
+          </span>
+        </label>
+      )}
 
       <div className="mt-6">
         <label

@@ -24,6 +24,7 @@ interface PresetCreateFormProps {
   games: PresetSelectOption[];
   handhelds: PresetSelectOption[];
   action: (formData: FormData) => Promise<void>;
+  canSetAtlasVerified?: boolean;
 }
 
 function createItem(): SettingItem {
@@ -47,6 +48,7 @@ export default function PresetCreateForm({
   games,
   handhelds,
   action,
+  canSetAtlasVerified = false,
 }: PresetCreateFormProps) {
   const [groups, setGroups] = useState<SettingGroup[]>([
     createGroup(),
@@ -313,6 +315,25 @@ export default function PresetCreateForm({
           </select>
         </div>
       </div>
+
+      {canSetAtlasVerified && (
+        <label className="mt-6 flex cursor-pointer items-start gap-4 rounded-2xl border border-green-500/25 bg-green-500/[0.06] p-5">
+          <input
+            type="checkbox"
+            name="atlasVerified"
+            className="mt-1 h-5 w-5 rounded border-slate-700 bg-slate-950 accent-green-500"
+          />
+          <span>
+            <span className="block text-sm font-black text-green-300">
+              Mark as Atlas Verified
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              Use only after an editor checks the target device, resolution,
+              TDP, performance data and the complete settings list.
+            </span>
+          </span>
+        </label>
+      )}
 
       <div className="mt-6">
         <label

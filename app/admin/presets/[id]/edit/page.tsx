@@ -54,6 +54,7 @@ interface DatabasePreset {
   battery_life: string | null;
   community_rating: number | null;
   summary: string | null;
+  atlas_verified: boolean;
   status: "draft" | "published" | "archived";
   created_by: string | null;
   preset_setting_groups: DatabaseSettingGroup[];
@@ -85,6 +86,10 @@ export default async function EditPresetPage({
 
   const isBenchmarkTester =
     role === "benchmark_tester";
+
+  const canSetAtlasVerified =
+    role === "atlas_editor" ||
+    role === "admin";
 
   const [
     gamesResult,
@@ -121,6 +126,7 @@ export default async function EditPresetPage({
         battery_life,
         community_rating,
         summary,
+        atlas_verified,
         status,
         created_by,
         games (
@@ -242,6 +248,8 @@ export default async function EditPresetPage({
         : "",
     summary: databasePreset.summary ?? "",
     status: databasePreset.status,
+    atlasVerified:
+      databasePreset.atlas_verified ?? false,
     groups: sortedGroups,
   };
 
@@ -319,6 +327,7 @@ export default async function EditPresetPage({
             games={games}
             handhelds={handhelds}
             action={updatePreset}
+            canSetAtlasVerified={canSetAtlasVerified}
           />
 
           <div className="mt-8 flex flex-wrap gap-3 border-t border-slate-800 pt-6">

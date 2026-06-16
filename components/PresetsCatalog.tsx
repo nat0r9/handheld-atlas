@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import PresetConfirmationButton from "./PresetConfirmationButton";
+import PresetTrustBadge from "./PresetTrustBadge";
 import PresetVoteButton from "./PresetVoteButton";
 import { getPresetProfileGuide } from "../lib/preset-guidance";
+import {
+  calculatePresetTrust,
+} from "../lib/preset-trust";
 
 export type PublicPresetType =
   | "Performance"
@@ -39,6 +43,7 @@ export interface PublicPreset {
   communityRating: number | null;
   summary: string | null;
   publishedAt: string | null;
+  atlasVerified: boolean;
   upvoteCount: number;
   hasUpvoted: boolean;
   confirmationCount: number;
@@ -67,6 +72,7 @@ type PresetFilter = "All" | PublicPresetType;
 
 type SortOption =
   | "Newest"
+  | "Highest confidence"
   | "Most upvoted"
   | "Most confirmed"
   | "Rating"
@@ -235,6 +241,33 @@ export default function PresetsCatalog({
     }));
   }
 
+  const getTrustState = useCallback(
+    (preset: PublicPreset) =>
+      calculatePresetTrust({
+        averageFps: preset.averageFps,
+        onePercentLow: preset.onePercentLow,
+        resolution: preset.resolution,
+        tdp: preset.tdp,
+        upscaler: preset.upscaler,
+        batteryLife: preset.batteryLife,
+        summary: preset.summary,
+        communityRating:
+          preset.communityRating,
+        upvoteCount:
+          getVoteState(preset).count,
+        confirmationCount:
+          getConfirmationState(preset)
+            .count,
+        atlasVerified:
+          preset.atlasVerified,
+        groups: preset.groups,
+      }),
+    [
+      getConfirmationState,
+      getVoteState,
+    ],
+  );
+
   const gameOptions = useMemo(
     () => [
       "All",
@@ -294,6 +327,7 @@ export default function PresetsCatalog({
         preset.tdp ?? "",
         preset.upscaler ?? "",
         preset.summary ?? "",
+        getTrustState(preset).label,
         searchableSettings,
       ]
         .join(" ")
@@ -311,6 +345,11 @@ export default function PresetsCatalog({
 
     return [...matchingPresets].sort((first, second) => {
       switch (sortOption) {
+        case "Highest confidence":
+          return (
+            getTrustState(second).score -
+            getTrustState(first).score
+          );
         case "Most upvoted":
           return getVoteState(second).count - getVoteState(first).count;
         case "Most confirmed":
@@ -343,6 +382,7 @@ export default function PresetsCatalog({
     sortOption,
     getVoteState,
     getConfirmationState,
+    getTrustState,
   ]);
 
   const hasActiveFilters =
@@ -352,32 +392,24 @@ export default function PresetsCatalog({
     handheldFilter !== "All" ||
     sortOption !== "Newest";
 
-  const ratedPresets = presets.filter(
-    (preset) => preset.communityRating !== null,
-  );
-
-  const averageRating =
-    ratedPresets.length > 0
-      ? (
-          ratedPresets.reduce(
-            (total, preset) => total + (preset.communityRating ?? 0),
+  const averageTrust =
+    presets.length > 0
+      ? Math.round(
+          presets.reduce(
+            (total, preset) =>
+              total +
+              getTrustState(preset).score,
             0,
-          ) / ratedPresets.length
-        ).toFixed(1)
-      : "—";
+          ) / presets.length,
+        )
+      : 0;
+
+  const verifiedPresets = presets.filter(
+    (preset) => preset.atlasVerified,
+  ).length;
 
   const totalConfirmations = presets.reduce(
     (total, preset) => total + getConfirmationState(preset).count,
-    0,
-  );
-
-  const totalSettings = presets.reduce(
-    (presetTotal, preset) =>
-      presetTotal +
-      preset.groups.reduce(
-        (groupTotal, group) => groupTotal + group.items.length,
-        0,
-      ),
     0,
   );
 
@@ -414,15 +446,18 @@ export default function PresetsCatalog({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
               <HeroStat label="Published" value={presets.length.toString()} />
               <HeroStat
-                label="Average rating"
-                value={averageRating}
+                label="Average confidence"
+                value={`${averageTrust}/100`}
                 highlighted
+              />
+              <HeroStat
+                label="Atlas verified"
+                value={verifiedPresets.toString()}
               />
               <HeroStat
                 label="Confirmed"
                 value={totalConfirmations.toString()}
               />
-              <HeroStat label="Settings" value={totalSettings.toString()} />
             </div>
           </div>
         </div>
@@ -476,6 +511,7 @@ export default function PresetsCatalog({
               value={sortOption}
               options={[
                 "Newest",
+                "Highest confidence",
                 "Most upvoted",
                 "Most confirmed",
                 "Rating",
@@ -606,7 +642,9 @@ export default function PresetsCatalog({
                 const voteState = getVoteState(preset);
                 const confirmationState = getConfirmationState(preset);
                 const profileGuide = getPresetProfileGuide(preset.type);
+                const trustState = getTrustState(preset);
                 const coverageBadges = [
+                  preset.atlasVerified ? "Atlas Verified" : null,
                   preset.averageFps !== null && preset.onePercentLow !== null
                     ? "Measured FPS"
                     : null,
@@ -636,6 +674,13 @@ export default function PresetsCatalog({
                             >
                               {preset.type}
                             </span>
+
+                            <PresetTrustBadge
+                              score={trustState.score}
+                              label={trustState.label}
+                              tone={trustState.tone}
+                              compact
+                            />
 
                             <span className="min-w-0 truncate text-[0.58rem] font-black uppercase tracking-[0.1em] text-cyan-400 sm:text-[0.62rem] sm:tracking-[0.12em]">
                               {preset.game?.name ?? "Unknown game"}
@@ -689,6 +734,19 @@ export default function PresetsCatalog({
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">
+                          <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3 lg:text-center">
+                            <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
+                              Atlas confidence
+                            </p>
+                            <p className="mt-1 text-2xl font-black text-white">
+                              {trustState.score}
+                              <span className="text-sm text-slate-600">/100</span>
+                            </p>
+                            <p className="mt-1 text-[0.62rem] font-bold text-slate-500">
+                              {trustState.label}
+                            </p>
+                          </div>
+
                           {preset.communityRating !== null && (
                             <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] px-3 py-2.5 text-left lg:text-center">
                               <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-yellow-500">

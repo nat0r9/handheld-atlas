@@ -112,6 +112,7 @@ export default async function AdminDashboardPage() {
     profileResult,
     pendingSubmissionsResult,
     pendingGuideSubmissionsResult,
+    presetConfirmationsResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -134,6 +135,13 @@ export default async function AdminDashboardPage() {
         head: true,
       })
       .eq("status", "pending"),
+
+    supabase
+      .from("preset_confirmations")
+      .select("id", {
+        count: "exact",
+        head: true,
+      }),
   ]);
 
   const displayName =
@@ -173,6 +181,19 @@ export default async function AdminDashboardPage() {
               "Review community guides and moderator feedback.",
             actionLabel:
               "Open guide queue",
+            tone: "red",
+          },
+          {
+            label: "Preset confirmations",
+            value:
+              presetConfirmationsResult.count ??
+              0,
+            href:
+              "/admin/preset-feedback",
+            description:
+              "Audit Worked for me signals and keep a moderation log.",
+            actionLabel:
+              "Open trust moderation",
             tone: "red",
           },
         ]
@@ -461,6 +482,8 @@ export default async function AdminDashboardPage() {
     pendingSubmissionsResult.error
       ?.message ??
     pendingGuideSubmissionsResult.error
+      ?.message ??
+    presetConfirmationsResult.error
       ?.message ??
     contentError;
 

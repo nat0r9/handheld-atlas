@@ -36,6 +36,7 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   published_at: string | null;
+  atlas_verified: boolean;
   games: {
     name: string;
     slug: string;
@@ -76,6 +77,7 @@ export default async function PresetsPage() {
       community_rating,
       summary,
       published_at,
+      atlas_verified,
       games (
         name,
         slug
@@ -113,38 +115,11 @@ export default async function PresetsPage() {
   const databasePresets =
     (data ?? []) as unknown as DatabasePreset[];
 
-  const presets: PublicPreset[] = databasePresets.map(
-    (preset) => ({
-      id: preset.id,
-      name: preset.name,
-      type: preset.preset_type,
-      resolution: preset.resolution,
-      tdp: preset.tdp,
-      averageFps: preset.fps_average,
-      onePercentLow: preset.one_percent_low,
-      upscaler: preset.upscaler,
-      batteryLife: preset.battery_life,
-      communityRating: preset.community_rating,
-      summary: preset.summary,
-      publishedAt: preset.published_at,
-      upvoteCount:
-        preset.preset_votes?.length ?? 0,
-      hasUpvoted:
-        user !== null &&
-        (preset.preset_votes ?? []).some(
-          (vote) =>
-            vote.user_id === user.id,
-        ),
-      confirmationCount:
-        preset.preset_confirmations?.length ?? 0,
-      hasConfirmed:
-        user !== null &&
-        (preset.preset_confirmations ?? []).some(
-          (confirmation) => confirmation.user_id === user.id,
-        ),
-      game: preset.games,
-      handheld: preset.handhelds,
-      groups: [...(preset.preset_setting_groups ?? [])]
+  const presets: PublicPreset[] =
+    databasePresets.map((preset) => {
+      const groups = [
+        ...(preset.preset_setting_groups ?? []),
+      ]
         .sort(
           (first, second) =>
             first.sort_order - second.sort_order,
@@ -165,9 +140,47 @@ export default async function PresetsPage() {
               value: item.value,
               note: item.note,
             })),
-        })),
-    }),
-  );
+        }));
+
+      const upvoteCount =
+        preset.preset_votes?.length ?? 0;
+      const confirmationCount =
+        preset.preset_confirmations?.length ?? 0;
+      const atlasVerified =
+        preset.atlas_verified ?? false;
+
+      return {
+        id: preset.id,
+        name: preset.name,
+        type: preset.preset_type,
+        resolution: preset.resolution,
+        tdp: preset.tdp,
+        averageFps: preset.fps_average,
+        onePercentLow: preset.one_percent_low,
+        upscaler: preset.upscaler,
+        batteryLife: preset.battery_life,
+        communityRating: preset.community_rating,
+        summary: preset.summary,
+        publishedAt: preset.published_at,
+        atlasVerified,
+        upvoteCount,
+        hasUpvoted:
+          user !== null &&
+          (preset.preset_votes ?? []).some(
+            (vote) => vote.user_id === user.id,
+          ),
+        confirmationCount,
+        hasConfirmed:
+          user !== null &&
+          (preset.preset_confirmations ?? []).some(
+            (confirmation) =>
+              confirmation.user_id === user.id,
+          ),
+        game: preset.games,
+        handheld: preset.handhelds,
+        groups,
+      };
+    });
 
   return (
     <PresetsCatalog

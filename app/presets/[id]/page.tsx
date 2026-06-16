@@ -4,6 +4,10 @@ import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import PresetDetailConfirmation from "../../../components/PresetDetailConfirmation";
 import PresetDetailVote from "../../../components/PresetDetailVote";
+import PresetTrustBadge from "../../../components/PresetTrustBadge";
+import {
+  calculatePresetTrust,
+} from "../../../lib/preset-trust";
 import { createClient } from "../../../lib/supabase/server";
 import {
   getPresetProfileGuide,
@@ -47,6 +51,8 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   published_at: string | null;
+  atlas_verified: boolean;
+  verified_at: string | null;
   games: {
     name: string;
     slug: string;
@@ -220,6 +226,8 @@ export default async function PresetDetailPage({
       community_rating,
       summary,
       published_at,
+      atlas_verified,
+      verified_at,
       games (
         name,
         slug
@@ -317,46 +325,23 @@ export default async function PresetDetailPage({
     .filter(({ note }) => Boolean(note.defaultValue))
     .slice(0, 8);
 
-  const evidenceItems = [
-    {
-      label: "Frame-time data",
-      value:
-        preset.fps_average !== null && preset.one_percent_low !== null
-          ? `${preset.fps_average} FPS average · ${preset.one_percent_low} FPS 1% low`
-          : "Not fully recorded",
-      available:
-        preset.fps_average !== null && preset.one_percent_low !== null,
-    },
-    {
-      label: "Exact test target",
-      value:
-        preset.resolution && preset.tdp
-          ? `${preset.resolution} · ${preset.tdp}`
-          : "Resolution or TDP missing",
-      available: Boolean(preset.resolution && preset.tdp),
-    },
-    {
-      label: "Configuration depth",
-      value:
-        settingsCount > 0
-          ? `${settingsCount} settings across ${groups.length} groups`
-          : "No detailed values yet",
-      available: settingsCount > 0,
-    },
-    {
-      label: "Community signal",
-      value:
-        preset.community_rating !== null ||
-        upvoteCount > 0 ||
-        confirmationCount > 0
-          ? `${preset.community_rating !== null ? `★ ${preset.community_rating.toFixed(1)}` : "No rating"} · ${upvoteCount} ${upvoteCount === 1 ? "upvote" : "upvotes"} · ${confirmationCount} ${confirmationCount === 1 ? "confirmation" : "confirmations"}`
-          : "No community feedback yet",
-      available:
-        preset.community_rating !== null ||
-        upvoteCount > 0 ||
-        confirmationCount > 0,
-    },
-  ];
+  const atlasVerified =
+    preset.atlas_verified ?? false;
+
+  const trustReport = calculatePresetTrust({
+    averageFps: preset.fps_average,
+    onePercentLow: preset.one_percent_low,
+    resolution: preset.resolution,
+    tdp: preset.tdp,
+    upscaler: preset.upscaler,
+    batteryLife: preset.battery_life,
+    summary: preset.summary,
+    communityRating: preset.community_rating,
+    upvoteCount,
+    confirmationCount,
+    atlasVerified,
+    groups,
+  });
 
   return (
     <main className="atlas-page min-w-0 overflow-x-hidden pb-16 text-white">
@@ -380,6 +365,13 @@ export default async function PresetDetailPage({
                 >
                   {preset.preset_type}
                 </span>
+
+                <PresetTrustBadge
+                  score={trustReport.score}
+                  label={trustReport.label}
+                  tone={trustReport.tone}
+                  compact
+                />
 
                 <span className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-400">
                   {preset.games?.name ?? "Unknown game"}
@@ -408,6 +400,22 @@ export default async function PresetDetailPage({
             </div>
 
             <aside className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center">
+                <p className="text-[0.54rem] font-black uppercase tracking-[0.14em] text-cyan-500">
+                  Atlas confidence
+                </p>
+                <p className="mt-2 text-4xl font-black text-white">
+                  {trustReport.score}
+                  <span className="text-base text-slate-600">/100</span>
+                </p>
+                <p className="mt-1 text-sm font-black text-cyan-300">
+                  {trustReport.label}
+                </p>
+                <p className="mt-2 text-[0.68rem] leading-5 text-slate-500">
+                  Evidence completeness, not a universal FPS guarantee.
+                </p>
+              </div>
+
               {preset.community_rating !== null && (
                 <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.07] p-4 text-center">
                   <p className="text-[0.54rem] font-black uppercase tracking-[0.14em] text-yellow-500">
@@ -507,7 +515,9 @@ export default async function PresetDetailPage({
         <section className="mt-7 grid min-w-0 gap-4 lg:grid-cols-2">
           <article className="atlas-panel min-w-0 p-5 sm:p-6">
             <p className="atlas-section-label">Why this profile exists</p>
-            <h2 className="mt-2 text-2xl font-black">Built for {profileGuide.shortLabel.toLowerCase()}</h2>
+            <h2 className="mt-2 text-2xl font-black">
+              Built for {profileGuide.shortLabel.toLowerCase()}
+            </h2>
             <p className="mt-4 text-sm leading-7 text-slate-300">
               <strong className="text-white">Best for:</strong>{" "}
               {profileGuide.bestFor}.
@@ -526,33 +536,136 @@ export default async function PresetDetailPage({
           </article>
 
           <article className="atlas-panel min-w-0 p-5 sm:p-6">
-            <p className="atlas-section-label">Evidence, not vibes</p>
-            <h2 className="mt-2 text-2xl font-black">What is actually recorded</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {evidenceItems.map((item) => (
-                <div
-                  key={item.label}
-                  className={`rounded-xl border p-4 ${
-                    item.available
-                      ? "border-green-500/20 bg-green-500/[0.05]"
-                      : "border-white/[0.07] bg-black/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        item.available ? "bg-green-400" : "bg-slate-700"
-                      }`}
-                    />
-                    <p className="text-[0.52rem] font-black uppercase tracking-[0.12em] text-slate-500">
-                      {item.label}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="atlas-section-label">Confidence breakdown</p>
+                <h2 className="mt-2 text-2xl font-black">
+                  Why it scored {trustReport.score}/100
+                </h2>
+              </div>
+
+              <PresetTrustBadge
+                score={trustReport.score}
+                label={trustReport.label}
+                tone={trustReport.tone}
+              />
+            </div>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              {trustReport.summary}
+            </p>
+
+            <div className="mt-5 space-y-4">
+              {trustReport.components.map((component) => {
+                const width = Math.round(
+                  (component.score / component.maximum) * 100,
+                );
+
+                return (
+                  <div key={component.key}>
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <p className="font-black text-slate-300">
+                        {component.label}
+                      </p>
+                      <p className="font-black text-slate-500">
+                        {component.score}/{component.maximum}
+                      </p>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                      <div
+                        className="h-full rounded-full bg-cyan-400"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-600">
+                      {component.detail}
                     </p>
                   </div>
-                  <p className="mt-2 break-words text-sm font-bold text-slate-300">
-                    {item.value}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          </article>
+        </section>
+
+        <section className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <article className="atlas-panel min-w-0 p-5 sm:p-6">
+            <p className="atlas-section-label">Community proof</p>
+            <h2 className="mt-2 text-2xl font-black">
+              Different signals, different meaning
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              A confirmation means the preset worked on the matching target. An
+              upvote only means somebody found it useful. Atlas Verified is a
+              separate editorial review, because mixing those signals into one
+              mysterious soup would be corporate-grade nonsense.
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <ProofMetric
+                label="Matching setup"
+                value={confirmationCount.toString()}
+                detail="Worked for me"
+                highlighted
+              />
+              <ProofMetric
+                label="Useful"
+                value={upvoteCount.toString()}
+                detail="Upvotes"
+              />
+              <ProofMetric
+                label="Rating"
+                value={
+                  preset.community_rating !== null
+                    ? preset.community_rating.toFixed(1)
+                    : "—"
+                }
+                detail="Community score"
+              />
+              <ProofMetric
+                label="Editorial"
+                value={atlasVerified ? "Yes" : "No"}
+                detail={atlasVerified ? "Atlas Verified" : "Awaiting review"}
+              />
+            </div>
+          </article>
+
+          <article className="atlas-panel min-w-0 p-5 sm:p-6">
+            <p className="atlas-section-label">Impact map</p>
+            <h2 className="mt-2 text-2xl font-black">
+              What the notes actually explain
+            </h2>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <ImpactMetric
+                label="Explained"
+                value={`${trustReport.impact.explainedSettings}/${trustReport.impact.settingsCount}`}
+                detail={`${trustReport.impact.explanationCoverage}% coverage`}
+              />
+              <ImpactMetric
+                label="Defaults mapped"
+                value={trustReport.impact.baselineSettings.toString()}
+                detail={`${trustReport.impact.baselineCoverage}% coverage`}
+              />
+              <ImpactMetric
+                label="Performance notes"
+                value={trustReport.impact.performanceNotes.toString()}
+                detail="Expected FPS or frame-time effect"
+              />
+              <ImpactMetric
+                label="Low visual cost"
+                value={trustReport.impact.lowVisualImpactSettings.toString()}
+                detail="Minimal or minor quality loss"
+              />
+              <ImpactMetric
+                label="Visible trade-offs"
+                value={trustReport.impact.noticeableVisualImpactSettings.toString()}
+                detail="Medium or high visual impact"
+              />
+              <ImpactMetric
+                label="Restart required"
+                value={trustReport.impact.restartRequiredSettings.toString()}
+                detail="Documented restart-dependent changes"
+              />
             </div>
           </article>
         </section>
@@ -932,6 +1045,66 @@ function NoteBadge({ label, value }: { label: string; value: string }) {
     <span className="rounded-full border border-white/[0.08] bg-black/25 px-2 py-1 text-[0.5rem] font-bold text-slate-500">
       <strong className="text-slate-400">{label}:</strong> {value}
     </span>
+  );
+}
+
+function ProofMetric({
+  label,
+  value,
+  detail,
+  highlighted = false,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={`min-w-0 rounded-xl border p-3 ${
+        highlighted
+          ? "border-green-500/25 bg-green-500/[0.06]"
+          : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.12em] text-slate-600">
+        {label}
+      </p>
+      <p
+        className={`mt-2 text-2xl font-black ${
+          highlighted ? "text-green-300" : "text-white"
+        }`}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-[0.62rem] leading-5 text-slate-500">
+        {detail}
+      </p>
+    </div>
+  );
+}
+
+function ImpactMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/[0.07] bg-black/20 p-3">
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.12em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-black text-cyan-300">
+        {value}
+      </p>
+      <p className="mt-1 text-[0.62rem] leading-5 text-slate-500">
+        {detail}
+      </p>
+    </div>
   );
 }
 

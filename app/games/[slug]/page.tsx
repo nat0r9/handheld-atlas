@@ -3,9 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import GameRatingControl from "../../../components/GameRatingControl";
 import AtlasScore from "../../../components/AtlasScore";
+import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import { notFound } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import { getPresetProfileGuide } from "../../../lib/preset-guidance";
+import { calculatePresetTrust } from "../../../lib/preset-trust";
 
 interface GamePageProps {
   params: Promise<{
@@ -59,6 +61,7 @@ interface DatabasePreset {
   battery_life: string | null;
   community_rating: number | null;
   summary: string | null;
+  atlas_verified: boolean;
 
   handhelds: {
     name: string;
@@ -67,6 +70,12 @@ interface DatabasePreset {
   } | null;
 
   preset_setting_groups: DatabaseSettingGroup[];
+  preset_votes: Array<{
+    user_id: string;
+  }>;
+  preset_confirmations: Array<{
+    user_id: string;
+  }>;
 }
 
 interface DatabaseBenchmark {
@@ -127,6 +136,7 @@ async function getGamePresets(gameId: string) {
       battery_life,
       community_rating,
       summary,
+      atlas_verified,
       handhelds (
         name,
         slug,
@@ -143,6 +153,12 @@ async function getGamePresets(gameId: string) {
           note,
           sort_order
         )
+      ),
+      preset_votes (
+        user_id
+      ),
+      preset_confirmations (
+        user_id
       )
     `)
     .eq("game_id", gameId)
@@ -610,7 +626,29 @@ export default async function GamePage({ params }: GamePageProps) {
                   0,
                 );
                 const profileGuide = getPresetProfileGuide(preset.preset_type);
+                const trustReport = calculatePresetTrust({
+                  averageFps: preset.fps_average,
+                  onePercentLow: preset.one_percent_low,
+                  resolution: preset.resolution,
+                  tdp: preset.tdp,
+                  upscaler: preset.upscaler,
+                  batteryLife: preset.battery_life,
+                  summary: preset.summary,
+                  communityRating: preset.community_rating,
+                  upvoteCount: preset.preset_votes?.length ?? 0,
+                  confirmationCount:
+                    preset.preset_confirmations?.length ?? 0,
+                  atlasVerified:
+                    preset.atlas_verified ?? false,
+                  groups: (preset.preset_setting_groups ?? []).map(
+                    (group) => ({
+                      items: group.preset_setting_items ?? [],
+                    }),
+                  ),
+                });
                 const evidenceBadges = [
+                  preset.atlas_verified ? "Atlas Verified" : null,
+                  `Confidence ${trustReport.score}/100`,
                   preset.fps_average !== null && preset.one_percent_low !== null
                     ? "Measured FPS"
                     : null,
@@ -633,6 +671,13 @@ export default async function GamePage({ params }: GamePageProps) {
                         >
                           {preset.preset_type}
                         </span>
+
+                        <PresetTrustBadge
+                          score={trustReport.score}
+                          label={trustReport.label}
+                          tone={trustReport.tone}
+                          compact
+                        />
 
                         <span className="text-[0.58rem] font-black uppercase tracking-[0.12em] text-cyan-400">
                           {preset.handhelds?.name ?? "Unknown handheld"}

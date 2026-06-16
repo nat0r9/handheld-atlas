@@ -33,6 +33,7 @@ interface DatabasePreset {
   battery_life: string | null;
   community_rating: number | null;
   summary: string | null;
+  atlas_verified: boolean;
   status: "draft" | "published" | "archived";
   created_by: string | null;
   created_at: string;
@@ -103,6 +104,10 @@ export default async function AdminPresetsPage({
   const isBenchmarkTester =
     role === "benchmark_tester";
 
+  const canSetAtlasVerified =
+    role === "atlas_editor" ||
+    role === "admin";
+
   const [
     gamesResult,
     handheldsResult,
@@ -137,6 +142,7 @@ export default async function AdminPresetsPage({
           battery_life,
           community_rating,
           summary,
+          atlas_verified,
           status,
           created_by,
           created_at,
@@ -282,6 +288,7 @@ export default async function AdminPresetsPage({
             games={games}
             handhelds={handhelds}
             action={createPreset}
+            canSetAtlasVerified={canSetAtlasVerified}
           />
         </section>
 
@@ -358,6 +365,12 @@ export default async function AdminPresetsPage({
                       >
                         {preset.status}
                       </span>
+
+                      {preset.atlas_verified && (
+                        <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-green-300">
+                          Atlas Verified
+                        </span>
+                      )}
                     </div>
                   </div>
 

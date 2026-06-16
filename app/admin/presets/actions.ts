@@ -29,6 +29,9 @@ interface PresetLookup {
   published_at: string | null;
   created_by: string | null;
   status: ContentStatus;
+  atlas_verified: boolean;
+  verified_at: string | null;
+  verified_by: string | null;
   games:
     | RelationWithSlug
     | RelationWithSlug[]
@@ -116,6 +119,24 @@ function optionalNumber(
   return Number.isFinite(number)
     ? number
     : null;
+}
+
+function isChecked(
+  formData: FormData,
+  name: string,
+) {
+  const value = formData.get(name);
+
+  return value === "on" ||
+    value === "true" ||
+    value === "1";
+}
+
+function canSetAtlasVerified(
+  role: string,
+) {
+  return role === "atlas_editor" ||
+    role === "admin";
 }
 
 function getStatus(
@@ -455,6 +476,13 @@ export async function createPreset(
       ? "draft"
       : requestedStatus;
 
+  const atlasVerified =
+    canSetAtlasVerified(role) &&
+    isChecked(
+      formData,
+      "atlasVerified",
+    );
+
   const settingGroups =
     parseSettings(formData);
 
@@ -567,6 +595,16 @@ export async function createPreset(
         "summary",
       ),
 
+      atlas_verified: atlasVerified,
+      verified_at:
+        atlasVerified
+          ? new Date().toISOString()
+          : null,
+      verified_by:
+        atlasVerified
+          ? user.id
+          : null,
+
       status,
       created_by: user.id,
 
@@ -664,6 +702,12 @@ export async function updatePreset(
       ? "draft"
       : requestedStatus;
 
+  const requestedAtlasVerified =
+    isChecked(
+      formData,
+      "atlasVerified",
+    );
+
   const settingGroups =
     parseSettings(formData);
 
@@ -708,6 +752,9 @@ export async function updatePreset(
       published_at,
       created_by,
       status,
+      atlas_verified,
+      verified_at,
+      verified_by,
       games (
         slug
       ),
@@ -786,6 +833,25 @@ export async function updatePreset(
         new Date().toISOString()
       : null;
 
+  const atlasVerified =
+    canSetAtlasVerified(role)
+      ? requestedAtlasVerified
+      : currentPreset.atlas_verified;
+
+  const verifiedAt =
+    atlasVerified
+      ? currentPreset.atlas_verified
+        ? currentPreset.verified_at
+        : new Date().toISOString()
+      : null;
+
+  const verifiedBy =
+    atlasVerified
+      ? currentPreset.atlas_verified
+        ? currentPreset.verified_by
+        : user.id
+      : null;
+
   const { data: oldGroups } =
     await supabase
       .from("preset_setting_groups")
@@ -861,6 +927,10 @@ export async function updatePreset(
           formData,
           "summary",
         ),
+
+        atlas_verified: atlasVerified,
+        verified_at: verifiedAt,
+        verified_by: verifiedBy,
 
         status,
         published_at: publishedAt,
