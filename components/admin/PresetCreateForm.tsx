@@ -346,7 +346,7 @@ export default function PresetCreateForm({
             Structured setting note format
           </p>
           <code className="mt-2 block whitespace-pre-wrap break-words text-xs leading-6 text-slate-300">
-            Problem: CPU bottleneck | Why: Crowd density hits the CPU hardest | FPS: +3–6 FPS | Visual: Low | Restart: No
+            Default: High | Problem: CPU bottleneck | Why: Crowd density hits the CPU hardest | FPS: +3–6 FPS | Visual: Low | Restart: No
           </code>
           <p className="mt-2 text-xs leading-5 text-slate-500">
             Every label is optional. Plain notes still work; structured labels

@@ -12,6 +12,11 @@ interface SitemapRecord {
   published_at?: string | null;
 }
 
+interface PresetSitemapRecord {
+  id: string;
+  published_at: string | null;
+}
+
 function getLastModified(
   updatedAt: string | null,
   publishedAt?: string | null,
@@ -69,6 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     handheldsResult,
     guidesResult,
     newsResult,
+    presetsResult,
   ] = await Promise.all([
     supabase
       .from("games")
@@ -109,6 +115,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .order("updated_at", {
         ascending: false,
       }),
+
+    supabase
+      .from("presets")
+      .select(
+        "id, published_at",
+      )
+      .eq("status", "published")
+      .order("updated_at", {
+        ascending: false,
+      }),
   ]);
 
   const games =
@@ -126,6 +142,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const newsItems =
     (newsResult.data ??
       []) as SitemapRecord[];
+
+  const presets =
+    (presetsResult.data ??
+      []) as PresetSitemapRecord[];
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -210,11 +230,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ),
     );
 
+  const presetPages: MetadataRoute.Sitemap = presets.map((record) => {
+    const lastModified = getLastModified(
+      null,
+      record.published_at,
+    );
+
+    return {
+      url: `${baseUrl}/presets/${record.id}`,
+      ...(lastModified ? { lastModified } : {}),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    };
+  });
+
   return [
     ...staticPages,
     ...gamePages,
     ...handheldPages,
     ...guidePages,
     ...newsPages,
+    ...presetPages,
   ];
 }

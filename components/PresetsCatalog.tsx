@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useCallback, useMemo, useState } from "react";
+import PresetConfirmationButton from "./PresetConfirmationButton";
 import PresetVoteButton from "./PresetVoteButton";
 import { getPresetProfileGuide } from "../lib/preset-guidance";
 
@@ -40,6 +41,8 @@ export interface PublicPreset {
   publishedAt: string | null;
   upvoteCount: number;
   hasUpvoted: boolean;
+  confirmationCount: number;
+  hasConfirmed: boolean;
 
   game: {
     name: string;
@@ -65,6 +68,7 @@ type PresetFilter = "All" | PublicPresetType;
 type SortOption =
   | "Newest"
   | "Most upvoted"
+  | "Most confirmed"
   | "Rating"
   | "FPS"
   | "Name";
@@ -72,6 +76,11 @@ type SortOption =
 interface VoteOverride {
   count: number;
   hasUpvoted: boolean;
+}
+
+interface ConfirmationOverride {
+  count: number;
+  hasConfirmed: boolean;
 }
 
 const presetFilters: PresetFilter[] = [
@@ -176,6 +185,9 @@ export default function PresetsCatalog({
   const [voteOverrides, setVoteOverrides] = useState<
     Record<string, VoteOverride>
   >({});
+  const [confirmationOverrides, setConfirmationOverrides] = useState<
+    Record<string, ConfirmationOverride>
+  >({});
 
   const getVoteState = useCallback(
     (preset: PublicPreset): VoteOverride =>
@@ -196,6 +208,29 @@ export default function PresetsCatalog({
       [presetId]: {
         count,
         hasUpvoted,
+      },
+    }));
+  }
+
+  const getConfirmationState = useCallback(
+    (preset: PublicPreset): ConfirmationOverride =>
+      confirmationOverrides[preset.id] ?? {
+        count: preset.confirmationCount,
+        hasConfirmed: preset.hasConfirmed,
+      },
+    [confirmationOverrides],
+  );
+
+  function handleConfirmationChange(
+    presetId: string,
+    count: number,
+    hasConfirmed: boolean,
+  ) {
+    setConfirmationOverrides((current) => ({
+      ...current,
+      [presetId]: {
+        count,
+        hasConfirmed,
       },
     }));
   }
@@ -278,6 +313,11 @@ export default function PresetsCatalog({
       switch (sortOption) {
         case "Most upvoted":
           return getVoteState(second).count - getVoteState(first).count;
+        case "Most confirmed":
+          return (
+            getConfirmationState(second).count -
+            getConfirmationState(first).count
+          );
         case "Rating":
           return (
             (second.communityRating ?? -1) -
@@ -302,6 +342,7 @@ export default function PresetsCatalog({
     handheldFilter,
     sortOption,
     getVoteState,
+    getConfirmationState,
   ]);
 
   const hasActiveFilters =
@@ -325,9 +366,10 @@ export default function PresetsCatalog({
         ).toFixed(1)
       : "—";
 
-  const performancePresets = presets.filter(
-    (preset) => preset.type === "Performance",
-  ).length;
+  const totalConfirmations = presets.reduce(
+    (total, preset) => total + getConfirmationState(preset).count,
+    0,
+  );
 
   const totalSettings = presets.reduce(
     (presetTotal, preset) =>
@@ -377,8 +419,8 @@ export default function PresetsCatalog({
                 highlighted
               />
               <HeroStat
-                label="Performance"
-                value={performancePresets.toString()}
+                label="Confirmed"
+                value={totalConfirmations.toString()}
               />
               <HeroStat label="Settings" value={totalSettings.toString()} />
             </div>
@@ -435,6 +477,7 @@ export default function PresetsCatalog({
               options={[
                 "Newest",
                 "Most upvoted",
+                "Most confirmed",
                 "Rating",
                 "FPS",
                 "Name",
@@ -561,6 +604,7 @@ export default function PresetsCatalog({
                 );
 
                 const voteState = getVoteState(preset);
+                const confirmationState = getConfirmationState(preset);
                 const profileGuide = getPresetProfileGuide(preset.type);
                 const coverageBadges = [
                   preset.averageFps !== null && preset.onePercentLow !== null
@@ -568,6 +612,9 @@ export default function PresetsCatalog({
                     : null,
                   preset.resolution && preset.tdp ? "Exact test target" : null,
                   settingsCount > 0 ? `${settingsCount} exact settings` : null,
+                  confirmationState.count > 0
+                    ? `${confirmationState.count} player ${confirmationState.count === 1 ? "confirmation" : "confirmations"}`
+                    : null,
                   voteState.count > 0 || preset.communityRating !== null
                     ? "Community signal"
                     : null,
@@ -660,6 +707,16 @@ export default function PresetsCatalog({
                             count={voteState.count}
                             hasUpvoted={voteState.hasUpvoted}
                             onVoteChange={handleVoteChange}
+                          />
+
+                          <PresetConfirmationButton
+                            presetId={preset.id}
+                            initialCount={preset.confirmationCount}
+                            initialHasConfirmed={preset.hasConfirmed}
+                            count={confirmationState.count}
+                            hasConfirmed={confirmationState.hasConfirmed}
+                            onConfirmationChange={handleConfirmationChange}
+                            compact
                           />
 
                           <Link

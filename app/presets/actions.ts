@@ -9,9 +9,12 @@ export interface PresetVoteResult {
   upvoteCount: number;
 }
 
-export async function togglePresetVote(
-  presetId: string,
-): Promise<PresetVoteResult> {
+export interface PresetConfirmationResult {
+  hasConfirmed: boolean;
+  confirmationCount: number;
+}
+
+async function requirePublishedPreset(presetId: string) {
   const supabase = await createClient();
 
   const {
@@ -22,30 +25,30 @@ export async function togglePresetVote(
     redirect("/login");
   }
 
-  const {
-    data: preset,
-    error: presetError,
-  } = await supabase
+  const { data: preset, error: presetError } = await supabase
     .from("presets")
     .select("id, status")
     .eq("id", presetId)
     .maybeSingle();
 
-  if (
-    presetError ||
-    !preset ||
-    preset.status !== "published"
-  ) {
+  if (presetError || !preset || preset.status !== "published") {
     throw new Error(
-      presetError?.message ??
-        "This preset is not available for voting.",
+      presetError?.message ?? "This preset is not publicly available.",
     );
   }
 
-  const {
-    data: existingVote,
-    error: voteLookupError,
-  } = await supabase
+  return {
+    supabase,
+    user,
+  };
+}
+
+export async function togglePresetVote(
+  presetId: string,
+): Promise<PresetVoteResult> {
+  const { supabase, user } = await requirePublishedPreset(presetId);
+
+  const { data: existingVote, error: voteLookupError } = await supabase
     .from("preset_votes")
     .select("id")
     .eq("preset_id", presetId)
@@ -59,11 +62,10 @@ export async function togglePresetVote(
   let hasUpvoted: boolean;
 
   if (existingVote) {
-    const { error: deleteError } =
-      await supabase
-        .from("preset_votes")
-        .delete()
-        .eq("id", existingVote.id);
+    const { error: deleteError } = await supabase
+      .from("preset_votes")
+      .delete()
+      .eq("id", existingVote.id);
 
     if (deleteError) {
       throw new Error(deleteError.message);
@@ -71,13 +73,12 @@ export async function togglePresetVote(
 
     hasUpvoted = false;
   } else {
-    const { error: insertError } =
-      await supabase
-        .from("preset_votes")
-        .insert({
-          preset_id: presetId,
-          user_id: user.id,
-        });
+    const { error: insertError } = await supabase
+      .from("preset_votes")
+      .insert({
+        preset_id: presetId,
+        user_id: user.id,
+      });
 
     if (insertError) {
       throw new Error(insertError.message);
@@ -86,10 +87,7 @@ export async function togglePresetVote(
     hasUpvoted = true;
   }
 
-  const {
-    count,
-    error: countError,
-  } = await supabase
+  const { count, error: countError } = await supabase
     .from("preset_votes")
     .select("id", {
       count: "exact",
@@ -102,10 +100,76 @@ export async function togglePresetVote(
   }
 
   revalidatePath("/presets");
+  revalidatePath(`/presets/${presetId}`);
   revalidatePath("/");
 
   return {
     hasUpvoted,
     upvoteCount: count ?? 0,
+  };
+}
+
+export async function togglePresetConfirmation(
+  presetId: string,
+): Promise<PresetConfirmationResult> {
+  const { supabase, user } = await requirePublishedPreset(presetId);
+
+  const { data: existingConfirmation, error: lookupError } = await supabase
+    .from("preset_confirmations")
+    .select("id")
+    .eq("preset_id", presetId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  let hasConfirmed: boolean;
+
+  if (existingConfirmation) {
+    const { error: deleteError } = await supabase
+      .from("preset_confirmations")
+      .delete()
+      .eq("id", existingConfirmation.id);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
+    hasConfirmed = false;
+  } else {
+    const { error: insertError } = await supabase
+      .from("preset_confirmations")
+      .insert({
+        preset_id: presetId,
+        user_id: user.id,
+      });
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+
+    hasConfirmed = true;
+  }
+
+  const { count, error: countError } = await supabase
+    .from("preset_confirmations")
+    .select("id", {
+      count: "exact",
+      head: true,
+    })
+    .eq("preset_id", presetId);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  revalidatePath("/presets");
+  revalidatePath(`/presets/${presetId}`);
+
+  return {
+    hasConfirmed,
+    confirmationCount: count ?? 0,
   };
 }

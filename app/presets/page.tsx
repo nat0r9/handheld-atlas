@@ -49,6 +49,9 @@ interface DatabasePreset {
   preset_votes: Array<{
     user_id: string;
   }>;
+  preset_confirmations: Array<{
+    user_id: string;
+  }>;
 }
 
 export default async function PresetsPage() {
@@ -96,6 +99,9 @@ export default async function PresetsPage() {
       ),
       preset_votes (
         user_id
+      ),
+      preset_confirmations (
+        user_id
       )
     `)
     .eq("status", "published")
@@ -128,6 +134,13 @@ export default async function PresetsPage() {
         (preset.preset_votes ?? []).some(
           (vote) =>
             vote.user_id === user.id,
+        ),
+      confirmationCount:
+        preset.preset_confirmations?.length ?? 0,
+      hasConfirmed:
+        user !== null &&
+        (preset.preset_confirmations ?? []).some(
+          (confirmation) => confirmation.user_id === user.id,
         ),
       game: preset.games,
       handheld: preset.handhelds,

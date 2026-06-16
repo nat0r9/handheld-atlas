@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
+import PresetDetailConfirmation from "../../../components/PresetDetailConfirmation";
 import PresetDetailVote from "../../../components/PresetDetailVote";
 import { createClient } from "../../../lib/supabase/server";
 import {
@@ -57,6 +58,9 @@ interface DatabasePreset {
   } | null;
   preset_setting_groups: DatabaseSettingGroup[];
   preset_votes: Array<{
+    user_id: string;
+  }>;
+  preset_confirmations: Array<{
     user_id: string;
   }>;
 }
@@ -239,6 +243,9 @@ export default async function PresetDetailPage({
       ),
       preset_votes (
         user_id
+      ),
+      preset_confirmations (
+        user_id
       )
     `)
     .eq("id", id)
@@ -270,6 +277,12 @@ export default async function PresetDetailPage({
   const hasUpvoted =
     user !== null &&
     (preset.preset_votes ?? []).some((vote) => vote.user_id === user.id);
+  const confirmationCount = preset.preset_confirmations?.length ?? 0;
+  const hasConfirmed =
+    user !== null &&
+    (preset.preset_confirmations ?? []).some(
+      (confirmation) => confirmation.user_id === user.id,
+    );
 
   const summaryText =
     preset.summary ?? "Tested handheld performance configuration.";
@@ -292,6 +305,17 @@ export default async function PresetDetailPage({
       ),
     )
     .slice(0, 6);
+
+  const baselineItems = groups
+    .flatMap((group) =>
+      group.items.map((item) => ({
+        groupName: group.name,
+        item,
+        note: parseSettingNote(item.note),
+      })),
+    )
+    .filter(({ note }) => Boolean(note.defaultValue))
+    .slice(0, 8);
 
   const evidenceItems = [
     {
@@ -322,10 +346,15 @@ export default async function PresetDetailPage({
     {
       label: "Community signal",
       value:
-        preset.community_rating !== null || upvoteCount > 0
-          ? `${preset.community_rating !== null ? `★ ${preset.community_rating.toFixed(1)}` : "No rating"} · ${upvoteCount} ${upvoteCount === 1 ? "upvote" : "upvotes"}`
-          : "No votes yet",
-      available: preset.community_rating !== null || upvoteCount > 0,
+        preset.community_rating !== null ||
+        upvoteCount > 0 ||
+        confirmationCount > 0
+          ? `${preset.community_rating !== null ? `★ ${preset.community_rating.toFixed(1)}` : "No rating"} · ${upvoteCount} ${upvoteCount === 1 ? "upvote" : "upvotes"} · ${confirmationCount} ${confirmationCount === 1 ? "confirmation" : "confirmations"}`
+          : "No community feedback yet",
+      available:
+        preset.community_rating !== null ||
+        upvoteCount > 0 ||
+        confirmationCount > 0,
     },
   ];
 
@@ -395,6 +424,16 @@ export default async function PresetDetailPage({
                 initialCount={upvoteCount}
                 initialHasUpvoted={hasUpvoted}
               />
+
+              <PresetDetailConfirmation
+                presetId={preset.id}
+                initialCount={confirmationCount}
+                initialHasConfirmed={hasConfirmed}
+              />
+
+              <p className="px-2 text-center text-[0.68rem] leading-5 text-slate-600">
+                Confirm only after matching the listed handheld, TDP and resolution.
+              </p>
 
               <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-1">
                 {preset.games && (
@@ -618,6 +657,62 @@ export default async function PresetDetailPage({
           </section>
         )}
 
+        {baselineItems.length > 0 && (
+          <section className="mt-8 min-w-0">
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] pb-4">
+              <div>
+                <p className="atlas-section-label">Default → recommended</p>
+                <h2 className="mt-2 text-3xl font-black">What actually changed</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                  These are the documented differences from the game baseline, so
+                  you can see the real tuning decisions instead of blindly copying
+                  forty-two values like a sleep-deprived firmware cultist.
+                </p>
+              </div>
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-600">
+                {baselineItems.length} documented {baselineItems.length === 1 ? "change" : "changes"}
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              {baselineItems.map(({ groupName, item, note }) => (
+                <article
+                  key={item.id}
+                  className="atlas-card min-w-0 p-5"
+                >
+                  <p className="text-[0.52rem] font-black uppercase tracking-[0.13em] text-slate-600">
+                    {groupName}
+                  </p>
+                  <h3 className="mt-2 break-words text-lg font-black">
+                    {item.label}
+                  </h3>
+
+                  <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+                    <ComparisonValue
+                      label="Game default"
+                      value={note.defaultValue ?? "Not documented"}
+                    />
+                    <span className="text-lg font-black text-slate-700" aria-hidden="true">
+                      →
+                    </span>
+                    <ComparisonValue
+                      label="Recommended"
+                      value={item.value}
+                      highlighted
+                    />
+                  </div>
+
+                  {(note.why || note.description) && (
+                    <p className="mt-4 text-sm leading-6 text-slate-400">
+                      {note.why ?? note.description}
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="mt-8 min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] pb-4">
             <div>
@@ -690,10 +785,17 @@ export default async function PresetDetailPage({
                               </p>
                             )}
 
-                            {(note.performanceImpact ||
+                            {(note.defaultValue ||
+                              note.performanceImpact ||
                               note.visualImpact ||
                               note.restart) && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
+                                {note.defaultValue && (
+                                  <NoteBadge
+                                    label="Default"
+                                    value={note.defaultValue}
+                                  />
+                                )}
                                 {note.performanceImpact && (
                                   <NoteBadge
                                     label="Performance"
@@ -727,6 +829,37 @@ export default async function PresetDetailPage({
         </section>
       </div>
     </main>
+  );
+}
+
+function ComparisonValue({
+  label,
+  value,
+  highlighted = false,
+}: {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={`min-w-0 rounded-xl border p-3 ${
+        highlighted
+          ? "border-cyan-500/25 bg-cyan-500/[0.07]"
+          : "border-white/[0.07] bg-black/20"
+      }`}
+    >
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.12em] text-slate-600">
+        {label}
+      </p>
+      <p
+        className={`mt-2 break-words text-sm font-black ${
+          highlighted ? "text-cyan-300" : "text-slate-400"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 

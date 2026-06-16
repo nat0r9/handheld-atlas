@@ -64,6 +64,7 @@ export interface ParsedSettingNote {
   performanceImpact: string | null;
   visualImpact: string | null;
   restart: string | null;
+  defaultValue: string | null;
   hasStructuredData: boolean;
 }
 
@@ -88,6 +89,10 @@ const fieldAliases: Record<
   "quality impact": "visualImpact",
   restart: "restart",
   "requires restart": "restart",
+  default: "defaultValue",
+  baseline: "defaultValue",
+  "default value": "defaultValue",
+  "game default": "defaultValue",
 };
 
 export function parseSettingNote(note: string | null): ParsedSettingNote {
@@ -98,6 +103,7 @@ export function parseSettingNote(note: string | null): ParsedSettingNote {
     performanceImpact: null,
     visualImpact: null,
     restart: null,
+    defaultValue: null,
     hasStructuredData: false,
   };
 
