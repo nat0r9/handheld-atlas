@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  getSubmissionReadiness,
+  type SubmissionGroupInput,
+} from "../../lib/submission-workflow";
 import { createClient } from "../../lib/supabase/server";
 
 interface ParsedSettingItem {
@@ -82,11 +86,9 @@ function parseSettings(formData: FormData): ParsedSettingGroup[] {
           typeof groupRecord.name === "string"
             ? groupRecord.name.trim()
             : "";
-
         const rawItems = Array.isArray(groupRecord.items)
           ? groupRecord.items
           : [];
-
         const items = rawItems
           .map((item, itemIndex) => {
             if (typeof item !== "object" || item === null) {
@@ -94,39 +96,26 @@ function parseSettings(formData: FormData): ParsedSettingGroup[] {
             }
 
             const itemRecord = item as Record<string, unknown>;
-            const label =
-              typeof itemRecord.label === "string"
-                ? itemRecord.label.trim()
-                : "";
-
-            const value =
-              typeof itemRecord.value === "string"
-                ? itemRecord.value.trim()
-                : "";
-
-            const note =
-              typeof itemRecord.note === "string"
-                ? itemRecord.note.trim()
-                : "";
-
-            if (!label || !value) {
-              return null;
-            }
 
             return {
-              label,
-              value,
-              note,
+              label:
+                typeof itemRecord.label === "string"
+                  ? itemRecord.label.trim()
+                  : "",
+              value:
+                typeof itemRecord.value === "string"
+                  ? itemRecord.value.trim()
+                  : "",
+              note:
+                typeof itemRecord.note === "string"
+                  ? itemRecord.note.trim()
+                  : "",
               sortOrder: itemIndex,
             };
           })
           .filter(
             (item): item is ParsedSettingItem => item !== null,
           );
-
-        if (!name || items.length === 0) {
-          return null;
-        }
 
         return {
           name,
@@ -142,13 +131,12 @@ function parseSettings(formData: FormData): ParsedSettingGroup[] {
   }
 }
 
-function redirectWithError(
-  path: string,
-  message: string,
-): never {
-  redirect(
-    `${path}?error=${encodeURIComponent(message)}`,
-  );
+function redirectWithError(path: string, message: string): never {
+  redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
+function submissionPath(submissionId: string) {
+  return `/my-submissions/${submissionId}`;
 }
 
 async function requireUser() {
@@ -165,160 +153,183 @@ async function requireUser() {
   return { supabase, user };
 }
 
-export async function createSubmission(formData: FormData) {
-  const { supabase, user } = await requireUser();
-
+function buildSubmissionPayload(formData: FormData) {
+  const settingGroups = parseSettings(formData);
   const gameId = requiredText(formData, "gameId");
   const handheldId = requiredText(formData, "handheldId");
   const name = requiredText(formData, "name");
+  const resolution = requiredText(formData, "resolution");
+  const tdp = requiredText(formData, "tdp");
+  const fpsAverage = optionalNumber(formData, "fpsAverage");
+  const onePercentLow = optionalNumber(formData, "onePercentLow");
+  const batteryLife = requiredText(formData, "batteryLife");
+  const summary = requiredText(formData, "summary");
   const intent = requiredText(formData, "intent");
-  const presetType = getPresetType(formData);
-  const settingGroups = parseSettings(formData);
 
-  if (!gameId || !handheldId || !name) {
+  const readinessGroups: SubmissionGroupInput[] = settingGroups.map(
+    (group) => ({
+      name: group.name,
+      items: group.items.map((item) => ({
+        label: item.label,
+        value: item.value,
+      })),
+    }),
+  );
+
+  const readiness = getSubmissionReadiness({
+    gameId,
+    handheldId,
+    name,
+    resolution,
+    tdp,
+    fpsAverage,
+    onePercentLow,
+    batteryLife,
+    summary,
+    groups: readinessGroups,
+  });
+
+  return {
+    gameId,
+    handheldId,
+    name,
+    intent,
+    presetType: getPresetType(formData),
+    resolution,
+    tdp,
+    fpsAverage,
+    onePercentLow,
+    upscaler: optionalText(formData, "upscaler"),
+    batteryLife,
+    summary,
+    settingGroups,
+    readiness,
+  };
+}
+
+function validateSubmissionPayload(
+  payload: ReturnType<typeof buildSubmissionPayload>,
+  errorPath: string,
+) {
+  if (!payload.gameId || !payload.handheldId || !payload.name) {
     redirectWithError(
-      "/my-submissions/new",
+      errorPath,
       "Game, handheld and preset name are required.",
     );
   }
 
-  const {
-    data: submission,
-    error: submissionError,
-  } = await supabase
-    .from("preset_submissions")
-    .insert({
-      user_id: user.id,
-      game_id: gameId,
-      handheld_id: handheldId,
-      name,
-      preset_type: presetType,
-      resolution: optionalText(formData, "resolution"),
-      tdp: optionalText(formData, "tdp"),
-      fps_average: optionalNumber(formData, "fpsAverage"),
-      one_percent_low: optionalNumber(
-        formData,
-        "onePercentLow",
-      ),
-      upscaler: optionalText(formData, "upscaler"),
-      battery_life: optionalText(formData, "batteryLife"),
-      summary: optionalText(formData, "summary"),
-      status: "draft",
-      updated_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-
-  if (submissionError || !submission) {
+  if (payload.intent === "submit" && !payload.readiness.isReady) {
     redirectWithError(
-      "/my-submissions/new",
-      submissionError?.message ??
-        "Could not create submission.",
+      errorPath,
+      `Finish these readiness checks before review: ${payload.readiness.issues.join(
+        ", ",
+      )}.`,
+    );
+  }
+}
+
+async function saveSubmissionWithRpc({
+  submissionId,
+  formData,
+  errorPath,
+}: {
+  submissionId: string | null;
+  formData: FormData;
+  errorPath: string;
+}) {
+  const { supabase } = await requireUser();
+  const payload = buildSubmissionPayload(formData);
+
+  validateSubmissionPayload(payload, errorPath);
+
+  const { data, error } = await supabase.rpc(
+    "save_preset_submission",
+    {
+      p_submission_id: submissionId,
+      p_game_id: payload.gameId,
+      p_handheld_id: payload.handheldId,
+      p_name: payload.name,
+      p_preset_type: payload.presetType,
+      p_resolution: payload.resolution || null,
+      p_tdp: payload.tdp || null,
+      p_fps_average: payload.fpsAverage,
+      p_one_percent_low: payload.onePercentLow,
+      p_upscaler: payload.upscaler,
+      p_battery_life: payload.batteryLife || null,
+      p_summary: payload.summary || null,
+      p_settings: payload.settingGroups,
+      p_submit: payload.intent === "submit",
+    },
+  );
+
+  if (error || typeof data !== "string") {
+    redirectWithError(
+      errorPath,
+      error?.message ?? "Could not save the submission.",
     );
   }
 
-  const createdGroupIds: string[] = [];
+  return {
+    submissionId: data,
+    submitted: payload.intent === "submit",
+  };
+}
 
-  try {
-    for (const group of settingGroups) {
-      const {
-        data: createdGroup,
-        error: groupError,
-      } = await supabase
-        .from("preset_submission_groups")
-        .insert({
-          submission_id: submission.id,
-          name: group.name,
-          sort_order: group.sortOrder,
-        })
-        .select("id")
-        .single();
-
-      if (groupError || !createdGroup) {
-        throw new Error(
-          groupError?.message ??
-            "Could not create settings group.",
-        );
-      }
-
-      createdGroupIds.push(createdGroup.id);
-
-      const itemsToInsert = group.items.map((item) => ({
-        group_id: createdGroup.id,
-        label: item.label,
-        value: item.value,
-        note: item.note || null,
-        sort_order: item.sortOrder,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("preset_submission_items")
-        .insert(itemsToInsert);
-
-      if (itemsError) {
-        throw new Error(itemsError.message);
-      }
-    }
-
-    if (intent === "submit") {
-      const { error: submitError } = await supabase
-        .from("preset_submissions")
-        .update({
-          status: "pending",
-          submitted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", submission.id);
-
-      if (submitError) {
-        throw new Error(submitError.message);
-      }
-    }
-  } catch (error) {
-    if (createdGroupIds.length > 0) {
-      await supabase
-        .from("preset_submission_groups")
-        .delete()
-        .in("id", createdGroupIds);
-    }
-
-    await supabase
-      .from("preset_submissions")
-      .delete()
-      .eq("id", submission.id);
-
-    redirectWithError(
-      "/my-submissions/new",
-      error instanceof Error
-        ? error.message
-        : "Could not save submission settings.",
-    );
-  }
+export async function createSubmission(formData: FormData) {
+  const result = await saveSubmissionWithRpc({
+    submissionId: null,
+    formData,
+    errorPath: "/my-submissions/new",
+  });
 
   revalidatePath("/my-submissions");
 
-  const successMessage =
-    intent === "submit"
-      ? "Preset submitted for review."
-      : "Draft saved successfully.";
+  const message = result.submitted
+    ? "Preset submitted for review."
+    : "Draft saved successfully.";
 
   redirect(
-    `/my-submissions?success=${encodeURIComponent(
-      successMessage,
+    `${submissionPath(result.submissionId)}?success=${encodeURIComponent(
+      message,
     )}`,
   );
 }
 
-async function getEditableSubmission(
-  submissionId: string,
-) {
-  const { supabase, user } =
-    await requireUser();
+export async function updateSubmission(formData: FormData) {
+  const submissionId = requiredText(formData, "submissionId");
 
-  const {
-    data: submission,
-    error,
-  } = await supabase
+  if (!submissionId) {
+    redirect(
+      "/my-submissions?error=Missing%20submission%20ID",
+    );
+  }
+
+  const editPath = `/my-submissions/${submissionId}/edit`;
+  const result = await saveSubmissionWithRpc({
+    submissionId,
+    formData,
+    errorPath: editPath,
+  });
+
+  revalidatePath("/my-submissions");
+  revalidatePath(submissionPath(submissionId));
+  revalidatePath(editPath);
+
+  const message = result.submitted
+    ? "New revision submitted for review."
+    : "Draft updated successfully.";
+
+  redirect(
+    `${submissionPath(submissionId)}?success=${encodeURIComponent(
+      message,
+    )}`,
+  );
+}
+
+async function getEditableSubmission(submissionId: string) {
+  const { supabase, user } = await requireUser();
+
+  const { data: submission, error } = await supabase
     .from("preset_submissions")
     .select("id, status")
     .eq("id", submissionId)
@@ -332,31 +343,22 @@ async function getEditableSubmission(
   }
 
   if (
-    ![
-      "draft",
-      "rejected",
-      "changes_requested",
-    ].includes(submission.status)
+    !["draft", "rejected", "changes_requested"].includes(
+      submission.status,
+    )
   ) {
     redirect(
-      "/my-submissions?error=This%20submission%20is%20locked%20for%20review",
+      `${submissionPath(
+        submissionId,
+      )}?error=This%20submission%20is%20locked%20for%20review`,
     );
   }
 
-  return {
-    supabase,
-    user,
-    submission,
-  };
+  return { supabase };
 }
 
-export async function updateSubmission(
-  formData: FormData,
-) {
-  const submissionId = requiredText(
-    formData,
-    "submissionId",
-  );
+export async function withdrawSubmission(formData: FormData) {
+  const submissionId = requiredText(formData, "submissionId");
 
   if (!submissionId) {
     redirect(
@@ -364,282 +366,56 @@ export async function updateSubmission(
     );
   }
 
-  const editPath =
-    `/my-submissions/${submissionId}/edit`;
-
-  const {
-    supabase,
-  } = await getEditableSubmission(
-    submissionId,
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc(
+    "withdraw_preset_submission",
+    {
+      p_submission_id: submissionId,
+    },
   );
-
-  const gameId = requiredText(
-    formData,
-    "gameId",
-  );
-
-  const handheldId = requiredText(
-    formData,
-    "handheldId",
-  );
-
-  const name = requiredText(
-    formData,
-    "name",
-  );
-
-  const intent = requiredText(
-    formData,
-    "intent",
-  );
-
-  if (
-    !gameId ||
-    !handheldId ||
-    !name
-  ) {
-    redirectWithError(
-      editPath,
-      "Game, handheld and preset name are required.",
-    );
-  }
-
-  const settingGroups =
-    parseSettings(formData);
-
-  const {
-    data: oldGroups,
-  } = await supabase
-    .from("preset_submission_groups")
-    .select("id")
-    .eq(
-      "submission_id",
-      submissionId,
-    );
-
-  const oldGroupIds =
-    (oldGroups ?? []).map(
-      (group) => group.id,
-    );
-
-  const {
-    error: updateError,
-  } = await supabase
-    .from("preset_submissions")
-    .update({
-      game_id: gameId,
-      handheld_id: handheldId,
-      name,
-      preset_type:
-        getPresetType(formData),
-      resolution: optionalText(
-        formData,
-        "resolution",
-      ),
-      tdp: optionalText(
-        formData,
-        "tdp",
-      ),
-      fps_average: optionalNumber(
-        formData,
-        "fpsAverage",
-      ),
-      one_percent_low:
-        optionalNumber(
-          formData,
-          "onePercentLow",
-        ),
-      upscaler: optionalText(
-        formData,
-        "upscaler",
-      ),
-      battery_life: optionalText(
-        formData,
-        "batteryLife",
-      ),
-      summary: optionalText(
-        formData,
-        "summary",
-      ),
-      status:
-        intent === "submit"
-          ? "pending"
-          : "draft",
-      submitted_at:
-        intent === "submit"
-          ? new Date().toISOString()
-          : null,
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq("id", submissionId);
-
-  if (updateError) {
-    redirectWithError(
-      editPath,
-      updateError.message,
-    );
-  }
-
-  const createdGroupIds: string[] = [];
-
-  try {
-    for (const group of settingGroups) {
-      const {
-        data: createdGroup,
-        error: groupError,
-      } = await supabase
-        .from(
-          "preset_submission_groups",
-        )
-        .insert({
-          submission_id: submissionId,
-          name: group.name,
-          sort_order:
-            group.sortOrder,
-        })
-        .select("id")
-        .single();
-
-      if (
-        groupError ||
-        !createdGroup
-      ) {
-        throw new Error(
-          groupError?.message ??
-            "Could not create settings group.",
-        );
-      }
-
-      createdGroupIds.push(
-        createdGroup.id,
-      );
-
-      const itemsToInsert =
-        group.items.map((item) => ({
-          group_id:
-            createdGroup.id,
-          label: item.label,
-          value: item.value,
-          note:
-            item.note || null,
-          sort_order:
-            item.sortOrder,
-        }));
-
-      const {
-        error: itemsError,
-      } = await supabase
-        .from(
-          "preset_submission_items",
-        )
-        .insert(itemsToInsert);
-
-      if (itemsError) {
-        throw new Error(
-          itemsError.message,
-        );
-      }
-    }
-
-    if (oldGroupIds.length > 0) {
-      const {
-        error: deleteOldError,
-      } = await supabase
-        .from(
-          "preset_submission_groups",
-        )
-        .delete()
-        .in("id", oldGroupIds);
-
-      if (deleteOldError) {
-        throw new Error(
-          deleteOldError.message,
-        );
-      }
-    }
-  } catch (error) {
-    if (
-      createdGroupIds.length > 0
-    ) {
-      await supabase
-        .from(
-          "preset_submission_groups",
-        )
-        .delete()
-        .in(
-          "id",
-          createdGroupIds,
-        );
-    }
-
-    redirectWithError(
-      editPath,
-      error instanceof Error
-        ? error.message
-        : "Could not update submission settings.",
-    );
-  }
-
-  revalidatePath(
-    "/my-submissions",
-  );
-
-  revalidatePath(editPath);
-
-  const successMessage =
-    intent === "submit"
-      ? "Preset submitted for review."
-      : "Draft updated successfully.";
-
-  redirect(
-    `/my-submissions?success=${encodeURIComponent(
-      successMessage,
-    )}`,
-  );
-}
-
-export async function deleteSubmission(
-  formData: FormData,
-) {
-  const submissionId = requiredText(
-    formData,
-    "submissionId",
-  );
-
-  if (!submissionId) {
-    redirect(
-      "/my-submissions?error=Missing%20submission%20ID",
-    );
-  }
-
-  const {
-    supabase,
-  } = await getEditableSubmission(
-    submissionId,
-  );
-
-  const {
-    error,
-  } = await supabase
-    .from("preset_submissions")
-    .delete()
-    .eq("id", submissionId);
 
   if (error) {
+    redirectWithError(submissionPath(submissionId), error.message);
+  }
+
+  revalidatePath("/my-submissions");
+  revalidatePath(submissionPath(submissionId));
+
+  redirect(
+    `${submissionPath(
+      submissionId,
+    )}?success=Submission%20withdrawn%20to%20draft`,
+  );
+}
+
+export async function deleteSubmission(formData: FormData) {
+  const submissionId = requiredText(formData, "submissionId");
+
+  if (!submissionId) {
     redirect(
-      `/my-submissions?error=${encodeURIComponent(
-        error.message,
-      )}`,
+      "/my-submissions?error=Missing%20submission%20ID",
     );
   }
 
-  revalidatePath(
-    "/my-submissions",
-  );
+  const { supabase } = await getEditableSubmission(submissionId);
+  const { data: deletedSubmission, error } = await supabase
+    .from("preset_submissions")
+    .delete()
+    .eq("id", submissionId)
+    .in("status", ["draft", "rejected", "changes_requested"])
+    .select("id")
+    .maybeSingle();
+
+  if (error || !deletedSubmission) {
+    redirectWithError(
+      submissionPath(submissionId),
+      error?.message ?? "This submission can no longer be deleted.",
+    );
+  }
+
+  revalidatePath("/my-submissions");
 
   redirect(
     "/my-submissions?success=Submission%20deleted",
   );
 }
-

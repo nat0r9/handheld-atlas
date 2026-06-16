@@ -1,25 +1,22 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import SubmissionReadinessPanel from "../../../../components/community/SubmissionReadinessPanel";
+import { notFound, redirect } from "next/navigation";
+import SubmissionReadinessPanel from "../../../components/community/SubmissionReadinessPanel";
 import SubmissionTimeline, {
   type SubmissionTimelineEvent,
-} from "../../../../components/community/SubmissionTimeline";
-import { MODERATION_ROLES } from "../../../../lib/auth/roles";
-import { requireRole } from "../../../../lib/auth/require-role";
+} from "../../../components/community/SubmissionTimeline";
 import {
   getSubmissionReadiness,
   getSubmissionStatusClassName,
+  getSubmissionStatusDescription,
   getSubmissionStatusLabel,
+  isSubmissionEditable,
   type SubmissionEventType,
   type SubmissionStatus,
-} from "../../../../lib/submission-workflow";
-import {
-  approveSubmission,
-  rejectSubmission,
-  requestSubmissionChanges,
-} from "../actions";
+} from "../../../lib/submission-workflow";
+import { createClient } from "../../../lib/supabase/server";
+import { withdrawSubmission } from "../actions";
 
-interface AdminSubmissionDetailPageProps {
+interface SubmissionDetailPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     error?: string;
@@ -42,7 +39,6 @@ interface DetailGroup {
 
 interface DetailSubmission {
   id: string;
-  user_id: string;
   game_id: string;
   handheld_id: string;
   name: string;
@@ -59,7 +55,9 @@ interface DetailSubmission {
   moderator_note: string | null;
   submitted_at: string | null;
   reviewed_at: string | null;
+  updated_at: string;
   published_preset_id: string | null;
+  settings_draft: unknown;
   games:
     | { name: string; slug: string }
     | { name: string; slug: string }[]
@@ -84,6 +82,77 @@ interface ProfileRow {
   id: string;
   display_name: string | null;
   email: string | null;
+}
+
+function parseDraftDisplayGroups(value: unknown): DetailGroup[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((group, groupIndex) => {
+      if (typeof group !== "object" || group === null) {
+        return null;
+      }
+
+      const groupRecord = group as Record<string, unknown>;
+      const rawItems = Array.isArray(groupRecord.items)
+        ? groupRecord.items
+        : [];
+      const items = rawItems
+        .map((item, itemIndex) => {
+          if (typeof item !== "object" || item === null) {
+            return null;
+          }
+
+          const itemRecord = item as Record<string, unknown>;
+          const label =
+            typeof itemRecord.label === "string"
+              ? itemRecord.label.trim()
+              : "";
+          const itemValue =
+            typeof itemRecord.value === "string"
+              ? itemRecord.value.trim()
+              : "";
+          const note =
+            typeof itemRecord.note === "string"
+              ? itemRecord.note.trim()
+              : "";
+
+          if (!label && !itemValue && !note) {
+            return null;
+          }
+
+          return {
+            id: `draft-item-${groupIndex}-${itemIndex}`,
+            label: label || "Incomplete setting",
+            value: itemValue || "Not set",
+            note: note || null,
+            sort_order: itemIndex,
+          };
+        })
+        .filter(
+          (item): item is NonNullable<typeof item> => item !== null,
+        );
+      const name =
+        typeof groupRecord.name === "string"
+          ? groupRecord.name.trim()
+          : "";
+
+      if (!name && items.length === 0) {
+        return null;
+      }
+
+      return {
+        id: `draft-group-${groupIndex}`,
+        name: name || "Unnamed group",
+        sort_order: groupIndex,
+        preset_submission_items: items,
+      };
+    })
+    .filter(
+      (group): group is NonNullable<typeof group> => group !== null,
+    );
 }
 
 function relationValue<T>(relation: T | T[] | null): T | null {
@@ -114,23 +183,27 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-export default async function AdminSubmissionDetailPage({
+export default async function SubmissionDetailPage({
   params,
   searchParams,
-}: AdminSubmissionDetailPageProps) {
+}: SubmissionDetailPageProps) {
   const { id } = await params;
   const { error, success } = await searchParams;
-  const { supabase } = await requireRole(
-    MODERATION_ROLES,
-    "/",
-  );
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
 
   const [submissionResult, eventsResult] = await Promise.all([
     supabase
       .from("preset_submissions")
       .select(`
         id,
-        user_id,
         game_id,
         handheld_id,
         name,
@@ -147,7 +220,9 @@ export default async function AdminSubmissionDetailPage({
         moderator_note,
         submitted_at,
         reviewed_at,
+        updated_at,
         published_preset_id,
+        settings_draft,
         games (name, slug),
         handhelds (name, slug),
         preset_submission_groups (
@@ -164,6 +239,7 @@ export default async function AdminSubmissionDetailPage({
         )
       `)
       .eq("id", id)
+      .eq("user_id", user.id)
       .maybeSingle(),
     supabase
       .from("preset_submission_events")
@@ -180,7 +256,7 @@ export default async function AdminSubmissionDetailPage({
 
   const submission =
     submissionResult.data as unknown as DetailSubmission;
-  const groups = [
+  const normalizedGroups = [
     ...(submission.preset_submission_groups ?? []),
   ]
     .sort(
@@ -195,47 +271,14 @@ export default async function AdminSubmissionDetailPage({
           first.sort_order - second.sort_order,
       ),
     }));
-
-  const eventRows = (eventsResult.data ?? []) as EventRow[];
-  const actorIds = Array.from(
-    new Set(
-      [submission.user_id, ...eventRows.map((event) => event.actor_id)].filter(
-        (actorId): actorId is string => Boolean(actorId),
-      ),
-    ),
+  const draftDisplayGroups = parseDraftDisplayGroups(
+    submission.settings_draft,
   );
-  let profiles: ProfileRow[] = [];
+  const groups =
+    draftDisplayGroups.length > 0
+      ? draftDisplayGroups
+      : normalizedGroups;
 
-  if (actorIds.length > 0) {
-    const profileResult = await supabase
-      .from("profiles")
-      .select("id, display_name, email")
-      .in("id", actorIds);
-
-    profiles = (profileResult.data ?? []) as ProfileRow[];
-  }
-
-  const profileMap = new Map(
-    profiles.map((profile) => [profile.id, profile]),
-  );
-  const author = profileMap.get(submission.user_id);
-  const timelineEvents: SubmissionTimelineEvent[] = eventRows.map(
-    (event) => {
-      const actor = event.actor_id
-        ? profileMap.get(event.actor_id)
-        : null;
-
-      return {
-        id: event.id,
-        eventType: event.event_type,
-        note: event.note,
-        revisionNumber: event.revision_number,
-        createdAt: event.created_at,
-        actorName:
-          actor?.display_name ?? actor?.email ?? null,
-      };
-    },
-  );
   const readiness = getSubmissionReadiness({
     gameId: submission.game_id,
     handheldId: submission.handheld_id,
@@ -254,26 +297,65 @@ export default async function AdminSubmissionDetailPage({
       })),
     })),
   });
+
+  const eventRows = (eventsResult.data ?? []) as EventRow[];
+  const actorIds = Array.from(
+    new Set(
+      eventRows
+        .map((event) => event.actor_id)
+        .filter((actorId): actorId is string => Boolean(actorId)),
+    ),
+  );
+
+  let profiles: ProfileRow[] = [];
+
+  if (actorIds.length > 0) {
+    const profileResult = await supabase
+      .from("profiles")
+      .select("id, display_name, email")
+      .in("id", actorIds);
+
+    profiles = (profileResult.data ?? []) as ProfileRow[];
+  }
+
+  const profileMap = new Map(
+    profiles.map((profile) => [profile.id, profile]),
+  );
+
+  const timelineEvents: SubmissionTimelineEvent[] = eventRows.map(
+    (event) => {
+      const actor = event.actor_id
+        ? profileMap.get(event.actor_id)
+        : null;
+
+      return {
+        id: event.id,
+        eventType: event.event_type,
+        note: event.note,
+        revisionNumber: event.revision_number,
+        createdAt: event.created_at,
+        actorName:
+          actor?.display_name ?? actor?.email ?? null,
+      };
+    },
+  );
+
   const game = relationValue(submission.games);
   const handheld = relationValue(submission.handhelds);
-  const canModerate = submission.status === "pending";
+  const editable = isSubmissionEditable(submission.status);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-12 text-white sm:px-6 sm:py-16">
-      <div className="mx-auto max-w-7xl">
-        <Link
-          href="/admin/submissions"
-          className="text-xs font-black uppercase tracking-[0.16em] text-cyan-400 transition hover:text-white"
-        >
-          ← Back to submissions
-        </Link>
+    <main className="atlas-page min-h-[calc(100vh-4rem)] pb-14 text-white">
+      <section className="border-b border-white/[0.06]">
+        <div className="atlas-shell py-10 sm:py-14">
+          <Link
+            href="/my-submissions"
+            className="text-xs font-black uppercase tracking-[0.14em] text-cyan-400 transition hover:text-white"
+          >
+            ← Back to submissions
+          </Link>
 
-        <section className="mt-6 rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-7 md:p-10">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm font-black uppercase tracking-[0.25em] text-purple-400">
-              Community submission
-            </p>
-
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <span
               className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.1em] ${getSubmissionStatusClassName(
                 submission.status,
@@ -282,75 +364,121 @@ export default async function AdminSubmissionDetailPage({
               {getSubmissionStatusLabel(submission.status)}
             </span>
 
-            <span className="rounded-full border border-slate-700 bg-black/20 px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.1em] text-slate-400">
+            <span className="rounded-full border border-white/[0.08] bg-black/20 px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.1em] text-slate-500">
               Revision {submission.revision_number}
+            </span>
+
+            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/[0.06] px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.1em] text-cyan-400">
+              {submission.preset_type}
             </span>
           </div>
 
-          <h1 className="mt-4 break-words text-4xl font-black md:text-6xl">
+          <h1 className="mt-4 max-w-5xl break-words text-4xl font-black tracking-[-0.05em] sm:text-6xl">
             {submission.name}
           </h1>
 
-          <p className="mt-4 text-lg text-slate-400">
-            {game?.name ?? "Unknown game"} · {handheld?.name ?? "Unknown handheld"}
+          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
+            {getSubmissionStatusDescription(submission.status)}
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-black text-cyan-300">
-              {submission.preset_type}
-            </span>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {editable && (
+              <Link
+                href={`/my-submissions/${submission.id}/edit`}
+                className="atlas-button-primary"
+              >
+                Edit submission
+              </Link>
+            )}
+
+            {submission.status === "pending" && (
+              <form action={withdrawSubmission}>
+                <input
+                  type="hidden"
+                  name="submissionId"
+                  value={submission.id}
+                />
+
+                <button
+                  type="submit"
+                  className="atlas-button-secondary"
+                >
+                  Withdraw to draft
+                </button>
+              </form>
+            )}
 
             {submission.published_preset_id && (
               <Link
                 href={`/presets/${submission.published_preset_id}`}
-                className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-black text-green-300 transition hover:bg-green-500 hover:text-slate-950"
+                className="atlas-button-primary"
               >
-                Open published preset →
+                Open published preset
               </Link>
             )}
           </div>
-        </section>
+        </div>
+      </section>
 
+      <div className="atlas-shell pt-6">
         {success && (
-          <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-green-300">
+          <div className="mb-5 rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300">
             {success}
           </div>
         )}
 
         {(error || eventsResult.error) && (
-          <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
+          <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {error ??
               eventsResult.error?.message ??
-              "Could not load the complete review history."}
+              "Could not load the complete submission history."}
           </div>
         )}
 
-        <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        {submission.moderator_note && (
+          <section className="mb-5 rounded-2xl border border-purple-500/30 bg-purple-500/[0.08] p-5 sm:p-6">
+            <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-purple-300">
+              Moderator note
+            </p>
+
+            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-300">
+              {submission.moderator_note}
+            </p>
+          </section>
+        )}
+
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <div className="space-y-5">
-            <article className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+            <section className="atlas-panel p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-400">
-                    Preset overview
+                  <p className="atlas-section-label">
+                    Submitted target
                   </p>
+
                   <h2 className="mt-2 text-2xl font-black">
-                    Test target and evidence
+                    {game?.name ?? "Unknown game"}
                   </h2>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    {handheld?.name ?? "Unknown handheld"}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   {game && (
                     <Link
                       href={`/games/${game.slug}`}
-                      className="rounded-xl border border-slate-700 bg-black/20 px-4 py-2 text-sm font-black text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                      className="atlas-button-secondary"
                     >
                       Game page
                     </Link>
                   )}
+
                   {handheld && (
                     <Link
                       href={`/handhelds/${handheld.slug}`}
-                      className="rounded-xl border border-slate-700 bg-black/20 px-4 py-2 text-sm font-black text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                      className="atlas-button-secondary"
                     >
                       Handheld page
                     </Link>
@@ -358,8 +486,11 @@ export default async function AdminSubmissionDetailPage({
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Stat label="Resolution" value={submission.resolution ?? "Not set"} />
+              <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+                <Stat
+                  label="Resolution"
+                  value={submission.resolution ?? "Not set"}
+                />
                 <Stat label="TDP" value={submission.tdp ?? "Not set"} />
                 <Stat
                   label="Average FPS"
@@ -377,56 +508,46 @@ export default async function AdminSubmissionDetailPage({
                       : "Not set"
                   }
                 />
-                <Stat label="Upscaler" value={submission.upscaler ?? "Not set"} />
-                <Stat label="Battery" value={submission.battery_life ?? "Not set"} />
                 <Stat
-                  label="Author"
-                  value={
-                    author?.display_name ??
-                    author?.email ??
-                    "Unknown"
-                  }
-                  wide
+                  label="Upscaler"
+                  value={submission.upscaler ?? "Not set"}
                 />
                 <Stat
-                  label="Submitted"
-                  value={formatDate(submission.submitted_at)}
-                  wide
+                  label="Battery"
+                  value={submission.battery_life ?? "Not set"}
                 />
               </div>
 
-              <div className="mt-6 border-t border-slate-800 pt-5">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+              <div className="mt-6 border-t border-white/[0.07] pt-5">
+                <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-slate-600">
                   Summary
                 </p>
+
                 <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-300">
                   {submission.summary ?? "No summary supplied."}
                 </p>
               </div>
-            </article>
+            </section>
 
-            <SubmissionReadinessPanel readiness={readiness} />
+            <section className="atlas-panel p-5 sm:p-6">
+              <p className="atlas-section-label">Detailed settings</p>
 
-            <article className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-400">
-                Detailed settings
-              </p>
               <h2 className="mt-2 text-2xl font-black">
                 Submitted configuration
               </h2>
 
               <div className="mt-5 space-y-4">
                 {groups.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-slate-500">
+                  <p className="rounded-xl border border-dashed border-white/[0.08] p-6 text-center text-slate-500">
                     No detailed settings supplied.
                   </p>
                 ) : (
                   groups.map((group) => (
                     <section
                       key={group.id}
-                      className="overflow-hidden rounded-2xl border border-slate-800 bg-black/20"
+                      className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black/20"
                     >
-                      <h3 className="border-b border-slate-800 px-5 py-4 text-lg font-black">
+                      <h3 className="border-b border-white/[0.07] px-5 py-4 text-lg font-black">
                         {group.name}
                       </h3>
 
@@ -439,19 +560,21 @@ export default async function AdminSubmissionDetailPage({
                                 index ===
                                 group.preset_submission_items.length - 1
                                   ? ""
-                                  : "border-b border-slate-800"
+                                  : "border-b border-white/[0.06]"
                               }`}
                             >
                               <div className="min-w-0">
                                 <dt className="break-words font-bold text-slate-300">
                                   {item.label}
                                 </dt>
+
                                 {item.note && (
                                   <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-slate-600">
                                     {item.note}
                                   </p>
                                 )}
                               </div>
+
                               <dd className="max-w-44 break-words text-right font-black text-cyan-400">
                                 {item.value}
                               </dd>
@@ -463,137 +586,61 @@ export default async function AdminSubmissionDetailPage({
                   ))
                 )}
               </div>
-            </article>
+            </section>
 
             <SubmissionTimeline events={timelineEvents} />
           </div>
 
           <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
-            <section className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-400">
-                Moderation
-              </p>
+            <SubmissionReadinessPanel
+              readiness={readiness}
+              compact
+            />
 
-              {canModerate ? (
-                <form className="mt-5 space-y-4">
-                  <input
-                    type="hidden"
-                    name="submissionId"
-                    value={submission.id}
-                  />
+            <section className="atlas-panel p-5">
+              <p className="atlas-section-label">Workflow details</p>
 
-                  <div>
-                    <label
-                      htmlFor="moderatorNote"
-                      className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-slate-600"
-                    >
-                      Moderator note
-                    </label>
-                    <textarea
-                      id="moderatorNote"
-                      name="moderatorNote"
-                      rows={7}
-                      defaultValue={submission.moderator_note ?? ""}
-                      placeholder="Explain requested changes, the rejection reason or optional publication context."
-                      className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-                    />
-                    <p className="mt-2 text-xs leading-5 text-slate-600">
-                      Required for changes or rejection. Optional when approving.
-                    </p>
-                  </div>
-
-                  <button
-                    formAction={approveSubmission}
-                    disabled={!readiness.isReady}
-                    className="w-full rounded-xl bg-green-500 px-5 py-3 font-black text-slate-950 transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Approve & publish
-                  </button>
-
-                  {!readiness.isReady && (
-                    <p className="text-xs leading-5 text-orange-300/80">
-                      Approval is disabled because the submission no longer passes the public readiness checks.
-                    </p>
-                  )}
-
-                  <button
-                    formAction={requestSubmissionChanges}
-                    className="w-full rounded-xl border border-purple-500/30 bg-purple-500/10 px-5 py-3 font-black text-purple-300 transition hover:bg-purple-500 hover:text-white"
-                  >
-                    Request changes
-                  </button>
-
-                  <button
-                    formAction={rejectSubmission}
-                    className="w-full rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-3 font-black text-red-400 transition hover:bg-red-500 hover:text-white"
-                  >
-                    Reject submission
-                  </button>
-                </form>
-              ) : (
-                <div className="mt-4 rounded-xl border border-slate-800 bg-black/20 p-4">
-                  <p className="font-black text-slate-300">
-                    Review complete
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    This revision is no longer pending. Its decision remains visible in the timeline.
-                  </p>
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-400">
-                Review metadata
-              </p>
               <dl className="mt-4 space-y-4">
-                <MetaRow
-                  label="Revision"
+                <WorkflowRow
+                  label="Current revision"
                   value={String(submission.revision_number)}
                 />
-                <MetaRow
+                <WorkflowRow
+                  label="Last updated"
+                  value={formatDate(submission.updated_at)}
+                />
+                <WorkflowRow
                   label="Submitted"
                   value={formatDate(submission.submitted_at)}
                 />
-                <MetaRow
+                <WorkflowRow
                   label="Reviewed"
                   value={formatDate(submission.reviewed_at)}
                 />
               </dl>
             </section>
 
-            {submission.moderator_note && !canModerate && (
-              <section className="rounded-3xl border border-purple-500/20 bg-purple-500/[0.06] p-5">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-purple-300">
-                  Final moderator note
+            {submission.status === "pending" && (
+              <section className="rounded-2xl border border-orange-500/20 bg-orange-500/[0.06] p-5">
+                <p className="text-sm font-black text-orange-300">
+                  Revision locked
                 </p>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-300">
-                  {submission.moderator_note}
+
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Withdraw it to draft before editing. The timeline keeps a record of the withdrawal and future resubmission.
                 </p>
               </section>
             )}
           </aside>
-        </section>
+        </div>
       </div>
     </main>
   );
 }
 
-function Stat({
-  label,
-  value,
-  wide = false,
-}: {
-  label: string;
-  value: string;
-  wide?: boolean;
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={`rounded-xl border border-slate-800 bg-black/20 p-3 ${
-        wide ? "col-span-2" : ""
-      }`}
-    >
+    <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
       <p className="text-[0.52rem] font-black uppercase tracking-[0.1em] text-slate-600">
         {label}
       </p>
@@ -604,7 +651,7 @@ function Stat({
   );
 }
 
-function MetaRow({
+function WorkflowRow({
   label,
   value,
 }: {
@@ -612,7 +659,7 @@ function MetaRow({
   value: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-4 last:border-0 last:pb-0">
+    <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] pb-4 last:border-0 last:pb-0">
       <dt className="text-xs font-black uppercase tracking-[0.1em] text-slate-600">
         {label}
       </dt>

@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
+import {
+  getSubmissionReadiness,
+  type SubmissionGroupInput,
+} from "../../lib/submission-workflow";
+import SubmissionReadinessPanel from "./SubmissionReadinessPanel";
 
 export interface SubmissionSelectOption {
   id: string;
@@ -59,21 +65,28 @@ interface SubmissionFormProps {
   mode?: "create" | "edit";
 }
 
-function createItem(): SettingItem {
+function createItem(id = crypto.randomUUID()): SettingItem {
   return {
-    id: crypto.randomUUID(),
+    id,
     label: "",
     value: "",
     note: "",
   };
 }
 
-function createGroup(): SettingGroup {
+function createGroup(
+  id = crypto.randomUUID(),
+  itemId = crypto.randomUUID(),
+): SettingGroup {
   return {
-    id: crypto.randomUUID(),
+    id,
     name: "",
-    items: [createItem()],
+    items: [createItem(itemId)],
   };
+}
+
+function createInitialGroups(): SettingGroup[] {
+  return [createGroup("initial-group", "initial-setting")];
 }
 
 export default function SubmissionForm({
@@ -83,16 +96,47 @@ export default function SubmissionForm({
   initialData,
   mode = "create",
 }: SubmissionFormProps) {
+  const [gameId, setGameId] = useState(
+    initialData?.gameId ?? "",
+  );
+  const [handheldId, setHandheldId] = useState(
+    initialData?.handheldId ?? "",
+  );
+  const [name, setName] = useState(
+    initialData?.name ?? "",
+  );
+  const [presetType, setPresetType] = useState(
+    initialData?.presetType ?? "Balanced",
+  );
+  const [resolution, setResolution] = useState(
+    initialData?.resolution ?? "",
+  );
+  const [tdp, setTdp] = useState(
+    initialData?.tdp ?? "",
+  );
+  const [fpsAverage, setFpsAverage] = useState(
+    initialData?.fpsAverage ?? "",
+  );
+  const [onePercentLow, setOnePercentLow] = useState(
+    initialData?.onePercentLow ?? "",
+  );
+  const [upscaler, setUpscaler] = useState(
+    initialData?.upscaler ?? "",
+  );
+  const [batteryLife, setBatteryLife] = useState(
+    initialData?.batteryLife ?? "",
+  );
+  const [summary, setSummary] = useState(
+    initialData?.summary ?? "",
+  );
   const [groups, setGroups] = useState<SettingGroup[]>(
     initialData?.groups.length
       ? initialData.groups
-      : [createGroup()],
+      : createInitialGroups(),
   );
 
-  const [
-    collapsedGroupIds,
-    setCollapsedGroupIds,
-  ] = useState<string[]>([]);
+  const [collapsedGroupIds, setCollapsedGroupIds] =
+    useState<string[]>([]);
 
   function addGroup() {
     setGroups((currentGroups) => [
@@ -102,25 +146,26 @@ export default function SubmissionForm({
   }
 
   function removeGroup(groupId: string) {
-    setGroups((currentGroups) =>
-      currentGroups.filter(
+    setGroups((currentGroups) => {
+      const nextGroups = currentGroups.filter(
         (group) => group.id !== groupId,
-      ),
-    );
+      );
+
+      return nextGroups.length > 0
+        ? nextGroups
+        : [createGroup()];
+    });
 
     setCollapsedGroupIds((currentIds) =>
       currentIds.filter((id) => id !== groupId),
     );
   }
 
-  function updateGroupName(
-    groupId: string,
-    name: string,
-  ) {
+  function updateGroupName(groupId: string, value: string) {
     setGroups((currentGroups) =>
       currentGroups.map((group) =>
         group.id === groupId
-          ? { ...group, name }
+          ? { ...group, name: value }
           : group,
       ),
     );
@@ -147,21 +192,25 @@ export default function SubmissionForm({
     );
   }
 
-  function removeItem(
-    groupId: string,
-    itemId: string,
-  ) {
+  function removeItem(groupId: string, itemId: string) {
     setGroups((currentGroups) =>
-      currentGroups.map((group) =>
-        group.id === groupId
-          ? {
-              ...group,
-              items: group.items.filter(
-                (item) => item.id !== itemId,
-              ),
-            }
-          : group,
-      ),
+      currentGroups.map((group) => {
+        if (group.id !== groupId) {
+          return group;
+        }
+
+        const nextItems = group.items.filter(
+          (item) => item.id !== itemId,
+        );
+
+        return {
+          ...group,
+          items:
+            nextItems.length > 0
+              ? nextItems
+              : [createItem()],
+        };
+      }),
     );
   }
 
@@ -187,24 +236,48 @@ export default function SubmissionForm({
     );
   }
 
-  const serializedSettings = JSON.stringify(
-    groups.map((group, groupIndex) => ({
-      name: group.name,
-      sortOrder: groupIndex,
-      items: group.items.map((item, itemIndex) => ({
-        label: item.label,
-        value: item.value,
-        note: item.note,
-        sortOrder: itemIndex,
-      })),
-    })),
+  const serializedSettings = useMemo(
+    () =>
+      JSON.stringify(
+        groups.map((group, groupIndex) => ({
+          name: group.name,
+          sortOrder: groupIndex,
+          items: group.items.map((item, itemIndex) => ({
+            label: item.label,
+            value: item.value,
+            note: item.note,
+            sortOrder: itemIndex,
+          })),
+        })),
+      ),
+    [groups],
   );
 
+  const readinessGroups: SubmissionGroupInput[] = groups.map(
+    (group) => ({
+      name: group.name,
+      items: group.items.map((item) => ({
+        label: item.label,
+        value: item.value,
+      })),
+    }),
+  );
+
+  const readiness = getSubmissionReadiness({
+    gameId,
+    handheldId,
+    name,
+    resolution,
+    tdp,
+    fpsAverage,
+    onePercentLow,
+    batteryLife,
+    summary,
+    groups: readinessGroups,
+  });
+
   return (
-    <form
-      action={action}
-      className="atlas-panel p-4 sm:p-6"
-    >
+    <form action={action} className="atlas-panel p-4 sm:p-6">
       <input
         type="hidden"
         name="settingsJson"
@@ -226,7 +299,8 @@ export default function SubmissionForm({
           placeholder="Select game"
           options={games}
           required
-          defaultValue={initialData?.gameId ?? ""}
+          value={gameId}
+          onChange={setGameId}
         />
 
         <SelectField
@@ -235,39 +309,29 @@ export default function SubmissionForm({
           placeholder="Select handheld"
           options={handhelds}
           required
-          defaultValue={initialData?.handheldId ?? ""}
+          value={handheldId}
+          onChange={setHandheldId}
         />
 
         <div>
-          <FieldLabel
-            htmlFor="presetType"
-            label="Preset type"
-          />
+          <FieldLabel htmlFor="presetType" label="Preset type" />
 
           <select
             id="presetType"
             name="presetType"
-            defaultValue={
-              initialData?.presetType ??
-              "Balanced"
+            value={presetType}
+            onChange={(event) =>
+              setPresetType(
+                event.target.value as typeof presetType,
+              )
             }
             className="w-full rounded-xl border border-white/[0.09] bg-black/30 px-4 py-3.5 text-white outline-none transition focus:border-cyan-500"
           >
-            <option value="Performance">
-              Performance
-            </option>
-            <option value="Balanced">
-              Balanced
-            </option>
-            <option value="Battery">
-              Battery
-            </option>
-            <option value="Docked">
-              Docked
-            </option>
-            <option value="Custom">
-              Custom
-            </option>
+            <option value="Performance">Performance</option>
+            <option value="Balanced">Balanced</option>
+            <option value="Battery">Battery</option>
+            <option value="Docked">Docked</option>
+            <option value="Custom">Custom</option>
           </select>
         </div>
 
@@ -276,21 +340,24 @@ export default function SubmissionForm({
           name="name"
           placeholder="Balanced 60 FPS"
           required
-          defaultValue={initialData?.name}
+          value={name}
+          onChange={setName}
         />
 
         <FormField
           label="Resolution"
           name="resolution"
           placeholder="1600 × 900"
-          defaultValue={initialData?.resolution}
+          value={resolution}
+          onChange={setResolution}
         />
 
         <FormField
           label="TDP"
           name="tdp"
           placeholder="18W"
-          defaultValue={initialData?.tdp}
+          value={tdp}
+          onChange={setTdp}
         />
 
         <FormField
@@ -300,7 +367,8 @@ export default function SubmissionForm({
           min="0"
           step="0.01"
           placeholder="60"
-          defaultValue={initialData?.fpsAverage}
+          value={fpsAverage}
+          onChange={setFpsAverage}
         />
 
         <FormField
@@ -310,46 +378,53 @@ export default function SubmissionForm({
           min="0"
           step="0.01"
           placeholder="48"
-          defaultValue={initialData?.onePercentLow}
+          value={onePercentLow}
+          onChange={setOnePercentLow}
         />
 
         <FormField
           label="Upscaler"
           name="upscaler"
           placeholder="FSR 2 Quality"
-          defaultValue={initialData?.upscaler}
+          value={upscaler}
+          onChange={setUpscaler}
         />
 
         <FormField
           label="Battery life"
           name="batteryLife"
           placeholder="3 hours"
-          defaultValue={initialData?.batteryLife}
+          value={batteryLife}
+          onChange={setBatteryLife}
         />
       </div>
 
       <div className="mt-6">
-        <FieldLabel
-          htmlFor="summary"
-          label="Summary"
-        />
+        <FieldLabel htmlFor="summary" label="Summary" />
 
         <textarea
           id="summary"
           name="summary"
-          rows={4}
+          rows={5}
+          maxLength={1200}
           placeholder="Describe what this preset targets, where it was tested and any important caveats."
-          defaultValue={initialData?.summary}
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
           className="w-full resize-y rounded-xl border border-white/[0.09] bg-black/30 px-4 py-3.5 text-white outline-none transition placeholder:text-slate-700 focus:border-cyan-500"
         />
+
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+          <span>
+            Include test conditions, target experience and visible trade-offs.
+          </span>
+          <span>{summary.trim().length}/1200</span>
+        </div>
       </div>
 
       <section className="mt-9 border-t border-white/[0.07] pt-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="atlas-section-label">
-              Detailed settings
-            </p>
+            <p className="atlas-section-label">Detailed settings</p>
 
             <h2 className="mt-2 text-2xl font-black">
               Settings groups
@@ -371,9 +446,7 @@ export default function SubmissionForm({
 
             <button
               type="button"
-              onClick={() =>
-                setCollapsedGroupIds([])
-              }
+              onClick={() => setCollapsedGroupIds([])}
               className="atlas-button-secondary"
             >
               Expand all
@@ -391,8 +464,9 @@ export default function SubmissionForm({
 
         <div className="mt-5 space-y-4">
           {groups.map((group, groupIndex) => {
-            const isCollapsed =
-              collapsedGroupIds.includes(group.id);
+            const isCollapsed = collapsedGroupIds.includes(
+              group.id,
+            );
 
             return (
               <article
@@ -402,10 +476,13 @@ export default function SubmissionForm({
                 <div className="flex flex-wrap items-end gap-3 p-4">
                   <button
                     type="button"
-                    onClick={() =>
-                      toggleGroup(group.id)
-                    }
+                    onClick={() => toggleGroup(group.id)}
                     className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-lg font-black text-cyan-400"
+                    aria-label={
+                      isCollapsed
+                        ? `Expand group ${groupIndex + 1}`
+                        : `Collapse group ${groupIndex + 1}`
+                    }
                   >
                     {isCollapsed ? "+" : "−"}
                   </button>
@@ -448,9 +525,7 @@ export default function SubmissionForm({
 
                   <button
                     type="button"
-                    onClick={() =>
-                      removeGroup(group.id)
-                    }
+                    onClick={() => removeGroup(group.id)}
                     className="rounded-xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3 text-sm font-black text-red-400 transition hover:bg-red-500 hover:text-white"
                   >
                     Delete group
@@ -462,7 +537,7 @@ export default function SubmissionForm({
                     {group.items.map((item, itemIndex) => (
                       <div
                         key={item.id}
-                        className="grid gap-3 rounded-xl border border-white/[0.07] bg-[#060911] p-4 lg:grid-cols-[1fr_1fr_1fr_auto]"
+                        className="grid gap-3 rounded-xl border border-white/[0.07] bg-[#060911] p-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,0.55fr)_minmax(0,1.25fr)_auto]"
                       >
                         <FormInput
                           label={`Setting ${itemIndex + 1}`}
@@ -492,10 +567,10 @@ export default function SubmissionForm({
                           }
                         />
 
-                        <FormInput
-                          label="Note"
+                        <FormNoteInput
+                          label="Why this setting"
                           value={item.note}
-                          placeholder="Optional note"
+                          placeholder="Default: Ultra | Problem: GPU load | FPS: +4–6 | Visual: Low"
                           onChange={(value) =>
                             updateItem(
                               group.id,
@@ -509,10 +584,7 @@ export default function SubmissionForm({
                         <button
                           type="button"
                           onClick={() =>
-                            removeItem(
-                              group.id,
-                              item.id,
-                            )
+                            removeItem(group.id, item.id)
                           }
                           className="self-end rounded-xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3 text-sm font-black text-red-400 transition hover:bg-red-500 hover:text-white"
                         >
@@ -528,39 +600,77 @@ export default function SubmissionForm({
         </div>
       </section>
 
-      <div className="mt-8 flex flex-col-reverse gap-3 border-t border-white/[0.07] pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href="/my-submissions"
-          className="atlas-button-secondary text-center"
-        >
-          Cancel
-        </Link>
+      <div className="mt-8 border-t border-white/[0.07] pt-7">
+        <SubmissionReadinessPanel readiness={readiness} />
+      </div>
 
-        <div className="grid gap-3 sm:flex">
+      <SubmissionActions
+        mode={mode}
+        isReady={readiness.isReady}
+        missingChecks={readiness.issues}
+      />
+    </form>
+  );
+}
+
+function SubmissionActions({
+  mode,
+  isReady,
+  missingChecks,
+}: {
+  mode: "create" | "edit";
+  isReady: boolean;
+  missingChecks: string[];
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <div className="mt-8 flex flex-col-reverse gap-3 border-t border-white/[0.07] pt-6 sm:flex-row sm:items-end sm:justify-between">
+      <Link
+        href="/my-submissions"
+        className="atlas-button-secondary text-center"
+      >
+        Cancel
+      </Link>
+
+      <div className="sm:text-right">
+        {!isReady && (
+          <p className="mb-3 max-w-xl text-xs leading-5 text-orange-300/80">
+            Review is locked until these checks are complete: {missingChecks.join(", ")}.
+          </p>
+        )}
+
+        <div className="grid gap-3 sm:flex sm:justify-end">
           <button
             type="submit"
             name="intent"
             value="draft"
-            className="atlas-button-secondary"
+            disabled={pending}
+            className="atlas-button-secondary disabled:cursor-wait disabled:opacity-60"
           >
-            {mode === "edit"
-              ? "Save changes"
-              : "Save draft"}
+            {pending
+              ? "Saving…"
+              : mode === "edit"
+                ? "Save as draft"
+                : "Save draft"}
           </button>
 
           <button
             type="submit"
             name="intent"
             value="submit"
-            className="atlas-button-primary"
+            disabled={pending || !isReady}
+            className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {mode === "edit"
-              ? "Resubmit for review"
-              : "Submit for review"}
+            {pending
+              ? "Submitting…"
+              : mode === "edit"
+                ? "Resubmit for review"
+                : "Submit for review"}
           </button>
         </div>
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -585,29 +695,28 @@ interface FormFieldProps {
   label: string;
   name: string;
   placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
   required?: boolean;
   type?: "text" | "number";
   min?: string;
   step?: string;
-  defaultValue?: string;
 }
 
 function FormField({
   label,
   name,
   placeholder,
+  value,
+  onChange,
   required = false,
   type = "text",
   min,
   step,
-  defaultValue,
 }: FormFieldProps) {
   return (
     <div>
-      <FieldLabel
-        htmlFor={name}
-        label={label}
-      />
+      <FieldLabel htmlFor={name} label={label} />
 
       <input
         id={name}
@@ -617,7 +726,8 @@ function FormField({
         placeholder={placeholder}
         min={min}
         step={step}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-xl border border-white/[0.09] bg-black/30 px-4 py-3.5 text-white outline-none transition placeholder:text-slate-700 focus:border-cyan-500"
       />
     </div>
@@ -629,8 +739,9 @@ interface SelectFieldProps {
   name: string;
   placeholder: string;
   options: SubmissionSelectOption[];
+  value: string;
+  onChange: (value: string) => void;
   required?: boolean;
-  defaultValue?: string;
 }
 
 function SelectField({
@@ -638,21 +749,20 @@ function SelectField({
   name,
   placeholder,
   options,
+  value,
+  onChange,
   required = false,
-  defaultValue = "",
 }: SelectFieldProps) {
   return (
     <div>
-      <FieldLabel
-        htmlFor={name}
-        label={label}
-      />
+      <FieldLabel htmlFor={name} label={label} />
 
       <select
         id={name}
         name={name}
         required={required}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-xl border border-white/[0.09] bg-black/30 px-4 py-3.5 text-white outline-none transition focus:border-cyan-500"
       >
         <option value="" disabled>
@@ -660,10 +770,7 @@ function SelectField({
         </option>
 
         {options.map((option) => (
-          <option
-            key={option.id}
-            value={option.id}
-          >
+          <option key={option.id} value={option.id}>
             {option.name}
           </option>
         ))}
@@ -693,10 +800,36 @@ function FormInput({
         type="text"
         value={value}
         placeholder={placeholder}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
+        onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-xl border border-white/[0.09] bg-black/30 px-4 py-3 text-white outline-none transition placeholder:text-slate-700 focus:border-cyan-500"
+      />
+    </div>
+  );
+}
+
+function FormNoteInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[0.58rem] font-black uppercase tracking-[0.14em] text-slate-600">
+        {label}
+      </p>
+
+      <textarea
+        rows={3}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full resize-y rounded-xl border border-white/[0.09] bg-black/30 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-700 focus:border-cyan-500"
       />
     </div>
   );

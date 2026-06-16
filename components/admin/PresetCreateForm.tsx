@@ -27,21 +27,35 @@ interface PresetCreateFormProps {
   canSetAtlasVerified?: boolean;
 }
 
-function createItem(): SettingItem {
+function createItem(
+  id = crypto.randomUUID(),
+): SettingItem {
   return {
-    id: crypto.randomUUID(),
+    id,
     label: "",
     value: "",
     note: "",
   };
 }
 
-function createGroup(): SettingGroup {
+function createGroup(
+  id = crypto.randomUUID(),
+  itemId = crypto.randomUUID(),
+): SettingGroup {
   return {
-    id: crypto.randomUUID(),
+    id,
     name: "",
-    items: [createItem()],
+    items: [createItem(itemId)],
   };
+}
+
+function createInitialGroups(): SettingGroup[] {
+  return [
+    createGroup(
+      "preset-create-initial-group",
+      "preset-create-initial-setting",
+    ),
+  ];
 }
 
 export default function PresetCreateForm({
@@ -50,9 +64,9 @@ export default function PresetCreateForm({
   action,
   canSetAtlasVerified = false,
 }: PresetCreateFormProps) {
-  const [groups, setGroups] = useState<SettingGroup[]>([
-    createGroup(),
-  ]);
+  const [groups, setGroups] = useState<SettingGroup[]>(
+    createInitialGroups,
+  );
 
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<string[]>([]);
 

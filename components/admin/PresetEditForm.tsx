@@ -52,21 +52,35 @@ interface PresetEditFormProps {
   canSetAtlasVerified?: boolean;
 }
 
-function createItem(): PresetEditSettingItem {
+function createItem(
+  id = crypto.randomUUID(),
+): PresetEditSettingItem {
   return {
-    id: crypto.randomUUID(),
+    id,
     label: "",
     value: "",
     note: "",
   };
 }
 
-function createGroup(): PresetEditSettingGroup {
+function createGroup(
+  id = crypto.randomUUID(),
+  itemId = crypto.randomUUID(),
+): PresetEditSettingGroup {
   return {
-    id: crypto.randomUUID(),
+    id,
     name: "",
-    items: [createItem()],
+    items: [createItem(itemId)],
   };
+}
+
+function createInitialGroups(): PresetEditSettingGroup[] {
+  return [
+    createGroup(
+      "preset-edit-initial-group",
+      "preset-edit-initial-setting",
+    ),
+  ];
 }
 
 export default function PresetEditForm({
@@ -78,10 +92,10 @@ export default function PresetEditForm({
 }: PresetEditFormProps) {
   const [groups, setGroups] = useState<
     PresetEditSettingGroup[]
-  >(
+  >(() =>
     preset.groups.length > 0
       ? preset.groups
-      : [createGroup()],
+      : createInitialGroups(),
   );
 
   function addGroup() {
