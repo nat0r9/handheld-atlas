@@ -108,6 +108,9 @@ export default function MethodologyPage() {
             <Link href="/benchmarks" className="atlas-button-secondary">
               Open benchmark wall
             </Link>
+            <Link href="/settings-impact" className="atlas-button-secondary">
+              Open Settings Guide
+            </Link>
           </div>
         </div>
       </section>
@@ -125,6 +128,32 @@ export default function MethodologyPage() {
               </p>
             </article>
           ))}
+        </section>
+
+        <section className="atlas-panel mt-5 p-5 sm:p-6">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+            <div>
+              <p className="atlas-section-label">Settings Impact Database</p>
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.035em]">
+                One canonical explanation, many in-game names
+              </h2>
+              <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-400">
+                Graphics menus love renaming the same idea. The Settings Guide keeps one public page for each canonical setting and connects aliases such as “Shadows”, “Shadow Quality” and “Shadow Detail” behind the scenes. That prevents duplicate pages while still matching old and new presets automatically.
+              </p>
+              <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-500">
+                General FPS, visual and VRAM scores are HandheldAtlas editorial estimates. The vocabulary and technical descriptions are informed by official engine and GPU-vendor documentation, while a game-specific measured result takes priority whenever the game, handheld, TDP and resolution match.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs font-black text-slate-500">
+                <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/scalability-reference-for-unreal-engine" target="_blank" rel="noreferrer noopener" className="transition hover:text-cyan-300">Unreal Engine scalability ↗</a>
+                <a href="https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition@17.5/manual/HDRP-Features.html" target="_blank" rel="noreferrer noopener" className="transition hover:text-cyan-300">Unity HDRP features ↗</a>
+                <a href="https://developer.nvidia.com/rtx/dlss" target="_blank" rel="noreferrer noopener" className="transition hover:text-cyan-300">NVIDIA DLSS ↗</a>
+                <a href="https://gpuopen.com/amd-fsr-sdk/" target="_blank" rel="noreferrer noopener" className="transition hover:text-cyan-300">AMD FSR SDK ↗</a>
+              </div>
+            </div>
+            <Link href="/settings-impact" className="atlas-button-secondary text-center">
+              Explore the Settings Guide →
+            </Link>
+          </div>
         </section>
 
         <section className="atlas-panel mt-5 overflow-hidden">

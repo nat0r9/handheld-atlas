@@ -4,7 +4,7 @@ export const siteConfig = {
   name: "HandheldAtlas",
   url: "https://www.handheldatlas.com",
   description:
-    "Handheld gaming settings, performance presets, verified benchmarks, device comparisons, guides and news for Steam Deck, ROG Ally, Legion Go and more.",
+    "Handheld gaming presets, graphics settings impact guides, verified benchmarks, device comparisons, guides and news for Steam Deck, ROG Ally, Legion Go and more.",
   shortDescription:
     "Tested handheld settings, measured performance and community knowledge.",
   email: "handheldatlas@gmail.com",

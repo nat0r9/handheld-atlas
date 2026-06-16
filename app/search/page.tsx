@@ -75,6 +75,17 @@ interface NewsResult {
   published_at: string | null;
 }
 
+interface SettingImpactResult {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  summary: string;
+  performance_impact: number;
+  visual_impact: number;
+  vram_impact: number;
+}
+
 function escapeSearchValue(value: string) {
   return value
     .replaceAll("%", "\\%")
@@ -165,7 +176,7 @@ export default async function SearchPage({
 
             <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
               Search games, handhelds, performance
-              presets, guides and news from one place.
+              presets, graphics settings, guides and news from one place.
             </p>
           </section>
         </div>
@@ -181,6 +192,7 @@ export default async function SearchPage({
     presetsResult,
     guidesResult,
     newsResult,
+    settingsImpactResult,
   ] = await Promise.all([
     supabase
       .from("games")
@@ -294,6 +306,25 @@ export default async function SearchPage({
         nullsFirst: false,
       })
       .limit(12),
+
+    supabase
+      .from("setting_impact_entries")
+      .select(`
+        id,
+        name,
+        slug,
+        category,
+        summary,
+        performance_impact,
+        visual_impact,
+        vram_impact
+      `)
+      .eq("status", "published")
+      .or(
+        `name.ilike.%${normalizedQuery}%,category.ilike.%${normalizedQuery}%,summary.ilike.%${normalizedQuery}%`,
+      )
+      .order("name", { ascending: true })
+      .limit(12),
   ]);
 
   const games =
@@ -313,12 +344,16 @@ export default async function SearchPage({
   const newsItems =
     (newsResult.data ?? []) as NewsResult[];
 
+  const settingsImpact =
+    (settingsImpactResult.data ?? []) as SettingImpactResult[];
+
   const totalResults =
     games.length +
     handhelds.length +
     presets.length +
     guides.length +
-    newsItems.length;
+    newsItems.length +
+    settingsImpact.length;
 
   const databaseError =
     gamesResult.error?.message ??
@@ -326,6 +361,7 @@ export default async function SearchPage({
     presetsResult.error?.message ??
     guidesResult.error?.message ??
     newsResult.error?.message ??
+    settingsImpactResult.error?.message ??
     null;
 
   return (
@@ -345,7 +381,7 @@ export default async function SearchPage({
           </div>
         )}
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <SearchStat
             label="All results"
             value={totalResults}
@@ -365,6 +401,11 @@ export default async function SearchPage({
           <SearchStat
             label="Presets"
             value={presets.length}
+          />
+
+          <SearchStat
+            label="Settings"
+            value={settingsImpact.length}
           />
 
           <div className="col-span-2 md:col-span-1">
@@ -389,9 +430,7 @@ export default async function SearchPage({
             </h2>
 
             <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
-              Try a game title, handheld model,
-              manufacturer, preset name or a broader
-              keyword.
+              Try a game title, handheld model, graphics setting, preset name or a broader keyword.
             </p>
           </section>
         ) : (
@@ -523,7 +562,7 @@ export default async function SearchPage({
                   {presets.map((preset) => (
                     <Link
                       key={preset.id}
-                      href="/presets"
+                      href={`/presets/${preset.id}`}
                       className="group rounded-3xl border border-slate-800 bg-slate-900 p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-500"
                     >
                       <span
@@ -575,6 +614,41 @@ export default async function SearchPage({
                           }
                           highlighted
                         />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {settingsImpact.length > 0 && (
+              <section>
+                <SectionHeading
+                  title="Settings Guide"
+                  count={settingsImpact.length}
+                  href="/settings-impact"
+                />
+
+                <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {settingsImpact.map((setting) => (
+                    <Link
+                      key={setting.id}
+                      href={`/settings-impact/${setting.slug}`}
+                      className="group rounded-3xl border border-slate-800 bg-slate-900 p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-500"
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400">
+                        {setting.category}
+                      </p>
+                      <h3 className="mt-3 text-2xl font-black transition group-hover:text-cyan-400">
+                        {setting.name}
+                      </h3>
+                      <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-400">
+                        {setting.summary}
+                      </p>
+                      <div className="mt-5 grid grid-cols-3 gap-2">
+                        <MiniStat label="FPS" value={`${setting.performance_impact}/5`} highlighted />
+                        <MiniStat label="Visual" value={`${setting.visual_impact}/5`} />
+                        <MiniStat label="VRAM" value={`${setting.vram_impact}/5`} />
                       </div>
                     </Link>
                   ))}
@@ -739,7 +813,7 @@ function SearchHero({
           </h1>
 
           <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-            Search games, handhelds, presets,
+            Search games, handhelds, presets, graphics settings,
             guides and news without crawling
             through five separate menus like
             some poor bastard trapped in UI hell.

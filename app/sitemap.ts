@@ -65,6 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     guidesResult,
     newsResult,
     presetsResult,
+    settingsImpactResult,
   ] = await Promise.all([
     supabase
       .from("games")
@@ -91,6 +92,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select("id, updated_at, published_at")
       .eq("status", "published")
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("setting_impact_entries")
+      .select("slug, updated_at")
+      .eq("status", "published")
+      .order("updated_at", { ascending: false }),
   ]);
 
   reportSitemapError("games", gamesResult.error);
@@ -98,12 +104,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   reportSitemapError("guides", guidesResult.error);
   reportSitemapError("news", newsResult.error);
   reportSitemapError("presets", presetsResult.error);
+  reportSitemapError("settings impact", settingsImpactResult.error);
 
   const games = (gamesResult.data ?? []) as SitemapRecord[];
   const handhelds = (handheldsResult.data ?? []) as SitemapRecord[];
   const guides = (guidesResult.data ?? []) as SitemapRecord[];
   const newsItems = (newsResult.data ?? []) as SitemapRecord[];
   const presets = (presetsResult.data ?? []) as PresetSitemapRecord[];
+  const settingsImpact = (settingsImpactResult.data ?? []) as SitemapRecord[];
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -147,6 +155,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: `${siteConfig.url}/settings-impact`,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: `${siteConfig.url}/methodology`,
       changeFrequency: "monthly",
       priority: 0.7,
@@ -183,6 +196,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
+  const settingsImpactPages = settingsImpact.map((record) =>
+    createDynamicEntry("/settings-impact", record, "monthly", 0.7),
+  );
+
   return [
     ...staticPages,
     ...gamePages,
@@ -190,5 +207,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...guidePages,
     ...newsPages,
     ...presetPages,
+    ...settingsImpactPages,
   ];
 }

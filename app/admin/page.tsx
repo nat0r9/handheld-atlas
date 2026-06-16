@@ -212,6 +212,7 @@ export default async function AdminDashboardPage() {
       gamesCountResult,
       handheldsCountResult,
       presetsCountResult,
+      settingsImpactCountResult,
       benchmarksCountResult,
       guidesCountResult,
       newsCountResult,
@@ -240,6 +241,13 @@ export default async function AdminDashboardPage() {
 
       supabase
         .from("presets")
+        .select("id", {
+          count: "exact",
+          head: true,
+        }),
+
+      supabase
+        .from("setting_impact_entries")
         .select("id", {
           count: "exact",
           head: true,
@@ -374,6 +382,17 @@ export default async function AdminDashboardPage() {
         tone: "cyan",
       },
       {
+        label: "Settings Guide",
+        value:
+          settingsImpactCountResult.count ?? 0,
+        href: "/admin/settings-impact",
+        description:
+          "Canonical setting explanations, aliases and game-specific evidence.",
+        actionLabel:
+          "Manage knowledge base",
+        tone: "cyan",
+      },
+      {
         label: "Preset quality",
         value:
           publishedPresetsResult.count ?? 0,
@@ -486,6 +505,7 @@ export default async function AdminDashboardPage() {
       handheldsCountResult.error
         ?.message ??
       presetsCountResult.error?.message ??
+      settingsImpactCountResult.error?.message ??
       benchmarksCountResult.error
         ?.message ??
       guidesCountResult.error?.message ??

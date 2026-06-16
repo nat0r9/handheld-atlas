@@ -548,6 +548,21 @@ export default function PresetsCatalog({
           </div>
         </section>
 
+        <section className="mt-4 flex flex-col gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.045] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-white">Just want settings that work?</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Pick a matching preset below and copy it. The explanations stay optional until you need them.
+            </p>
+          </div>
+          <Link
+            href="/settings-impact"
+            className="shrink-0 text-sm font-black text-cyan-400 transition hover:text-white"
+          >
+            Learn what each setting does →
+          </Link>
+        </section>
+
         <section className="mt-5 min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.07] pb-3">
             <div>
