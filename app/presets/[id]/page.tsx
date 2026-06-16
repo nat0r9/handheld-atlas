@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import PresetDetailVote from "../../../components/PresetDetailVote";
 import { createClient } from "../../../lib/supabase/server";
+import {
+  getPresetProfileGuide,
+  parseSettingNote,
+} from "../../../lib/preset-guidance";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +65,64 @@ interface PresetPageProps {
   params: Promise<{
     id: string;
   }>;
+}
+
+interface MetadataPreset {
+  name: string;
+  summary: string | null;
+  preset_type: PresetType;
+  games: { name: string } | null;
+  handhelds: { name: string } | null;
+}
+
+
+export async function generateMetadata({
+  params,
+}: PresetPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("presets")
+    .select(`
+      name,
+      summary,
+      preset_type,
+      games (name),
+      handhelds (name)
+    `)
+    .eq("id", id)
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (!data) {
+    return {
+      title: "Preset Not Found",
+      description: "The requested HandheldAtlas preset is not available.",
+    };
+  }
+
+  const preset = data as unknown as MetadataPreset;
+  const description =
+    preset.summary ??
+    `${preset.preset_type} settings for ${preset.games?.name ?? "a handheld game"} on ${preset.handhelds?.name ?? "a handheld PC"}.`;
+
+  return {
+    title: `${preset.name} | Handheld Preset`,
+    description,
+    alternates: {
+      canonical: `/presets/${id}`,
+    },
+    openGraph: {
+      title: `${preset.name} | HandheldAtlas`,
+      description,
+      type: "article",
+    },
+    twitter: {
+      card: "summary",
+      title: `${preset.name} | HandheldAtlas`,
+      description,
+    },
+  };
 }
 
 function getPresetStyle(type: PresetType) {
@@ -210,6 +273,61 @@ export default async function PresetDetailPage({
 
   const summaryText =
     preset.summary ?? "Tested handheld performance configuration.";
+  const profileGuide = getPresetProfileGuide(preset.preset_type);
+  const insightItems = groups
+    .flatMap((group) =>
+      group.items.map((item) => ({
+        groupName: group.name,
+        item,
+        note: parseSettingNote(item.note),
+      })),
+    )
+    .filter(({ note }) =>
+      Boolean(
+        note.problem ||
+          note.why ||
+          note.performanceImpact ||
+          note.visualImpact ||
+          note.restart,
+      ),
+    )
+    .slice(0, 6);
+
+  const evidenceItems = [
+    {
+      label: "Frame-time data",
+      value:
+        preset.fps_average !== null && preset.one_percent_low !== null
+          ? `${preset.fps_average} FPS average · ${preset.one_percent_low} FPS 1% low`
+          : "Not fully recorded",
+      available:
+        preset.fps_average !== null && preset.one_percent_low !== null,
+    },
+    {
+      label: "Exact test target",
+      value:
+        preset.resolution && preset.tdp
+          ? `${preset.resolution} · ${preset.tdp}`
+          : "Resolution or TDP missing",
+      available: Boolean(preset.resolution && preset.tdp),
+    },
+    {
+      label: "Configuration depth",
+      value:
+        settingsCount > 0
+          ? `${settingsCount} settings across ${groups.length} groups`
+          : "No detailed values yet",
+      available: settingsCount > 0,
+    },
+    {
+      label: "Community signal",
+      value:
+        preset.community_rating !== null || upvoteCount > 0
+          ? `${preset.community_rating !== null ? `★ ${preset.community_rating.toFixed(1)}` : "No rating"} · ${upvoteCount} ${upvoteCount === 1 ? "upvote" : "upvotes"}`
+          : "No votes yet",
+      available: preset.community_rating !== null || upvoteCount > 0,
+    },
+  ];
 
   return (
     <main className="atlas-page min-w-0 overflow-x-hidden pb-16 text-white">
@@ -347,6 +465,159 @@ export default async function PresetDetailPage({
           />
         </section>
 
+        <section className="mt-7 grid min-w-0 gap-4 lg:grid-cols-2">
+          <article className="atlas-panel min-w-0 p-5 sm:p-6">
+            <p className="atlas-section-label">Why this profile exists</p>
+            <h2 className="mt-2 text-2xl font-black">Built for {profileGuide.shortLabel.toLowerCase()}</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              <strong className="text-white">Best for:</strong>{" "}
+              {profileGuide.bestFor}.
+            </p>
+            <p className="mt-3 text-sm leading-7 text-slate-400">
+              {profileGuide.goal}
+            </p>
+            <div className="mt-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-4">
+              <p className="text-[0.54rem] font-black uppercase tracking-[0.13em] text-orange-400">
+                Expected trade-off
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {profileGuide.tradeoff}
+              </p>
+            </div>
+          </article>
+
+          <article className="atlas-panel min-w-0 p-5 sm:p-6">
+            <p className="atlas-section-label">Evidence, not vibes</p>
+            <h2 className="mt-2 text-2xl font-black">What is actually recorded</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {evidenceItems.map((item) => (
+                <div
+                  key={item.label}
+                  className={`rounded-xl border p-4 ${
+                    item.available
+                      ? "border-green-500/20 bg-green-500/[0.05]"
+                      : "border-white/[0.07] bg-black/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        item.available ? "bg-green-400" : "bg-slate-700"
+                      }`}
+                    />
+                    <p className="text-[0.52rem] font-black uppercase tracking-[0.12em] text-slate-500">
+                      {item.label}
+                    </p>
+                  </div>
+                  <p className="mt-2 break-words text-sm font-bold text-slate-300">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="atlas-panel mt-4 min-w-0 p-5 sm:p-6">
+          <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+            <div>
+              <p className="atlas-section-label">Apply it cleanly</p>
+              <h2 className="mt-2 text-2xl font-black">Three steps, no ritual sacrifice</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-500">
+                A preset only means something when the device, power mode and
+                resolution match the test target. Start from the baseline before
+                improvising.
+              </p>
+            </div>
+
+            <ol className="grid gap-3 sm:grid-cols-3">
+              <ApplyStep
+                number="01"
+                title="Match the target"
+                text={`Use ${preset.handhelds?.name ?? "the listed handheld"} at ${preset.tdp ?? "the listed TDP"} and ${preset.resolution ?? "the listed resolution"}.`}
+              />
+              <ApplyStep
+                number="02"
+                title="Copy exact values"
+                text="Apply every group first. Mixing half of one preset with half of another makes the result impossible to judge."
+              />
+              <ApplyStep
+                number="03"
+                title="Test, then tune"
+                text="Run the same demanding area for a few minutes. Only raise quality after the frame-time baseline is stable."
+              />
+            </ol>
+          </div>
+        </section>
+
+        {insightItems.length > 0 && (
+          <section className="mt-8 min-w-0">
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] pb-4">
+              <div>
+                <p className="atlas-section-label">Tuning intelligence</p>
+                <h2 className="mt-2 text-3xl font-black">Problem → solution notes</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                  These notes explain why the important settings are here, what
+                  they are expected to change and which compromises come with them.
+                </p>
+              </div>
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-600">
+                {insightItems.length} explained {insightItems.length === 1 ? "setting" : "settings"}
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {insightItems.map(({ groupName, item, note }) => (
+                <article
+                  key={item.id}
+                  className="atlas-card min-w-0 overflow-hidden p-5"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[0.52rem] font-black uppercase tracking-[0.13em] text-slate-600">
+                        {groupName}
+                      </p>
+                      <h3 className="mt-2 break-words text-lg font-black">
+                        {item.label}
+                      </h3>
+                    </div>
+                    <span className="max-w-full rounded-lg border border-cyan-500/25 bg-cyan-500/[0.07] px-3 py-2 text-sm font-black text-cyan-300">
+                      {item.value}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {note.problem && (
+                      <InsightRow label="Problem" value={note.problem} tone="red" />
+                    )}
+                    {(note.why || note.description) && (
+                      <InsightRow
+                        label="Why this change"
+                        value={note.why ?? note.description ?? ""}
+                        tone="cyan"
+                      />
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {note.performanceImpact && (
+                        <InsightMini
+                          label="Performance"
+                          value={note.performanceImpact}
+                        />
+                      )}
+                      {note.visualImpact && (
+                        <InsightMini label="Visual impact" value={note.visualImpact} />
+                      )}
+                      {note.restart && (
+                        <InsightMini label="Restart" value={note.restart} />
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="mt-8 min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.07] pb-4">
             <div>
@@ -395,32 +666,59 @@ export default async function PresetDetailPage({
                   </summary>
 
                   <dl className="border-t border-white/[0.07]">
-                    {group.items.map((item, itemIndex) => (
-                      <div
-                        key={item.id}
-                        className={`grid min-w-0 gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,38%)] sm:gap-6 sm:px-5 ${
-                          itemIndex === group.items.length - 1
-                            ? ""
-                            : "border-b border-white/[0.06]"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <dt className="break-words [overflow-wrap:anywhere] text-sm font-bold text-slate-300">
-                            {item.label}
-                          </dt>
+                    {group.items.map((item, itemIndex) => {
+                      const note = parseSettingNote(item.note);
+                      const noteText = note.why ?? note.description;
 
-                          {item.note && (
-                            <p className="mt-1 whitespace-pre-line break-words [overflow-wrap:anywhere] text-xs leading-5 text-slate-600">
-                              {renderTextWithLinks(item.note)}
-                            </p>
-                          )}
+                      return (
+                        <div
+                          key={item.id}
+                          className={`grid min-w-0 gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,38%)] sm:gap-6 sm:px-5 ${
+                            itemIndex === group.items.length - 1
+                              ? ""
+                              : "border-b border-white/[0.06]"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <dt className="break-words [overflow-wrap:anywhere] text-sm font-bold text-slate-300">
+                              {item.label}
+                            </dt>
+
+                            {noteText && (
+                              <p className="mt-1 whitespace-pre-line break-words [overflow-wrap:anywhere] text-xs leading-5 text-slate-600">
+                                {renderTextWithLinks(noteText)}
+                              </p>
+                            )}
+
+                            {(note.performanceImpact ||
+                              note.visualImpact ||
+                              note.restart) && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {note.performanceImpact && (
+                                  <NoteBadge
+                                    label="Performance"
+                                    value={note.performanceImpact}
+                                  />
+                                )}
+                                {note.visualImpact && (
+                                  <NoteBadge
+                                    label="Visual"
+                                    value={note.visualImpact}
+                                  />
+                                )}
+                                {note.restart && (
+                                  <NoteBadge label="Restart" value={note.restart} />
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <dd className="min-w-0 whitespace-pre-line break-words [overflow-wrap:anywhere] text-left text-sm font-black leading-5 text-cyan-400 sm:text-right">
+                            {renderTextWithLinks(item.value)}
+                          </dd>
                         </div>
-
-                        <dd className="min-w-0 whitespace-pre-line break-words [overflow-wrap:anywhere] text-left text-sm font-black leading-5 text-cyan-400 sm:text-right">
-                          {renderTextWithLinks(item.value)}
-                        </dd>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </dl>
                 </details>
               ))}
@@ -429,6 +727,78 @@ export default async function PresetDetailPage({
         </section>
       </div>
     </main>
+  );
+}
+
+function ApplyStep({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <li className="min-w-0 rounded-xl border border-white/[0.07] bg-black/20 p-4">
+      <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-red-400">
+        {number}
+      </p>
+      <h3 className="mt-2 text-sm font-black text-white">{title}</h3>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{text}</p>
+    </li>
+  );
+}
+
+function InsightRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "red" | "cyan";
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        tone === "red"
+          ? "border-red-500/20 bg-red-500/[0.05]"
+          : "border-cyan-500/20 bg-cyan-500/[0.05]"
+      }`}
+    >
+      <p
+        className={`text-[0.52rem] font-black uppercase tracking-[0.13em] ${
+          tone === "red" ? "text-red-400" : "text-cyan-400"
+        }`}
+      >
+        {label}
+      </p>
+      <p className="mt-2 break-words text-sm leading-6 text-slate-300">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function InsightMini({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
+      <p className="text-[0.48rem] font-black uppercase tracking-[0.12em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-2 break-words text-xs font-bold leading-5 text-slate-300">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function NoteBadge({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="rounded-full border border-white/[0.08] bg-black/25 px-2 py-1 text-[0.5rem] font-bold text-slate-500">
+      <strong className="text-slate-400">{label}:</strong> {value}
+    </span>
   );
 }
 

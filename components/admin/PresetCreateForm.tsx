@@ -331,6 +331,30 @@ export default function PresetCreateForm({
         />
       </div>
 
+      <div className="mt-4 grid gap-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-4 text-sm text-slate-400 lg:grid-cols-[0.8fr_1.2fr]">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-400">
+            Feedback-ready preset
+          </p>
+          <p className="mt-2 leading-6">
+            The summary should explain the target, expected performance and the
+            main trade-off. Do not just dump settings and vanish into the fog.
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+            Structured setting note format
+          </p>
+          <code className="mt-2 block whitespace-pre-wrap break-words text-xs leading-6 text-slate-300">
+            Problem: CPU bottleneck | Why: Crowd density hits the CPU hardest | FPS: +3–6 FPS | Visual: Low | Restart: No
+          </code>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Every label is optional. Plain notes still work; structured labels
+            unlock Problem → Solution cards on the public preset page.
+          </p>
+        </div>
+      </div>
+
       <section className="mt-10 border-t border-slate-800 pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -536,9 +560,9 @@ export default function PresetCreateForm({
                                   Note
                                 </label>
 
-                                <input
+                                <textarea
                                   id={`note-${item.id}`}
-                                  type="text"
+                                  rows={4}
                                   value={item.note}
                                   onChange={(event) =>
                                     updateItem(
@@ -548,8 +572,8 @@ export default function PresetCreateForm({
                                       event.target.value,
                                     )
                                   }
-                                  placeholder="Optional note"
-                                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
+                                  placeholder="Why this value? Add Problem, FPS, Visual and Restart labels when useful."
+                                  className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
                                 />
                               </div>
 

@@ -2,7 +2,8 @@ export type PresetType =
   | "Performance"
   | "Balanced"
   | "Battery"
-  | "Docked";
+  | "Docked"
+  | "Custom";
 
 export interface Preset {
   id: string;

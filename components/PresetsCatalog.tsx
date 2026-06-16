@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import PresetVoteButton from "./PresetVoteButton";
+import { getPresetProfileGuide } from "../lib/preset-guidance";
 
 export type PublicPresetType =
   | "Performance"
@@ -176,14 +177,14 @@ export default function PresetsCatalog({
     Record<string, VoteOverride>
   >({});
 
-  function getVoteState(preset: PublicPreset): VoteOverride {
-    return (
+  const getVoteState = useCallback(
+    (preset: PublicPreset): VoteOverride =>
       voteOverrides[preset.id] ?? {
         count: preset.upvoteCount,
         hasUpvoted: preset.hasUpvoted,
-      }
-    );
-  }
+      },
+    [voteOverrides],
+  );
 
   function handleVoteChange(
     presetId: string,
@@ -300,7 +301,7 @@ export default function PresetsCatalog({
     gameFilter,
     handheldFilter,
     sortOption,
-    voteOverrides,
+    getVoteState,
   ]);
 
   const hasActiveFilters =
@@ -362,8 +363,9 @@ export default function PresetsCatalog({
               </h1>
 
               <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-                Browse verified performance profiles, compare the key numbers
-                and open any preset on its own shareable page.
+                Browse transparent performance profiles, understand the target
+                and trade-offs, then open the exact configuration on its own
+                shareable page.
               </p>
             </div>
 
@@ -468,6 +470,51 @@ export default function PresetsCatalog({
         </section>
 
         <section className="mt-5 min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.07] pb-3">
+            <div>
+              <p className="atlas-section-label">Choose your target</p>
+              <h2 className="mt-1 text-xl font-black">What each profile is built for</h2>
+            </div>
+
+            <p className="max-w-xl text-right text-xs leading-5 text-slate-600">
+              There is no magical universal preset. Pick the goal that matches how
+              you actually play, then use the measured data to judge the trade-off.
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {presetFilters
+              .filter((filter): filter is PublicPresetType => filter !== "All")
+              .map((type) => {
+                const guide = getPresetProfileGuide(type);
+
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setPresetFilter(type)}
+                    className={`min-w-0 rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-white/20 ${
+                      presetFilter === type
+                        ? getPresetStyle(type)
+                        : "border-white/[0.07] bg-black/20"
+                    }`}
+                  >
+                    <p className="text-[0.54rem] font-black uppercase tracking-[0.14em] text-slate-500">
+                      {guide.shortLabel}
+                    </p>
+                    <h3 className="mt-2 text-base font-black text-white">
+                      {guide.label}
+                    </h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      {guide.bestFor}
+                    </p>
+                  </button>
+                );
+              })}
+          </div>
+        </section>
+
+        <section className="mt-7 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-3">
             <div>
               <p className="atlas-section-label">Preset library</p>
@@ -514,6 +561,17 @@ export default function PresetsCatalog({
                 );
 
                 const voteState = getVoteState(preset);
+                const profileGuide = getPresetProfileGuide(preset.type);
+                const coverageBadges = [
+                  preset.averageFps !== null && preset.onePercentLow !== null
+                    ? "Measured FPS"
+                    : null,
+                  preset.resolution && preset.tdp ? "Exact test target" : null,
+                  settingsCount > 0 ? `${settingsCount} exact settings` : null,
+                  voteState.count > 0 || preset.communityRating !== null
+                    ? "Community signal"
+                    : null,
+                ].filter((value): value is string => Boolean(value));
 
                 return (
                   <article
@@ -554,11 +612,33 @@ export default function PresetsCatalog({
                             {preset.handheld?.name ?? "Unknown handheld"}
                           </p>
 
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className="text-[0.56rem] font-black uppercase tracking-[0.13em] text-slate-600">
+                              Best for
+                            </span>
+                            <span className="text-xs font-bold text-slate-300">
+                              {profileGuide.bestFor}
+                            </span>
+                          </div>
+
                           <div className="mt-4 max-w-4xl rounded-xl border border-white/[0.06] bg-black/15 p-4">
                             <p className="line-clamp-3 whitespace-pre-line break-words [overflow-wrap:anywhere] text-sm leading-7 text-slate-400">
                               {renderTextWithLinks(summaryText)}
                             </p>
                           </div>
+
+                          {coverageBadges.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {coverageBadges.map((badge) => (
+                                <span
+                                  key={badge}
+                                  className="rounded-full border border-white/[0.08] bg-black/25 px-2.5 py-1 text-[0.54rem] font-black uppercase tracking-[0.09em] text-slate-400"
+                                >
+                                  {badge}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">

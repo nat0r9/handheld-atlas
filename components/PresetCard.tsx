@@ -42,6 +42,14 @@ function getPresetStyle(type: PresetType) {
         glow: "hover:shadow-red-500/10",
         accent: "text-red-400",
       };
+
+    case "Custom":
+      return {
+        badge: "bg-purple-500/20 text-purple-400",
+        border: "hover:border-purple-500",
+        glow: "hover:shadow-purple-500/10",
+        accent: "text-purple-400",
+      };
   }
 }
 
