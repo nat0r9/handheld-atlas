@@ -1,114 +1,109 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
-type ConsentValue =
-  | "granted"
-  | "denied";
+type ConsentValue = "granted" | "denied";
 
 interface AnalyticsConsentProps {
   measurementId: string;
 }
 
-const STORAGE_KEY =
-  "handheldatlas-analytics-consent-v1";
+const STORAGE_KEY = "handheldatlas-analytics-consent-v1";
+const SCRIPT_ID = "handheldatlas-google-analytics";
 
 declare global {
   interface Window {
     dataLayer: unknown[];
-    gtag: (
-      command: string,
-      target: string,
-      config?: Record<
-        string,
-        unknown
-      >,
-    ) => void;
+    gtag: (...args: unknown[]) => void;
+    __handheldAtlasGaReady?: boolean;
   }
 }
 
-function ensureGtag() {
-  window.dataLayer =
-    window.dataLayer ?? [];
+function ensureGtag(): void {
+  window.dataLayer = window.dataLayer ?? [];
 
   window.gtag =
     window.gtag ??
-    function gtag(
-      ...args: [
-        string,
-        string,
-        Record<string, unknown>?,
-      ]
-    ) {
+    function gtag(...args: unknown[]) {
       window.dataLayer.push(args);
     };
 }
 
-function setConsent(
-  value: ConsentValue,
-) {
+function updateConsent(value: ConsentValue): void {
   ensureGtag();
 
-  window.gtag(
-    "consent",
-    "update",
-    {
-      analytics_storage: value,
-      ad_storage: "denied",
-      ad_user_data: "denied",
-      ad_personalization:
-        "denied",
-    },
-  );
+  window.gtag("consent", "update", {
+    analytics_storage: value,
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  });
+}
+
+function sendPageView(measurementId: string): void {
+  if (!window.__handheldAtlasGaReady) {
+    return;
+  }
+
+  const pagePath = `${window.location.pathname}${window.location.search}`;
+
+  window.gtag("event", "page_view", {
+    send_to: measurementId,
+    page_title: document.title,
+    page_location: window.location.href,
+    page_path: pagePath,
+  });
 }
 
 function loadGoogleAnalytics(
   measurementId: string,
-) {
+  onReady: () => void,
+): void {
   ensureGtag();
 
-  if (
-    document.getElementById(
-      "handheldatlas-google-analytics",
-    )
-  ) {
+  if (window.__handheldAtlasGaReady) {
+    onReady();
     return;
   }
 
-  const script =
-    document.createElement(
-      "script",
-    );
+  const existingScript = document.getElementById(
+    SCRIPT_ID,
+  ) as HTMLScriptElement | null;
 
-  script.id =
-    "handheldatlas-google-analytics";
+  if (existingScript) {
+    existingScript.addEventListener("load", onReady, {
+      once: true,
+    });
+    return;
+  }
 
+  const script = document.createElement("script");
+
+  script.id = SCRIPT_ID;
   script.async = true;
-
-  script.src =
-    `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
-      measurementId,
-    )}`;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
+    measurementId,
+  )}`;
 
   script.onload = () => {
     ensureGtag();
 
-    window.gtag(
-      "js",
-      new Date().toISOString(),
-    );
+    window.gtag("js", new Date());
 
-    window.gtag(
-      "config",
-      measurementId,
-      {
-        send_page_view: true,
-        cookie_flags:
-          "SameSite=None;Secure",
-      },
+    window.gtag("config", measurementId, {
+      send_page_view: false,
+      cookie_flags: "SameSite=None;Secure",
+      anonymize_ip: true,
+    });
+
+    window.__handheldAtlasGaReady = true;
+    onReady();
+  };
+
+  script.onerror = () => {
+    console.error(
+      "HandheldAtlas: Google Analytics script failed to load.",
     );
   };
 
@@ -118,93 +113,74 @@ function loadGoogleAnalytics(
 export default function AnalyticsConsent({
   measurementId,
 }: AnalyticsConsentProps) {
-  const [
-    consent,
-    setConsentState,
-  ] = useState<
-    ConsentValue | null
-  >(null);
+  const pathname = usePathname();
+  const [consent, setConsentState] =
+    useState<ConsentValue | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const lastTrackedUrlRef = useRef<string | null>(null);
 
-  const [
-    isReady,
-    setIsReady,
-  ] = useState(false);
+  function trackCurrentPage(): void {
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
 
-  const [
-    isPanelOpen,
-    setIsPanelOpen,
-  ] = useState(false);
+    if (lastTrackedUrlRef.current === currentUrl) {
+      return;
+    }
+
+    sendPageView(measurementId);
+    lastTrackedUrlRef.current = currentUrl;
+  }
 
   useEffect(() => {
     ensureGtag();
 
-    window.gtag(
-      "consent",
-      "default",
-      {
-        analytics_storage:
-          "denied",
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization:
-          "denied",
-        wait_for_update: 500,
-      },
+    window.gtag("consent", "default", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      wait_for_update: 500,
+    });
+
+    const storedValue = window.localStorage.getItem(
+      STORAGE_KEY,
     );
-
-    const storedValue =
-      window.localStorage.getItem(
-        STORAGE_KEY,
-      );
-
-    const readyTimer = window.setTimeout(() => {
-      if (
-        storedValue === "granted" ||
-        storedValue === "denied"
-      ) {
-        setConsentState(storedValue);
-        setIsPanelOpen(false);
-      } else {
-        setIsPanelOpen(true);
-      }
-
-      setIsReady(true);
-    }, 0);
 
     if (
       storedValue === "granted" ||
       storedValue === "denied"
     ) {
-      setConsent(storedValue);
+      setConsentState(storedValue);
+      setIsPanelOpen(false);
+      updateConsent(storedValue);
 
       if (storedValue === "granted") {
-        loadGoogleAnalytics(
-          measurementId,
-        );
+        loadGoogleAnalytics(measurementId, trackCurrentPage);
       }
+    } else {
+      setIsPanelOpen(true);
     }
 
-    return () => {
-      window.clearTimeout(readyTimer);
-    };
+    setIsReady(true);
   }, [measurementId]);
 
-  function saveConsent(
-    value: ConsentValue,
-  ) {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      value,
-    );
+  useEffect(() => {
+    if (consent !== "granted") {
+      return;
+    }
+
+    loadGoogleAnalytics(measurementId, trackCurrentPage);
+  }, [pathname, consent, measurementId]);
+
+  function saveConsent(value: ConsentValue): void {
+    window.localStorage.setItem(STORAGE_KEY, value);
 
     setConsentState(value);
-    setConsent(value);
+    updateConsent(value);
     setIsPanelOpen(false);
 
     if (value === "granted") {
-      loadGoogleAnalytics(
-        measurementId,
-      );
+      loadGoogleAnalytics(measurementId, trackCurrentPage);
     }
   }
 
@@ -234,20 +210,16 @@ export default function AnalyticsConsent({
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Google Analytics helps us understand traffic and improve the site.
-                Advertising storage stays disabled. You can reject analytics and
-                change this choice later.
+                Google Analytics helps us understand traffic and improve the
+                site. Advertising storage stays disabled. You can reject
+                analytics and change this choice later.
               </p>
             </div>
 
             <div className="grid gap-2 sm:min-w-[12rem]">
               <button
                 type="button"
-                onClick={() =>
-                  saveConsent(
-                    "granted",
-                  )
-                }
+                onClick={() => saveConsent("granted")}
                 className="rounded-xl bg-red-500 px-4 py-3 text-sm font-black text-white transition hover:bg-red-400"
               >
                 Accept analytics
@@ -255,11 +227,7 @@ export default function AnalyticsConsent({
 
               <button
                 type="button"
-                onClick={() =>
-                  saveConsent(
-                    "denied",
-                  )
-                }
+                onClick={() => saveConsent("denied")}
                 className="rounded-xl border border-white/[0.1] bg-black/25 px-4 py-3 text-sm font-black text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-300"
               >
                 Reject
@@ -269,20 +237,17 @@ export default function AnalyticsConsent({
         </section>
       )}
 
-      {!isPanelOpen &&
-        consent !== null && (
-          <button
-            type="button"
-            onClick={() =>
-              setIsPanelOpen(true)
-            }
-            aria-label="Open cookie settings"
-            title="Cookie settings"
-            className="fixed bottom-2 right-2 z-[90] rounded-full border border-white/[0.07] bg-[#070a12]/85 px-2 py-1 text-[0.46rem] font-black uppercase tracking-[0.08em] text-slate-600 shadow-sm backdrop-blur transition hover:border-cyan-500/35 hover:text-cyan-300 sm:bottom-3 sm:right-3"
-          >
-            Cookies
-          </button>
-        )}
+      {!isPanelOpen && consent !== null && (
+        <button
+          type="button"
+          onClick={() => setIsPanelOpen(true)}
+          aria-label="Open cookie settings"
+          title="Cookie settings"
+          className="fixed bottom-2 right-2 z-[90] rounded-full border border-white/[0.07] bg-[#070a12]/85 px-2 py-1 text-[0.46rem] font-black uppercase tracking-[0.08em] text-slate-600 shadow-sm backdrop-blur transition hover:border-cyan-500/35 hover:text-cyan-300 sm:bottom-3 sm:right-3"
+        >
+          Cookies
+        </button>
+      )}
     </>
   );
 }
