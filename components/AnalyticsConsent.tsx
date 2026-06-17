@@ -17,20 +17,21 @@ declare global {
     dataLayer: unknown[];
     gtag: (...args: unknown[]) => void;
     __handheldAtlasGaReady?: boolean;
+    __handheldAtlasGaConfigured?: boolean;
   }
 }
 
 function ensureGtag(): void {
   window.dataLayer = window.dataLayer ?? [];
 
-  window.gtag =
-    window.gtag ??
-    function gtag(...args: unknown[]) {
-      window.dataLayer.push(args);
+  if (typeof window.gtag !== "function") {
+    window.gtag = function gtag() {
+      window.dataLayer.push(arguments);
     };
+  }
 }
 
-function updateConsent(value: ConsentValue): void {
+function setConsent(value: ConsentValue): void {
   ensureGtag();
 
   window.gtag("consent", "update", {
@@ -41,19 +42,20 @@ function updateConsent(value: ConsentValue): void {
   });
 }
 
-function sendPageView(measurementId: string): void {
-  if (!window.__handheldAtlasGaReady) {
+function configureGoogleAnalytics(measurementId: string): void {
+  ensureGtag();
+
+  if (window.__handheldAtlasGaConfigured) {
     return;
   }
 
-  const pagePath = `${window.location.pathname}${window.location.search}`;
-
-  window.gtag("event", "page_view", {
-    send_to: measurementId,
-    page_title: document.title,
-    page_location: window.location.href,
-    page_path: pagePath,
+  window.gtag("js", new Date());
+  window.gtag("config", measurementId, {
+    send_page_view: false,
+    cookie_flags: "SameSite=None;Secure",
   });
+
+  window.__handheldAtlasGaConfigured = true;
 }
 
 function loadGoogleAnalytics(
@@ -61,6 +63,7 @@ function loadGoogleAnalytics(
   onReady: () => void,
 ): void {
   ensureGtag();
+  configureGoogleAnalytics(measurementId);
 
   if (window.__handheldAtlasGaReady) {
     onReady();
@@ -72,9 +75,14 @@ function loadGoogleAnalytics(
   ) as HTMLScriptElement | null;
 
   if (existingScript) {
-    existingScript.addEventListener("load", onReady, {
-      once: true,
-    });
+    existingScript.addEventListener(
+      "load",
+      () => {
+        window.__handheldAtlasGaReady = true;
+        window.setTimeout(onReady, 0);
+      },
+      { once: true },
+    );
     return;
   }
 
@@ -87,18 +95,8 @@ function loadGoogleAnalytics(
   )}`;
 
   script.onload = () => {
-    ensureGtag();
-
-    window.gtag("js", new Date());
-
-    window.gtag("config", measurementId, {
-      send_page_view: false,
-      cookie_flags: "SameSite=None;Secure",
-      anonymize_ip: true,
-    });
-
     window.__handheldAtlasGaReady = true;
-    onReady();
+    window.setTimeout(onReady, 0);
   };
 
   script.onerror = () => {
@@ -108,6 +106,22 @@ function loadGoogleAnalytics(
   };
 
   document.head.appendChild(script);
+}
+
+function sendPageView(measurementId: string): void {
+  if (
+    !window.__handheldAtlasGaReady ||
+    !window.__handheldAtlasGaConfigured
+  ) {
+    return;
+  }
+
+  window.gtag("event", "page_view", {
+    send_to: measurementId,
+    page_title: document.title,
+    page_location: window.location.href,
+    page_path: `${window.location.pathname}${window.location.search}`,
+  });
 }
 
 export default function AnalyticsConsent({
@@ -142,9 +156,7 @@ export default function AnalyticsConsent({
       wait_for_update: 500,
     });
 
-    const storedValue = window.localStorage.getItem(
-      STORAGE_KEY,
-    );
+    const storedValue = window.localStorage.getItem(STORAGE_KEY);
 
     if (
       storedValue === "granted" ||
@@ -152,7 +164,7 @@ export default function AnalyticsConsent({
     ) {
       setConsentState(storedValue);
       setIsPanelOpen(false);
-      updateConsent(storedValue);
+      setConsent(storedValue);
 
       if (storedValue === "granted") {
         loadGoogleAnalytics(measurementId, trackCurrentPage);
@@ -176,7 +188,7 @@ export default function AnalyticsConsent({
     window.localStorage.setItem(STORAGE_KEY, value);
 
     setConsentState(value);
-    updateConsent(value);
+    setConsent(value);
     setIsPanelOpen(false);
 
     if (value === "granted") {
