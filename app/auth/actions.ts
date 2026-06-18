@@ -42,7 +42,6 @@ export async function registerUser(
     formData,
     "displayName",
   );
-
   const email = normalizeEmail(
     requiredText(formData, "email"),
   );
@@ -194,6 +193,13 @@ export async function updateProfile(
     formData,
     "displayName",
   );
+  const bio = String(formData.get("bio") ?? "").trim();
+  const ownedDevices = String(formData.get("ownedDevices") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  const publicProfile = formData.get("publicProfile") === "on";
 
   if (displayName.length < 2) {
     redirectWithError(
@@ -223,6 +229,9 @@ export async function updateProfile(
     .from("profiles")
     .update({
       display_name: displayName,
+      bio: bio.length > 0 ? bio.slice(0, 500) : null,
+      owned_devices: ownedDevices,
+      public_profile: publicProfile,
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id);

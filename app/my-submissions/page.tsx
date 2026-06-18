@@ -172,6 +172,23 @@ export default async function MySubmissionsPage({
       </section>
 
       <div className="atlas-shell pt-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
+          <div>
+            <p className="text-sm font-black text-white">Contributor workspace</p>
+            <p className="mt-1 text-xs text-slate-500">Profile settings, reputation and quick actions live in your dashboard.</p>
+          </div>
+          <Link href="/profile" className="atlas-button-secondary">Open dashboard →</Link>
+        </div>
+
+        {actionRequiredCount > 0 && (
+          <section className="mb-6 rounded-2xl border border-orange-500/30 bg-orange-500/[0.08] p-5">
+            <p className="text-[0.58rem] font-black uppercase tracking-[0.14em] text-orange-400">Action required</p>
+            <h2 className="mt-2 text-2xl font-black">{actionRequiredCount} submission{actionRequiredCount === 1 ? " needs" : "s need"} your attention.</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">Open moderator feedback, update the missing details and resubmit. The next action is shown directly on each card.</p>
+            <Link href="/my-submissions?status=changes_requested" className="mt-4 inline-flex text-sm font-black text-orange-300">Review requested changes →</Link>
+          </section>
+        )}
+
         <section className="mb-6 grid gap-3 md:grid-cols-2">
           <Link
             href="/my-submissions"

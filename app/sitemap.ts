@@ -66,6 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     newsResult,
     presetsResult,
     settingsImpactResult,
+    contributorsResult,
   ] = await Promise.all([
     supabase
       .from("games")
@@ -97,6 +98,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select("slug, updated_at")
       .eq("status", "published")
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("public_slug, updated_at")
+      .eq("public_profile", true)
+      .not("public_slug", "is", null),
   ]);
 
   reportSitemapError("games", gamesResult.error);
@@ -105,6 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   reportSitemapError("news", newsResult.error);
   reportSitemapError("presets", presetsResult.error);
   reportSitemapError("settings impact", settingsImpactResult.error);
+  reportSitemapError("contributors", contributorsResult.error);
 
   const games = (gamesResult.data ?? []) as SitemapRecord[];
   const handhelds = (handheldsResult.data ?? []) as SitemapRecord[];
@@ -112,6 +119,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const newsItems = (newsResult.data ?? []) as SitemapRecord[];
   const presets = (presetsResult.data ?? []) as PresetSitemapRecord[];
   const settingsImpact = (settingsImpactResult.data ?? []) as SitemapRecord[];
+  const contributors = (contributorsResult.data ?? []).map((row) => ({
+    slug: row.public_slug as string,
+    updated_at: row.updated_at as string | null,
+  })) as SitemapRecord[];
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -200,6 +211,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     createDynamicEntry("/settings-impact", record, "monthly", 0.7),
   );
 
+  const contributorPages = contributors.map((record) =>
+    createDynamicEntry("/contributors", record, "weekly", 0.6),
+  );
+
   return [
     ...staticPages,
     ...gamePages,
@@ -208,5 +223,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...newsPages,
     ...presetPages,
     ...settingsImpactPages,
+    ...contributorPages,
   ];
 }

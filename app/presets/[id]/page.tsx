@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import JsonLd from "../../../components/JsonLd";
 import PresetDetailConfirmation from "../../../components/PresetDetailConfirmation";
 import PresetDetailVote from "../../../components/PresetDetailVote";
+import ContributorAttribution from "../../../components/ContributorAttribution";
+import type { PublicContributor } from "../../../lib/contributors";
 import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import {
   buildSettingImpactLookup,
@@ -60,6 +62,7 @@ interface DatabasePreset {
   published_at: string | null;
   atlas_verified: boolean;
   verified_at: string | null;
+  created_by: string | null;
   games: {
     id: string;
     name: string;
@@ -240,6 +243,7 @@ export default async function PresetDetailPage({
         published_at,
         atlas_verified,
         verified_at,
+        created_by,
         games (id, name, slug),
         handhelds (id, name, slug, manufacturer),
         preset_setting_groups (
@@ -303,6 +307,15 @@ export default async function PresetDetailPage({
   }
 
   const preset = presetResult.data as unknown as DatabasePreset;
+  let contributor: PublicContributor | null = null;
+  if (preset.created_by) {
+    const { data: contributorData } = await supabase
+      .from("profiles")
+      .select("id, display_name, public_slug, avatar_url, contributor_level, public_profile")
+      .eq("id", preset.created_by)
+      .maybeSingle();
+    contributor = contributorData as PublicContributor | null;
+  }
   const settingGuides = guidesResult.error
     ? []
     : ((guidesResult.data ?? []) as unknown as SettingImpactEntry[]);
@@ -494,6 +507,9 @@ export default async function PresetDetailPage({
                 <p className="mt-5 max-w-5xl whitespace-pre-line break-words text-sm leading-7 text-slate-300 sm:text-base sm:leading-8">
                   {renderTextWithLinks(summaryText)}
                 </p>
+                <div className="mt-5">
+                  <ContributorAttribution profile={contributor} label="Submitted by" />
+                </div>
               </div>
 
               <aside className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">

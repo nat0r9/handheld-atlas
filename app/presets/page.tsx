@@ -2,6 +2,7 @@ import PresetsCatalog, {
   type PublicPreset,
 } from "../../components/PresetsCatalog";
 import { createClient } from "../../lib/supabase/server";
+import type { PublicContributor } from "../../lib/contributors";
 
 interface DatabaseSettingItem {
   id: string;
@@ -37,6 +38,7 @@ interface DatabasePreset {
   summary: string | null;
   published_at: string | null;
   atlas_verified: boolean;
+  created_by: string | null;
   games: {
     name: string;
     slug: string;
@@ -78,6 +80,7 @@ export default async function PresetsPage() {
       summary,
       published_at,
       atlas_verified,
+      created_by,
       games (
         name,
         slug
@@ -114,6 +117,16 @@ export default async function PresetsPage() {
 
   const databasePresets =
     (data ?? []) as unknown as DatabasePreset[];
+
+  const contributorIds = Array.from(new Set(databasePresets.map((preset) => preset.created_by).filter((value): value is string => Boolean(value))));
+  let contributorMap = new Map<string, PublicContributor>();
+  if (contributorIds.length > 0) {
+    const { data: contributors } = await supabase
+      .from("profiles")
+      .select("id, display_name, public_slug, avatar_url, contributor_level, public_profile")
+      .in("id", contributorIds);
+    contributorMap = new Map(((contributors ?? []) as PublicContributor[]).map((profile) => [profile.id, profile]));
+  }
 
   const presets: PublicPreset[] =
     databasePresets.map((preset) => {
@@ -179,6 +192,7 @@ export default async function PresetsPage() {
         game: preset.games,
         handheld: preset.handhelds,
         groups,
+        contributor: preset.created_by ? contributorMap.get(preset.created_by) ?? null : null,
       };
     });
 

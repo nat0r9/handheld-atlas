@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ContributorAttribution from "./ContributorAttribution";
+import type { PublicContributor } from "../lib/contributors";
 import { useMemo, useState } from "react";
 
 export interface PublicBenchmark {
@@ -12,6 +14,7 @@ export interface PublicBenchmark {
   batteryLife: string | null;
   testNotes: string | null;
   publishedAt: string | null;
+  contributor: PublicContributor | null;
 
   game: {
     name: string;
@@ -514,6 +517,10 @@ export default function BenchmarksCatalog({
                             {benchmark.handheld?.manufacturer ??
                               "Unknown manufacturer"}
                           </p>
+
+                          <div className="mt-3">
+                            <ContributorAttribution profile={benchmark.contributor} label="Tested by" compact />
+                          </div>
 
                           <div className="mt-3 flex flex-wrap gap-2">
                             <span className="atlas-chip">

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import PresetConfirmationButton from "./PresetConfirmationButton";
+import ContributorAttribution from "./ContributorAttribution";
+import type { PublicContributor } from "../lib/contributors";
 import PresetTrustBadge from "./PresetTrustBadge";
 import PresetVoteButton from "./PresetVoteButton";
 import { getPresetProfileGuide } from "../lib/preset-guidance";
@@ -48,6 +50,7 @@ export interface PublicPreset {
   hasUpvoted: boolean;
   confirmationCount: number;
   hasConfirmed: boolean;
+  contributor: PublicContributor | null;
 
   game: {
     name: string;
@@ -718,6 +721,10 @@ export default function PresetsCatalog({
                           <p className="mt-1 text-sm font-bold text-slate-400">
                             {preset.handheld?.name ?? "Unknown handheld"}
                           </p>
+
+                          <div className="mt-3">
+                            <ContributorAttribution profile={preset.contributor} label="Submitted by" compact />
+                          </div>
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className="text-[0.56rem] font-black uppercase tracking-[0.13em] text-slate-600">
