@@ -384,6 +384,39 @@ function getFpsStyle(value: number | null) {
   return "text-red-400";
 }
 
+function getPerformanceOverview({
+  gameName,
+  presetCount,
+  benchmarkCount,
+  averageTestedFps,
+  highestTestedFps,
+}: {
+  gameName: string;
+  presetCount: number;
+  benchmarkCount: number;
+  averageTestedFps: number | null;
+  highestTestedFps: number | null;
+}) {
+  if (benchmarkCount > 0 && averageTestedFps !== null) {
+    const highestText =
+      highestTestedFps !== null
+        ? ` The highest published result currently reaches ${highestTestedFps} FPS.`
+        : "";
+
+    return `${gameName} currently has ${benchmarkCount} published benchmark${
+      benchmarkCount === 1 ? "" : "s"
+    } in the Atlas database, with an average tested result of ${averageTestedFps} FPS.${highestText} Use the benchmark table below to compare handhelds, power targets, resolutions and tested presets.`;
+  }
+
+  if (presetCount > 0) {
+    return `${gameName} has ${presetCount} published preset${
+      presetCount === 1 ? "" : "s"
+    } available, but no benchmark results have been published yet. Treat the presets as setup guidance until measured FPS, 1% lows, TDP and test-area notes are added.`;
+  }
+
+  return `No handheld-specific performance overview is available yet for ${gameName}. Once presets or benchmarks are added, this section will summarize expected FPS, 1% lows, tested devices, power targets and known performance issues.`;
+}
+
 export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
   const game = await getGame(slug);
@@ -470,6 +503,14 @@ export default async function GamePage({ params }: GamePageProps) {
             validBenchmarkFps.length,
         )
       : null;
+
+  const performanceOverview = getPerformanceOverview({
+    gameName: game.name,
+    presetCount: gamePresets.length,
+    benchmarkCount: gameBenchmarks.length,
+    averageTestedFps,
+    highestTestedFps,
+  });
 
   return (
     <>
@@ -591,8 +632,7 @@ export default async function GamePage({ params }: GamePageProps) {
             />
 
             <p className="mt-5 text-base leading-8 text-slate-400">
-              {game.notes ??
-                "No detailed performance notes are available yet."}
+              {performanceOverview}
             </p>
 
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
