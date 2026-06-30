@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../../../lib/supabase/server";
-import { updateBenchmark } from "../../actions";
+import BenchmarkAdminForm from "../../../../../components/admin/BenchmarkAdminForm";
+import { BENCHMARK_EDITOR_ROLES } from "../../../../../lib/auth/roles";
+import { requireRole } from "../../../../../lib/auth/require-role";
+import { duplicateBenchmark, updateBenchmark } from "../../actions";
 
 interface EditBenchmarkPageProps {
   params: Promise<{
@@ -45,6 +47,7 @@ interface DatabaseBenchmark {
   battery_life: string | null;
   test_notes: string | null;
   status: "draft" | "published" | "archived";
+  created_by: string | null;
   games: {
     name: string;
     slug: string;
@@ -62,49 +65,27 @@ export default async function EditBenchmarkPage({
   const { id } = await params;
   const { error, success } = await searchParams;
 
-  const supabase = await createClient();
+  const { supabase, user, role } = await requireRole(
+    BENCHMARK_EDITOR_ROLES,
+    "/",
+  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const isBenchmarkTester = role === "benchmark_tester";
 
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    redirect("/admin/login");
-  }
-
-  const [
-    gamesResult,
-    handheldsResult,
-    presetsResult,
-    benchmarkResult,
-  ] = await Promise.all([
-    supabase
-      .from("games")
-      .select("id, name")
-      .order("name", {
+  const [gamesResult, handheldsResult, presetsResult, benchmarkResult] =
+    await Promise.all([
+      supabase.from("games").select("id, name").order("name", {
         ascending: true,
       }),
 
-    supabase
-      .from("handhelds")
-      .select("id, name")
-      .order("name", {
+      supabase.from("handhelds").select("id, name").order("name", {
         ascending: true,
       }),
 
-    supabase
-      .from("presets")
-      .select(`
+      supabase
+        .from("presets")
+        .select(
+          `
         id,
         name,
         game_id,
@@ -116,14 +97,16 @@ export default async function EditBenchmarkPage({
         handhelds (
           name
         )
-      `)
-      .order("name", {
-        ascending: true,
-      }),
+      `,
+        )
+        .order("name", {
+          ascending: true,
+        }),
 
-    supabase
-      .from("benchmarks")
-      .select(`
+      supabase
+        .from("benchmarks")
+        .select(
+          `
         id,
         game_id,
         handheld_id,
@@ -135,6 +118,7 @@ export default async function EditBenchmarkPage({
         battery_life,
         test_notes,
         status,
+        created_by,
         games (
           name,
           slug
@@ -143,18 +127,14 @@ export default async function EditBenchmarkPage({
           name,
           slug
         )
-      `)
-      .eq("id", id)
-      .single(),
-  ]);
+      `,
+        )
+        .eq("id", id)
+        .single(),
+    ]);
 
-  if (
-    benchmarkResult.error ||
-    !benchmarkResult.data
-  ) {
-    redirect(
-      "/admin/benchmarks?error=Benchmark%20not%20found",
-    );
+  if (benchmarkResult.error || !benchmarkResult.data) {
+    redirect("/admin/benchmarks?error=Benchmark%20not%20found");
   }
 
   const databaseError =
@@ -164,25 +144,22 @@ export default async function EditBenchmarkPage({
     null;
 
   if (databaseError) {
-    redirect(
-      `/admin/benchmarks?error=${encodeURIComponent(
-        databaseError,
-      )}`,
-    );
+    redirect(`/admin/benchmarks?error=${encodeURIComponent(databaseError)}`);
   }
 
-  const games =
-    (gamesResult.data ?? []) as SelectOption[];
+  const games = (gamesResult.data ?? []) as SelectOption[];
 
-  const handhelds =
-    (handheldsResult.data ?? []) as SelectOption[];
+  const handhelds = (handheldsResult.data ?? []) as SelectOption[];
 
-  const presets =
-    (presetsResult.data ??
-      []) as unknown as PresetOption[];
+  const presets = (presetsResult.data ?? []) as unknown as PresetOption[];
 
-  const benchmark =
-    benchmarkResult.data as unknown as DatabaseBenchmark;
+  const benchmark = benchmarkResult.data as unknown as DatabaseBenchmark;
+
+  if (isBenchmarkTester && benchmark.created_by !== user.id) {
+    redirect(
+      "/admin/benchmarks?error=You%20can%20only%20edit%20your%20own%20benchmarks",
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -200,9 +177,7 @@ export default async function EditBenchmarkPage({
               Content Management
             </p>
 
-            <h1 className="mt-3 text-5xl font-black">
-              Edit benchmark
-            </h1>
+            <h1 className="mt-3 text-5xl font-black">Edit benchmark</h1>
 
             <p className="mt-4 max-w-2xl text-slate-400">
               Update test results, linked preset, notes and publishing status.
@@ -219,8 +194,7 @@ export default async function EditBenchmarkPage({
             </p>
 
             <p className="mt-1 text-sm text-slate-400">
-              {benchmark.handhelds?.name ??
-                "Unknown handheld"}
+              {benchmark.handhelds?.name ?? "Unknown handheld"}
             </p>
           </div>
         </div>
@@ -238,281 +212,79 @@ export default async function EditBenchmarkPage({
         )}
 
         <section className="mt-10 rounded-[2rem] border border-slate-800 bg-slate-900 p-6 md:p-8">
-          <form action={updateBenchmark}>
-            <input
-              type="hidden"
-              name="benchmarkId"
-              value={benchmark.id}
-            />
-
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              <SelectField
-                label="Game"
-                name="gameId"
-                options={games}
-                defaultValue={benchmark.game_id}
-                required
-              />
-
-              <SelectField
-                label="Handheld"
-                name="handheldId"
-                options={handhelds}
-                defaultValue={benchmark.handheld_id}
-                required
-              />
-
-              <div>
-                <label
-                  htmlFor="presetId"
-                  className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-                >
-                  Related preset
-                </label>
-
-                <select
-                  id="presetId"
-                  name="presetId"
-                  defaultValue={benchmark.preset_id ?? ""}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-                >
-                  <option value="">
-                    No linked preset
-                  </option>
-
-                  {presets.map((preset) => (
-                    <option
-                      key={preset.id}
-                      value={preset.id}
-                    >
-                      {preset.games?.name ??
-                        "Unknown game"}
-                      {" · "}
-                      {preset.handhelds?.name ??
-                        "Unknown handheld"}
-                      {" · "}
-                      {preset.name}
-                      {" · "}
-                      {preset.preset_type}
-                    </option>
-                  ))}
-                </select>
-
-                <p className="mt-2 text-xs text-slate-600">
-                  The preset must match the selected game and handheld.
-                </p>
-              </div>
-
-              <FormField
-                label="Resolution"
-                name="resolution"
-                defaultValue={benchmark.resolution ?? ""}
-              />
-
-              <FormField
-                label="TDP"
-                name="tdp"
-                defaultValue={benchmark.tdp ?? ""}
-              />
-
-              <FormField
-                label="Average FPS"
-                name="averageFps"
-                type="number"
-                defaultValue={
-                  benchmark.average_fps !== null
-                    ? String(benchmark.average_fps)
-                    : ""
-                }
-                min="0"
-                step="0.01"
-              />
-
-              <FormField
-                label="1% Low"
-                name="onePercentLow"
-                type="number"
-                defaultValue={
-                  benchmark.one_percent_low !== null
-                    ? String(benchmark.one_percent_low)
-                    : ""
-                }
-                min="0"
-                step="0.01"
-              />
-
-              <FormField
-                label="Battery life"
-                name="batteryLife"
-                defaultValue={
-                  benchmark.battery_life ?? ""
-                }
-              />
-
-              <div>
-                <label
-                  htmlFor="status"
-                  className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-                >
-                  Content status
-                </label>
-
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue={benchmark.status}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">
-                    Published
-                  </option>
-                  <option value="archived">
-                    Archived
-                  </option>
-                </select>
-              </div>
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-5">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
+                Test Report
+              </p>
+              <h2 className="mt-2 text-2xl font-black">Benchmark details</h2>
             </div>
 
-            <div className="mt-6">
-              <label
-                htmlFor="testNotes"
-                className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-              >
-                Test notes
-              </label>
+            <form action={duplicateBenchmark}>
+              <input type="hidden" name="benchmarkId" value={benchmark.id} />
 
-              <textarea
-                id="testNotes"
-                name="testNotes"
-                rows={7}
-                defaultValue={benchmark.test_notes ?? ""}
-                placeholder="Describe the test scene, settings, frame generation, temperatures and unusual behaviour."
-                className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-              />
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
               <button
                 type="submit"
-                className="rounded-xl bg-cyan-500 px-6 py-3 font-black text-slate-950 transition hover:bg-cyan-400"
+                className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-300 transition hover:bg-orange-500 hover:text-slate-950"
               >
-                Save benchmark changes
+                Duplicate as draft
               </button>
+            </form>
+          </div>
 
+          <div className="mt-8">
+            <BenchmarkAdminForm
+              action={updateBenchmark}
+              games={games}
+              handhelds={handhelds}
+              presets={presets}
+              submitLabel="Save benchmark changes"
+              isBenchmarkTester={isBenchmarkTester}
+              defaults={{
+                benchmarkId: benchmark.id,
+                gameId: benchmark.game_id,
+                handheldId: benchmark.handheld_id,
+                presetId: benchmark.preset_id ?? "",
+                resolution: benchmark.resolution ?? "",
+                tdp: benchmark.tdp ?? "",
+                averageFps:
+                  benchmark.average_fps !== null
+                    ? String(benchmark.average_fps)
+                    : "",
+                onePercentLow:
+                  benchmark.one_percent_low !== null
+                    ? String(benchmark.one_percent_low)
+                    : "",
+                batteryLife: benchmark.battery_life ?? "",
+                testNotes: benchmark.test_notes ?? "",
+                status: benchmark.status,
+              }}
+            />
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-5">
+            {benchmark.games?.slug && (
               <Link
-                href="/admin/benchmarks"
-                className="rounded-xl border border-slate-700 bg-slate-950 px-6 py-3 font-bold text-slate-300 transition hover:border-slate-500 hover:text-white"
+                href={`/games/${benchmark.games.slug}`}
+                target="_blank"
+                className="rounded-xl border border-green-500/40 bg-green-500/10 px-6 py-3 font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
               >
-                Cancel
+                Open game ↗
               </Link>
+            )}
 
-              {benchmark.games?.slug && (
-                <Link
-                  href={`/games/${benchmark.games.slug}`}
-                  target="_blank"
-                  className="rounded-xl border border-green-500/40 bg-green-500/10 px-6 py-3 font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
-                >
-                  Open game ↗
-                </Link>
-              )}
-
-              {benchmark.handhelds?.slug && (
-                <Link
-                  href={`/handhelds/${benchmark.handhelds.slug}`}
-                  target="_blank"
-                  className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-bold text-purple-400 transition hover:bg-purple-500 hover:text-white"
-                >
-                  Open handheld ↗
-                </Link>
-              )}
-            </div>
-          </form>
+            {benchmark.handhelds?.slug && (
+              <Link
+                href={`/handhelds/${benchmark.handhelds.slug}`}
+                target="_blank"
+                className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-bold text-purple-400 transition hover:bg-purple-500 hover:text-white"
+              >
+                Open handheld ↗
+              </Link>
+            )}
+          </div>
         </section>
       </div>
     </main>
-  );
-}
-
-interface FormFieldProps {
-  label: string;
-  name: string;
-  defaultValue?: string;
-  type?: "text" | "number";
-  min?: string;
-  step?: string;
-}
-
-function FormField({
-  label,
-  name,
-  defaultValue = "",
-  type = "text",
-  min,
-  step,
-}: FormFieldProps) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-      >
-        {label}
-      </label>
-
-      <input
-        id={name}
-        name={name}
-        type={type}
-        defaultValue={defaultValue}
-        min={min}
-        step={step}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-      />
-    </div>
-  );
-}
-
-interface SelectFieldProps {
-  label: string;
-  name: string;
-  options: SelectOption[];
-  defaultValue: string;
-  required?: boolean;
-}
-
-function SelectField({
-  label,
-  name,
-  options,
-  defaultValue,
-  required = false,
-}: SelectFieldProps) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-      >
-        {label}
-      </label>
-
-      <select
-        id={name}
-        name={name}
-        defaultValue={defaultValue}
-        required={required}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-      >
-        {options.map((option) => (
-          <option
-            key={option.id}
-            value={option.id}
-          >
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }

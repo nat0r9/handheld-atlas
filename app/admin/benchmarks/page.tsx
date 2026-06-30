@@ -1,11 +1,11 @@
 import Link from "next/link";
-import {
-  BENCHMARK_EDITOR_ROLES,
-} from "../../../lib/auth/roles";
+import BenchmarkAdminForm from "../../../components/admin/BenchmarkAdminForm";
+import { BENCHMARK_EDITOR_ROLES } from "../../../lib/auth/roles";
 import { requireRole } from "../../../lib/auth/require-role";
 import {
   createBenchmark,
   deleteBenchmark,
+  duplicateBenchmark,
 } from "./actions";
 
 interface AdminBenchmarksPageProps {
@@ -25,6 +25,7 @@ interface PresetOption {
   name: string;
   game_id: string;
   handheld_id: string;
+  preset_type?: string | null;
   games: {
     name: string;
   } | null;
@@ -60,9 +61,7 @@ interface DatabaseBenchmark {
   } | null;
 }
 
-function getStatusStyle(
-  status: DatabaseBenchmark["status"],
-) {
+function getStatusStyle(status: DatabaseBenchmark["status"]) {
   switch (status) {
     case "published":
       return "border-green-400/30 bg-green-500/15 text-green-400";
@@ -80,60 +79,49 @@ export default async function AdminBenchmarksPage({
 }: AdminBenchmarksPageProps) {
   const { error, success } = await searchParams;
 
-  const {
-    supabase,
-    user,
-    role,
-  } = await requireRole(
+  const { supabase, user, role } = await requireRole(
     BENCHMARK_EDITOR_ROLES,
     "/",
   );
 
-  const isBenchmarkTester =
-    role === "benchmark_tester";
+  const isBenchmarkTester = role === "benchmark_tester";
 
-  const [
-    gamesResult,
-    handheldsResult,
-    presetsResult,
-    benchmarksResult,
-  ] = await Promise.all([
-    supabase
-      .from("games")
-      .select("id, name")
-      .order("name", {
+  const [gamesResult, handheldsResult, presetsResult, benchmarksResult] =
+    await Promise.all([
+      supabase.from("games").select("id, name").order("name", {
         ascending: true,
       }),
 
-    supabase
-      .from("handhelds")
-      .select("id, name")
-      .order("name", {
+      supabase.from("handhelds").select("id, name").order("name", {
         ascending: true,
       }),
 
-    supabase
-      .from("presets")
-      .select(`
+      supabase
+        .from("presets")
+        .select(
+          `
         id,
         name,
         game_id,
         handheld_id,
+        preset_type,
         games (
           name
         ),
         handhelds (
           name
         )
-      `)
-      .order("name", {
-        ascending: true,
-      }),
+      `,
+        )
+        .order("name", {
+          ascending: true,
+        }),
 
-    (() => {
-      let query = supabase
-        .from("benchmarks")
-        .select(`
+      (() => {
+        let query = supabase
+          .from("benchmarks")
+          .select(
+            `
         id,
         game_id,
         handheld_id,
@@ -158,35 +146,28 @@ export default async function AdminBenchmarksPage({
           name,
           preset_type
         )
-      `)
-        .order("created_at", {
-          ascending: false,
-        });
+      `,
+          )
+          .order("created_at", {
+            ascending: false,
+          });
 
-      if (isBenchmarkTester) {
-        query = query.eq(
-          "created_by",
-          user.id,
-        );
-      }
+        if (isBenchmarkTester) {
+          query = query.eq("created_by", user.id);
+        }
 
-      return query;
-    })(),
-  ]);
+        return query;
+      })(),
+    ]);
 
-  const games =
-    (gamesResult.data ?? []) as SelectOption[];
+  const games = (gamesResult.data ?? []) as SelectOption[];
 
-  const handhelds =
-    (handheldsResult.data ?? []) as SelectOption[];
+  const handhelds = (handheldsResult.data ?? []) as SelectOption[];
 
-  const presets =
-    (presetsResult.data ??
-      []) as unknown as PresetOption[];
+  const presets = (presetsResult.data ?? []) as unknown as PresetOption[];
 
-  const benchmarks =
-    (benchmarksResult.data ??
-      []) as unknown as DatabaseBenchmark[];
+  const benchmarks = (benchmarksResult.data ??
+    []) as unknown as DatabaseBenchmark[];
 
   const databaseError =
     gamesResult.error?.message ??
@@ -211,14 +192,11 @@ export default async function AdminBenchmarksPage({
               Content Management
             </p>
 
-            <h1 className="mt-3 text-5xl font-black">
-              Benchmarks
-            </h1>
+            <h1 className="mt-3 text-5xl font-black">Benchmarks</h1>
 
             <p className="mt-4 max-w-3xl text-slate-400">
-              Record tested FPS results, power limits,
-              resolutions and battery measurements for
-              games running on specific handhelds.
+              Record tested FPS results, power limits, resolutions and battery
+              measurements for games running on specific handhelds.
             </p>
           </div>
 
@@ -227,16 +205,15 @@ export default async function AdminBenchmarksPage({
               Database total
             </p>
 
-            <p className="mt-2 text-3xl font-black">
-              {benchmarks.length}
-            </p>
+            <p className="mt-2 text-3xl font-black">{benchmarks.length}</p>
           </div>
         </div>
 
         {isBenchmarkTester && (
           <div className="mt-6 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.07] p-5 text-sm text-cyan-200">
-            Benchmark Tester access: you can create and manage your own draft benchmarks.
-            Publishing remains reserved for Atlas Editors and Administrators.
+            Benchmark Tester access: you can create and manage your own draft
+            benchmarks. Publishing remains reserved for Atlas Editors and
+            Administrators.
           </div>
         )}
 
@@ -252,11 +229,10 @@ export default async function AdminBenchmarksPage({
           </div>
         )}
 
-        {(games.length === 0 ||
-          handhelds.length === 0) && (
+        {(games.length === 0 || handhelds.length === 0) && (
           <div className="mt-8 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-5 text-orange-200">
-            A benchmark needs at least one game and one
-            handheld in the database.
+            A benchmark needs at least one game and one handheld in the
+            database.
           </div>
         )}
 
@@ -265,161 +241,18 @@ export default async function AdminBenchmarksPage({
             New Benchmark
           </p>
 
-          <h2 className="mt-3 text-3xl font-black">
-            Add benchmark result
-          </h2>
+          <h2 className="mt-3 text-3xl font-black">Add benchmark result</h2>
 
-          <form action={createBenchmark} className="mt-8">
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              <SelectField
-                label="Game"
-                name="gameId"
-                placeholder="Select game"
-                options={games}
-                required
-              />
-
-              <SelectField
-                label="Handheld"
-                name="handheldId"
-                placeholder="Select handheld"
-                options={handhelds}
-                required
-              />
-
-              <div>
-                <label
-                  htmlFor="presetId"
-                  className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-                >
-                  Related preset
-                </label>
-
-                <select
-                  id="presetId"
-                  name="presetId"
-                  defaultValue=""
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-                >
-                  <option value="">
-                    No linked preset
-                  </option>
-
-                  {presets.map((preset) => (
-                    <option
-                      key={preset.id}
-                      value={preset.id}
-                    >
-                      {preset.games?.name ??
-                        "Unknown game"}
-                      {" · "}
-                      {preset.handhelds?.name ??
-                        "Unknown handheld"}
-                      {" · "}
-                      {preset.name}
-                    </option>
-                  ))}
-                </select>
-
-                <p className="mt-2 text-xs text-slate-600">
-                  The selected preset must match the chosen
-                  game and handheld.
-                </p>
-              </div>
-
-              <FormField
-                label="Resolution"
-                name="resolution"
-                placeholder="1920 × 1080"
-              />
-
-              <FormField
-                label="TDP"
-                name="tdp"
-                placeholder="30W"
-              />
-
-              <FormField
-                label="Average FPS"
-                name="averageFps"
-                type="number"
-                placeholder="68"
-                min="0"
-                step="0.01"
-              />
-
-              <FormField
-                label="1% Low"
-                name="onePercentLow"
-                type="number"
-                placeholder="54"
-                min="0"
-                step="0.01"
-              />
-
-              <FormField
-                label="Battery life"
-                name="batteryLife"
-                placeholder="1 h 45 min"
-              />
-
-              <div>
-                <label
-                  htmlFor="status"
-                  className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-                >
-                  Content status
-                </label>
-
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue="draft"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-                >
-                  <option value="draft">
-                    Draft
-                  </option>
-
-                  <option value="published">
-                    Published
-                  </option>
-
-                  <option value="archived">
-                    Archived
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <label
-                htmlFor="testNotes"
-                className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-              >
-                Test notes
-              </label>
-
-              <textarea
-                id="testNotes"
-                name="testNotes"
-                rows={5}
-                placeholder="Describe test location, graphics settings, frame generation, power mode, temperatures or unusual performance behaviour."
-                className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={
-                games.length === 0 ||
-                handhelds.length === 0
-              }
-              className="mt-7 rounded-xl bg-cyan-500 px-7 py-4 font-black text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Create benchmark
-            </button>
-          </form>
+          <div className="mt-8">
+            <BenchmarkAdminForm
+              action={createBenchmark}
+              games={games}
+              handhelds={handhelds}
+              presets={presets}
+              submitLabel="Create benchmark"
+              isBenchmarkTester={isBenchmarkTester}
+            />
+          </div>
         </section>
 
         <section className="mt-12">
@@ -429,16 +262,12 @@ export default async function AdminBenchmarksPage({
                 Existing Content
               </p>
 
-              <h2 className="mt-2 text-3xl font-black">
-                Benchmark database
-              </h2>
+              <h2 className="mt-2 text-3xl font-black">Benchmark database</h2>
             </div>
 
             <p className="text-sm text-slate-500">
               {benchmarks.length}{" "}
-              {benchmarks.length === 1
-                ? "benchmark"
-                : "benchmarks"}
+              {benchmarks.length === 1 ? "benchmark" : "benchmarks"}
             </p>
           </div>
 
@@ -449,8 +278,7 @@ export default async function AdminBenchmarksPage({
               </h3>
 
               <p className="mt-2 text-slate-400">
-                Add the first benchmark using the form
-                above.
+                Add the first benchmark using the form above.
               </p>
             </div>
           ) : (
@@ -463,24 +291,18 @@ export default async function AdminBenchmarksPage({
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-bold uppercase tracking-[0.2em] text-cyan-400">
-                        {benchmark.games?.name ??
-                          "Unknown game"}
+                        {benchmark.games?.name ?? "Unknown game"}
                       </p>
 
                       <h3 className="mt-2 text-2xl font-black">
-                        {benchmark.handhelds?.name ??
-                          "Unknown handheld"}
+                        {benchmark.handhelds?.name ?? "Unknown handheld"}
                       </h3>
 
                       {benchmark.presets && (
                         <p className="mt-2 text-sm text-slate-400">
-                          Preset:{" "}
-                          {benchmark.presets.name}
+                          Preset: {benchmark.presets.name}
                           {" · "}
-                          {
-                            benchmark.presets
-                              .preset_type
-                          }
+                          {benchmark.presets.preset_type}
                         </p>
                       )}
                     </div>
@@ -497,17 +319,12 @@ export default async function AdminBenchmarksPage({
                   <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
                     <BenchmarkStat
                       label="Resolution"
-                      value={
-                        benchmark.resolution ??
-                        "Not set"
-                      }
+                      value={benchmark.resolution ?? "Not set"}
                     />
 
                     <BenchmarkStat
                       label="TDP"
-                      value={
-                        benchmark.tdp ?? "Not set"
-                      }
+                      value={benchmark.tdp ?? "Not set"}
                     />
 
                     <BenchmarkStat
@@ -523,8 +340,7 @@ export default async function AdminBenchmarksPage({
                     <BenchmarkStat
                       label="1% Low"
                       value={
-                        benchmark.one_percent_low !==
-                        null
+                        benchmark.one_percent_low !== null
                           ? `${benchmark.one_percent_low} FPS`
                           : "Not set"
                       }
@@ -532,18 +348,12 @@ export default async function AdminBenchmarksPage({
 
                     <BenchmarkStat
                       label="Battery life"
-                      value={
-                        benchmark.battery_life ??
-                        "Not set"
-                      }
+                      value={benchmark.battery_life ?? "Not set"}
                     />
 
                     <BenchmarkStat
                       label="Linked preset"
-                      value={
-                        benchmark.presets?.name ??
-                        "None"
-                      }
+                      value={benchmark.presets?.name ?? "None"}
                     />
                   </div>
 
@@ -587,6 +397,21 @@ export default async function AdminBenchmarksPage({
                       </Link>
                     )}
 
+                    <form action={duplicateBenchmark}>
+                      <input
+                        type="hidden"
+                        name="benchmarkId"
+                        value={benchmark.id}
+                      />
+
+                      <button
+                        type="submit"
+                        className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-300 transition hover:bg-orange-500 hover:text-slate-950"
+                      >
+                        Duplicate
+                      </button>
+                    </form>
+
                     <form action={deleteBenchmark}>
                       <input
                         type="hidden"
@@ -609,93 +434,6 @@ export default async function AdminBenchmarksPage({
         </section>
       </div>
     </main>
-  );
-}
-
-interface FormFieldProps {
-  label: string;
-  name: string;
-  placeholder?: string;
-  type?: "text" | "number";
-  min?: string;
-  step?: string;
-}
-
-function FormField({
-  label,
-  name,
-  placeholder,
-  type = "text",
-  min,
-  step,
-}: FormFieldProps) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-      >
-        {label}
-      </label>
-
-      <input
-        id={name}
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        min={min}
-        step={step}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
-      />
-    </div>
-  );
-}
-
-interface SelectFieldProps {
-  label: string;
-  name: string;
-  placeholder: string;
-  options: SelectOption[];
-  required?: boolean;
-}
-
-function SelectField({
-  label,
-  name,
-  placeholder,
-  options,
-  required = false,
-}: SelectFieldProps) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-      >
-        {label}
-      </label>
-
-      <select
-        id={name}
-        name={name}
-        defaultValue=""
-        required={required}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-      >
-        <option value="" disabled>
-          {placeholder}
-        </option>
-
-        {options.map((option) => (
-          <option
-            key={option.id}
-            value={option.id}
-          >
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
 
@@ -724,9 +462,7 @@ function BenchmarkStat({
 
       <p
         className={`mt-2 font-black ${
-          highlighted
-            ? "text-cyan-400"
-            : "text-slate-200"
+          highlighted ? "text-cyan-400" : "text-slate-200"
         }`}
       >
         {value}
