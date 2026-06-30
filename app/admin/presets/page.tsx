@@ -7,6 +7,7 @@ import { requireRole } from "../../../lib/auth/require-role";
 import {
   createPreset,
   deletePreset,
+  duplicatePreset,
 } from "./actions";
 
 interface AdminPresetsPageProps {
@@ -480,6 +481,21 @@ export default async function AdminPresetsPage({
                         Open handheld
                       </Link>
                     )}
+
+                    <form action={duplicatePreset}>
+                      <input
+                        type="hidden"
+                        name="presetId"
+                        value={preset.id}
+                      />
+
+                      <button
+                        type="submit"
+                        className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-300 transition hover:bg-orange-500 hover:text-slate-950"
+                      >
+                        Duplicate
+                      </button>
+                    </form>
 
                     <form action={deletePreset}>
                       <input

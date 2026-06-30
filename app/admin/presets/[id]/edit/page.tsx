@@ -7,7 +7,10 @@ import {
   PRESET_EDITOR_ROLES,
 } from "../../../../../lib/auth/roles";
 import { requireRole } from "../../../../../lib/auth/require-role";
-import { updatePreset } from "../../actions";
+import {
+  duplicatePreset,
+  updatePreset,
+} from "../../actions";
 
 interface EditPresetPageProps {
   params: Promise<{
@@ -339,6 +342,21 @@ export default async function EditPresetPage({
             >
               Cancel and return
             </Link>
+
+            <form action={duplicatePreset}>
+              <input
+                type="hidden"
+                name="presetId"
+                value={databasePreset.id}
+              />
+
+              <button
+                type="submit"
+                className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-5 py-3 font-bold text-orange-300 transition hover:bg-orange-500 hover:text-slate-950"
+              >
+                Duplicate as draft
+              </button>
+            </form>
 
             {databasePreset.games?.slug && (
               <Link

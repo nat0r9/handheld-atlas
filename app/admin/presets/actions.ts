@@ -55,6 +55,45 @@ interface PresetDeleteLookup {
     | null;
 }
 
+interface DuplicateSettingItem {
+  label: string;
+  value: string;
+  note: string | null;
+  sort_order: number;
+}
+
+interface DuplicateSettingGroup {
+  name: string;
+  sort_order: number;
+  preset_setting_items: DuplicateSettingItem[];
+}
+
+interface PresetDuplicateLookup {
+  id: string;
+  game_id: string;
+  handheld_id: string;
+  name: string;
+  preset_type: PresetType;
+  resolution: string | null;
+  tdp: string | null;
+  fps_average: number | null;
+  one_percent_low: number | null;
+  upscaler: string | null;
+  battery_life: string | null;
+  summary: string | null;
+  created_by: string | null;
+  status: ContentStatus;
+  games:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+  handhelds:
+    | RelationWithSlug
+    | RelationWithSlug[]
+    | null;
+  preset_setting_groups: DuplicateSettingGroup[];
+}
+
 const validPresetTypes = [
   "Performance",
   "Balanced",
@@ -1094,6 +1133,188 @@ export async function updatePreset(
 
   redirect(
     `${editPath}?success=Preset%20updated`,
+  );
+}
+
+
+export async function duplicatePreset(
+  formData: FormData,
+) {
+  const {
+    supabase,
+    user,
+    role,
+  } = await requirePresetEditor();
+
+  const presetId = requiredText(
+    formData,
+    "presetId",
+  );
+
+  if (!presetId) {
+    redirect(
+      "/admin/presets?error=Missing%20preset%20ID",
+    );
+  }
+
+  const {
+    data: presetData,
+    error: presetError,
+  } = await supabase
+    .from("presets")
+    .select(`
+      id,
+      game_id,
+      handheld_id,
+      name,
+      preset_type,
+      resolution,
+      tdp,
+      fps_average,
+      one_percent_low,
+      upscaler,
+      battery_life,
+      summary,
+      created_by,
+      status,
+      games (
+        slug
+      ),
+      handhelds (
+        slug
+      ),
+      preset_setting_groups (
+        name,
+        sort_order,
+        preset_setting_items (
+          label,
+          value,
+          note,
+          sort_order
+        )
+      )
+    `)
+    .eq("id", presetId)
+    .single();
+
+  if (
+    presetError ||
+    !presetData
+  ) {
+    redirect(
+      "/admin/presets?error=Preset%20not%20found",
+    );
+  }
+
+  const preset =
+    presetData as unknown as PresetDuplicateLookup;
+
+  if (
+    role === "benchmark_tester" &&
+    (
+      preset.created_by !== user.id ||
+      preset.status !== "draft"
+    )
+  ) {
+    redirect(
+      "/admin/presets?error=Benchmark%20testers%20can%20duplicate%20only%20their%20own%20draft%20presets",
+    );
+  }
+
+  const {
+    data: duplicatedPreset,
+    error: duplicateError,
+  } = await supabase
+    .from("presets")
+    .insert({
+      game_id: preset.game_id,
+      handheld_id: preset.handheld_id,
+      name: `Copy of ${preset.name}`,
+      preset_type: preset.preset_type,
+      resolution: preset.resolution,
+      tdp: preset.tdp,
+      fps_average: preset.fps_average,
+      one_percent_low: preset.one_percent_low,
+      upscaler: preset.upscaler,
+      battery_life: preset.battery_life,
+      community_rating: null,
+      summary: preset.summary,
+      atlas_verified: false,
+      verified_at: null,
+      verified_by: null,
+      status: "draft",
+      created_by: user.id,
+      published_at: null,
+    })
+    .select("id")
+    .single();
+
+  if (
+    duplicateError ||
+    !duplicatedPreset
+  ) {
+    redirect(
+      `/admin/presets?error=${encodeURIComponent(
+        duplicateError?.message ??
+          "Could not duplicate preset",
+      )}`,
+    );
+  }
+
+  const settingGroups =
+    (preset.preset_setting_groups ?? [])
+      .sort(
+        (first, second) =>
+          first.sort_order - second.sort_order,
+      )
+      .map((group, groupIndex) => ({
+        name: group.name,
+        sortOrder: groupIndex,
+        items: [
+          ...(group.preset_setting_items ?? []),
+        ]
+          .sort(
+            (first, second) =>
+              first.sort_order - second.sort_order,
+          )
+          .map((item, itemIndex) => ({
+            label: item.label,
+            value: item.value,
+            note: item.note ?? "",
+            sortOrder: itemIndex,
+          })),
+      }));
+
+  const settingsResult =
+    await createSettingGroups(
+      supabase,
+      duplicatedPreset.id,
+      settingGroups,
+    );
+
+  if (settingsResult.errorMessage) {
+    await supabase
+      .from("presets")
+      .delete()
+      .eq("id", duplicatedPreset.id);
+
+    redirect(
+      `/admin/presets?error=${encodeURIComponent(
+        settingsResult.errorMessage,
+      )}`,
+    );
+  }
+
+  revalidatePresetPages(
+    duplicatedPreset.id,
+    getRelationSlug(preset.games),
+    getRelationSlug(preset.handhelds),
+  );
+
+  redirect(
+    `/admin/presets/${duplicatedPreset.id}/edit?success=${encodeURIComponent(
+      "Preset duplicated as a draft copy",
+    )}`,
   );
 }
 

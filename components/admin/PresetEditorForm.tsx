@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { useFormStatus } from "react-dom";
+import SearchableSelect from "./SearchableSelect";
 
 export interface PresetEditorSelectOption {
   id: string;
@@ -809,7 +810,7 @@ export default function PresetEditorForm({
       )}
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        <SelectField
+        <SearchableSelect
           label="Game"
           name="gameId"
           value={values.gameId}
@@ -821,7 +822,7 @@ export default function PresetEditorForm({
           placeholder="Select game"
         />
 
-        <SelectField
+        <SearchableSelect
           label="Handheld"
           name="handheldId"
           value={values.handheldId}
@@ -1568,59 +1569,6 @@ function TextField({
         step={step}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
       />
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  name,
-  options,
-  placeholder,
-  required = false,
-  value,
-  onChange,
-}: {
-  label: string;
-  name: string;
-  options: PresetEditorSelectOption[];
-  placeholder: string;
-  required?: boolean;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-      >
-        {label}
-      </label>
-
-      <select
-        id={name}
-        name={name}
-        required={required}
-        value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
-      >
-        <option value="" disabled>
-          {placeholder}
-        </option>
-
-        {options.map((option) => (
-          <option
-            key={option.id}
-            value={option.id}
-          >
-            {option.name}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }
