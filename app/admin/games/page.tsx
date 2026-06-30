@@ -86,8 +86,8 @@ export default async function AdminGamesPage({
             <h1 className="mt-3 text-5xl font-black">Games</h1>
 
             <p className="mt-4 max-w-2xl text-slate-400">
-              Add games to the database, upload cover images and control
-              whether they are drafts, published or archived.
+              Add games to the database, upload cover images and keep the
+              public game description separate from handheld performance data.
             </p>
           </div>
 
@@ -203,21 +203,43 @@ export default async function AdminGamesPage({
               <GameCoverUpload />
             </div>
 
+            <section className="mt-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.06] p-5">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">
+                Copywriting guard
+              </p>
+
+              <h3 className="mt-2 text-lg font-black">
+                Description and Performance Overview are separate.
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Use the field below only for the public game description:
+                premise, genre context and what the player actually does.
+                The public Performance Overview is generated from published
+                presets and benchmarks, so do not paste handheld FPS notes here.
+              </p>
+            </section>
+
             <div className="mt-6">
               <label
                 htmlFor="notes"
                 className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
               >
-                Atlas notes
+                Game description
               </label>
 
               <textarea
                 id="notes"
                 name="notes"
-                rows={5}
-                placeholder="Describe the handheld experience, performance notes and important caveats."
+                rows={6}
+                placeholder="Describe the game itself: genre, premise, gameplay style and general context. Example: A party-based RPG where choices, exploration and tactical combat drive the adventure."
                 className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
               />
+
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Do not use this field for FPS, TDP, 1% lows or handheld
+                caveats. Those belong in presets and benchmarks.
+              </p>
             </div>
 
             <button

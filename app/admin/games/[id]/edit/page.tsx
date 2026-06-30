@@ -80,7 +80,9 @@ export default async function EditGamePage({
         </h1>
 
         <p className="mt-4 text-slate-400">
-          Update the profile, publishing state and public metadata.
+          Update the game profile, publishing state and public metadata.
+          Keep the game description separate from generated handheld
+          performance context.
         </p>
 
         {success && (
@@ -166,8 +168,8 @@ export default async function EditGamePage({
               />
 
               <GameCoverUpload
-  defaultUrl={game.cover_image_url ?? ""}
-/>
+                defaultUrl={game.cover_image_url ?? ""}
+              />
 
               <div>
                 <label
@@ -190,12 +192,29 @@ export default async function EditGamePage({
               </div>
             </div>
 
+            <section className="mt-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.06] p-5">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">
+                Copywriting guard
+              </p>
+
+              <h3 className="mt-2 text-lg font-black">
+                This field is not the Performance Overview.
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Keep this as the public game description: premise, genre
+                context and gameplay. The Performance Overview on the public
+                game page is generated from published presets and benchmarks,
+                so it will not copy this text anymore.
+              </p>
+            </section>
+
             <div className="mt-5">
               <label
                 htmlFor="notes"
                 className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
               >
-                Atlas notes
+                Game description
               </label>
 
               <textarea
@@ -203,8 +222,14 @@ export default async function EditGamePage({
                 name="notes"
                 rows={7}
                 defaultValue={game.notes ?? ""}
-                className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+                placeholder="Describe the game itself: genre, premise, gameplay style and general context."
+                className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
               />
+
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Do not use this field for FPS, TDP, 1% lows or handheld
+                caveats. Those belong in presets and benchmarks.
+              </p>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
