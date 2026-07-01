@@ -94,6 +94,9 @@ const socialLinks: SocialLink[] = [
   },
 ];
 
+const supportUrl =
+  "https://buymeacoffee.com/handheldatlas";
+
 export default function Footer() {
   const currentYear =
     new Date().getFullYear();
@@ -152,6 +155,26 @@ export default function Footer() {
             </span>
             Built for players
           </p>
+
+          <div className="mt-5 rounded-2xl border border-white/[0.07] bg-black/20 p-4 sm:px-5">
+            <p className="text-sm font-black text-white">
+              Support the Atlas
+            </p>
+
+            <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-500">
+              Support helps cover hosting, testing time and future community
+              features while keeping the database open for handheld players.
+            </p>
+
+            <a
+              href={supportUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-3 inline-flex rounded-xl border border-yellow-400/30 bg-yellow-400/[0.08] px-4 py-2 text-xs font-black text-yellow-200 transition hover:border-yellow-300/60 hover:bg-yellow-400/[0.14] hover:text-yellow-100"
+            >
+              Buy us a coffee →
+            </a>
+          </div>
 
           <nav
             aria-label="Footer navigation"

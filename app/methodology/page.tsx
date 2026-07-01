@@ -62,6 +62,9 @@ const signals = [
   },
 ];
 
+const supportUrl =
+  "https://buymeacoffee.com/handheldatlas";
+
 const methodologyJsonLd = {
   "@context": "https://schema.org",
   "@type": "TechArticle",
@@ -236,6 +239,37 @@ export default function MethodologyPage() {
               </p>
             </div>
           </article>
+        </section>
+
+        <section className="atlas-panel mt-5 overflow-hidden border-yellow-400/20">
+          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-center">
+            <div>
+              <p className="atlas-section-label text-yellow-300">
+                Support HandheldAtlas
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.035em]">
+                Help keep the Atlas running
+              </h2>
+
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+                HandheldAtlas is a community-driven handheld gaming database
+                built around tested presets, benchmarks and practical
+                performance knowledge. Support helps cover hosting, testing time
+                and future community features while keeping the Atlas open and
+                useful for handheld gamers.
+              </p>
+            </div>
+
+            <a
+              href={supportUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="rounded-2xl border border-yellow-400/30 bg-yellow-400/[0.08] px-5 py-4 text-center text-sm font-black text-yellow-200 transition hover:border-yellow-300/60 hover:bg-yellow-400/[0.14] hover:text-yellow-100"
+            >
+              Buy us a coffee →
+            </a>
+          </div>
         </section>
       </div>
     </main>
