@@ -161,6 +161,27 @@ function getPresetStyle(
   }
 }
 
+function getAtlasScoreClass(score: number | null) {
+  if (score === null) {
+    return "border-slate-500/30 bg-slate-500/10 text-slate-300";
+  }
+
+  if (score >= 90) {
+    return "border-green-500/30 bg-green-500/15 text-green-300";
+  }
+
+  if (score >= 85) {
+    return "border-cyan-500/30 bg-cyan-500/15 text-cyan-300";
+  }
+
+  if (score >= 75) {
+    return "border-orange-500/30 bg-orange-500/15 text-orange-300";
+  }
+
+  return "border-red-500/30 bg-red-500/15 text-red-300";
+}
+
+
 export default async function HomePage() {
   const supabase = await createClient();
 
@@ -645,6 +666,7 @@ export default async function HomePage() {
                           src={game.cover_image_url}
                           alt={game.name}
                           fill
+                          unoptimized
                           sizes="(max-width: 640px) 100vw, 20vw"
                           className="object-cover object-center transition duration-500 group-hover:scale-105"
                         />
@@ -654,14 +676,20 @@ export default async function HomePage() {
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" />
 
-                      {game.atlas_score !== null && (
-                        <div className="absolute right-3 top-3 atlas-score">
-                          <span>Atlas score</span>
-                          <strong>
-                            {game.atlas_score}
+                      <div className="absolute right-3 top-3">
+                        <div
+                          className={`flex h-12 w-12 flex-col items-center justify-center rounded-xl border backdrop-blur sm:h-14 sm:w-14 ${getAtlasScoreClass(
+                            game.atlas_score,
+                          )}`}
+                        >
+                          <span className="text-[0.42rem] font-black uppercase tracking-[0.1em] sm:text-[0.45rem]">
+                            Atlas
+                          </span>
+                          <strong className="mt-0.5 text-lg leading-none sm:text-xl">
+                            {game.atlas_score ?? "—"}
                           </strong>
                         </div>
-                      )}
+                      </div>
 
                       <div className="absolute inset-x-0 bottom-0 p-4">
                         <h3 className="text-lg font-black">
