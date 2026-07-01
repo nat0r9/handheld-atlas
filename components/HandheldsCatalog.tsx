@@ -348,21 +348,10 @@ export default function HandheldsCatalog({
                       </div>
 
                       <div className="relative h-52 w-full sm:h-64 xl:h-72">
-                        {handheld.imageUrl ? (
-                          <Image
-                            src={handheld.imageUrl}
-                            alt={handheld.name}
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                            className="object-contain object-center p-5 drop-shadow-[0_30px_40px_rgba(0,0,0,0.75)] transition duration-500 group-hover:scale-105 sm:p-7"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-700">
-                              Image coming soon
-                            </p>
-                          </div>
-                        )}
+                        <HandheldImage
+                          src={handheld.imageUrl}
+                          alt={handheld.name}
+                        />
                       </div>
 
                       <div className="pointer-events-none absolute inset-x-16 bottom-4 h-7 rounded-full bg-cyan-500/10 blur-2xl sm:bottom-6 sm:h-8" />
@@ -431,6 +420,44 @@ export default function HandheldsCatalog({
         </section>
       </div>
     </main>
+  );
+}
+
+function HandheldImage({
+  src,
+  alt,
+}: {
+  src: string | null;
+  alt: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(src) && !imageFailed;
+
+  if (!showImage) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div>
+          <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-cyan-500/70">
+            HandheldAtlas
+          </p>
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-slate-700">
+            Device image unavailable
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src ?? ""}
+      alt={alt}
+      fill
+      unoptimized
+      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+      onError={() => setImageFailed(true)}
+      className="object-contain object-center p-5 drop-shadow-[0_30px_40px_rgba(0,0,0,0.75)] transition duration-500 group-hover:scale-105 sm:p-7"
+    />
   );
 }
 

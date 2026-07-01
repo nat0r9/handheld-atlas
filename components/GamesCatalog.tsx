@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { PublicGame } from "../app/games/page";
+import type { PublicGame, PublicGameTopPreset } from "../app/games/page";
 
 type RatingFilter =
   | "All"
@@ -22,7 +22,6 @@ interface GamesCatalogProps {
 
 interface RatingData {
   label: "Excellent" | "Great" | "Playable" | "Mixed" | "Unrated";
-  className: string;
   scoreClassName: string;
 }
 
@@ -30,7 +29,6 @@ function getRatingData(score: number | null): RatingData {
   if (score === null) {
     return {
       label: "Unrated",
-      className: "border-slate-500/30 bg-slate-500/10 text-slate-400",
       scoreClassName: "border-slate-500/30 bg-slate-500/10 text-slate-300",
     };
   }
@@ -38,7 +36,6 @@ function getRatingData(score: number | null): RatingData {
   if (score >= 90) {
     return {
       label: "Excellent",
-      className: "border-green-500/30 bg-green-500/10 text-green-400",
       scoreClassName: "border-green-500/30 bg-green-500/15 text-green-300",
     };
   }
@@ -46,7 +43,6 @@ function getRatingData(score: number | null): RatingData {
   if (score >= 85) {
     return {
       label: "Great",
-      className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
       scoreClassName: "border-cyan-500/30 bg-cyan-500/15 text-cyan-300",
     };
   }
@@ -54,20 +50,14 @@ function getRatingData(score: number | null): RatingData {
   if (score >= 75) {
     return {
       label: "Playable",
-      className: "border-orange-500/30 bg-orange-500/10 text-orange-400",
       scoreClassName: "border-orange-500/30 bg-orange-500/15 text-orange-300",
     };
   }
 
   return {
     label: "Mixed",
-    className: "border-red-500/30 bg-red-500/10 text-red-400",
     scoreClassName: "border-red-500/30 bg-red-500/15 text-red-300",
   };
-}
-
-function getScoreWidth(score: number | null) {
-  return score === null ? 0 : Math.max(0, Math.min(100, score));
 }
 
 export default function GamesCatalog({ games, databaseError }: GamesCatalogProps) {
@@ -91,6 +81,8 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
         game.genre,
         game.developer ?? "",
         game.notes ?? "",
+        game.topPreset?.name ?? "",
+        game.topPreset?.handheldName ?? "",
       ]
         .join(" ")
         .toLowerCase();
@@ -208,7 +200,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
         )}
 
         <section className="atlas-panel p-4 md:p-5">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[1.7fr_repeat(5,minmax(0,1fr))_auto]">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[1.7fr_repeat(4,minmax(0,1fr))_auto]">
             <div className="col-span-2 xl:col-span-1">
               <FilterLabel htmlFor="game-search" label="Search" />
               <div className="relative">
@@ -217,7 +209,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
                   type="search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search games, studios, devices..."
+                  placeholder="Search games, studios, presets..."
                   className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
@@ -227,7 +219,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
             </div>
 
             <FilterSelect
-              label="Rating"
+              label="Score"
               value={ratingFilter}
               options={["All", "Excellent", "Great", "Playable", "Mixed", "Unrated"]}
               onChange={(value) => setRatingFilter(value as RatingFilter)}
@@ -261,7 +253,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
             </div>
 
             <p className="w-full text-[0.58rem] font-bold uppercase tracking-[0.13em] text-slate-600 sm:w-auto sm:text-xs sm:tracking-[0.15em]">
-              Live from HandheldAtlas database
+              Score, top preset and community signal
             </p>
           </div>
 
@@ -280,101 +272,142 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
             </div>
           ) : (
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {filteredGames.map((game) => {
-                const rating = getRatingData(game.atlasScore);
-                const scoreWidth = getScoreWidth(game.atlasScore);
-
-                return (
-                  <Link key={game.id} href={`/games/${game.slug}`} className="group min-w-0">
-                    <article className="atlas-card atlas-card-hover flex h-full min-w-0 flex-col">
-                      <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[4/5]">
-                        {game.coverImageUrl ? (
-                          <Image
-                            src={game.coverImageUrl}
-                            alt={game.name}
-                            fill
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
-                            className="object-cover object-center transition duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-950 to-black" />
-                        )}
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
-
-                        <div className="absolute left-3 top-3">
-                          <span
-                            className={`rounded-full border px-2.5 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] backdrop-blur ${rating.className}`}
-                          >
-                            {rating.label}
-                          </span>
-                        </div>
-
-                        <div className="absolute right-3 top-3">
-                          <div
-                            className={`flex h-12 w-12 flex-col items-center justify-center rounded-xl border backdrop-blur sm:h-14 sm:w-14 ${rating.scoreClassName}`}
-                          >
-                            <span className="text-[0.42rem] font-black uppercase tracking-[0.1em] sm:text-[0.45rem]">
-                              Atlas
-                            </span>
-                            <strong className="mt-0.5 text-lg leading-none sm:text-xl">
-                              {game.atlasScore ?? "—"}
-                            </strong>
-                          </div>
-                        </div>
-
-                        <div className="absolute inset-x-0 bottom-0 p-4">
-                          <p className="text-[0.58rem] font-black uppercase tracking-[0.15em] text-red-400 sm:text-[0.62rem]">
-                            {game.genre}
-                          </p>
-                          <h3 className="mt-1.5 line-clamp-2 text-2xl font-black leading-[1.05] sm:text-2xl">
-                            {game.name}
-                          </h3>
-                          <p className="mt-2 truncate text-xs text-slate-400">
-                            {game.developer ?? "Unknown developer"}
-                            {game.releaseYear ? ` · ${game.releaseYear}` : ""}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-1 flex-col p-4">
-                        <div>
-                          <div className="flex items-center justify-between text-[0.58rem] font-black uppercase tracking-[0.12em] text-slate-600 sm:text-[0.62rem]">
-                            <span>Compatibility</span>
-                            <span>{game.atlasScore !== null ? `${game.atlasScore}%` : "Unrated"}</span>
-                          </div>
-                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-red-500 via-purple-500 to-cyan-400 transition-all duration-500"
-                              style={{ width: `${scoreWidth}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
-                          <span className="text-[0.52rem] font-black uppercase tracking-[0.1em] text-slate-600">
-                            Community
-                          </span>
-                          <span className="text-xs font-black text-yellow-300">
-                            {game.communityRating !== null
-                              ? `★ ${game.communityRating.toFixed(1)} · ${game.ratingCount}`
-                              : "Warming up"}
-                          </span>
-                        </div>
-
-                        <p className="mt-auto pt-4 text-xs font-black text-cyan-400 transition group-hover:text-white">
-                          Open game profile →
-                        </p>
-                      </div>
-                    </article>
-                  </Link>
-                );
-              })}
+              {filteredGames.map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))}
             </div>
           )}
         </section>
       </div>
     </main>
+  );
+}
+
+function GameCard({ game }: { game: PublicGame }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const rating = getRatingData(game.atlasScore);
+  const showImage = Boolean(game.coverImageUrl) && !imageFailed;
+
+  return (
+    <Link href={`/games/${game.slug}`} className="group min-w-0">
+      <article className="atlas-card atlas-card-hover flex h-full min-w-0 flex-col">
+        <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[4/5]">
+          {showImage ? (
+            <Image
+              src={game.coverImageUrl ?? ""}
+              alt={game.name}
+              fill
+              unoptimized
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
+              onError={() => setImageFailed(true)}
+              className="object-cover object-center transition duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <GameImageFallback name={game.name} />
+          )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+
+          <div className="absolute right-3 top-3">
+            <div
+              className={`flex h-12 w-12 flex-col items-center justify-center rounded-xl border backdrop-blur sm:h-14 sm:w-14 ${rating.scoreClassName}`}
+            >
+              <span className="text-[0.42rem] font-black uppercase tracking-[0.1em] sm:text-[0.45rem]">
+                Atlas
+              </span>
+              <strong className="mt-0.5 text-lg leading-none sm:text-xl">
+                {game.atlasScore ?? "—"}
+              </strong>
+            </div>
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 p-4">
+            <p className="text-[0.58rem] font-black uppercase tracking-[0.15em] text-red-400 sm:text-[0.62rem]">
+              {game.genre}
+            </p>
+            <h3 className="mt-1.5 line-clamp-2 text-2xl font-black leading-[1.05] sm:text-2xl">
+              {game.name}
+            </h3>
+            <p className="mt-2 truncate text-xs text-slate-400">
+              {game.developer ?? "Unknown developer"}
+              {game.releaseYear ? ` · ${game.releaseYear}` : ""}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col p-4">
+          <TopPresetSummary preset={game.topPreset} />
+
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
+            <span className="text-[0.52rem] font-black uppercase tracking-[0.1em] text-slate-600">
+              Community
+            </span>
+            <span className="text-xs font-black text-yellow-300">
+              {game.communityRating !== null
+                ? `★ ${game.communityRating.toFixed(1)} · ${game.ratingCount}`
+                : "No ratings yet"}
+            </span>
+          </div>
+
+          <p className="mt-auto pt-4 text-xs font-black text-cyan-400 transition group-hover:text-white">
+            Open game profile →
+          </p>
+        </div>
+      </article>
+    </Link>
+  );
+}
+
+function TopPresetSummary({ preset }: { preset: PublicGameTopPreset | null }) {
+  return (
+    <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/[0.045] px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[0.52rem] font-black uppercase tracking-[0.1em] text-cyan-400">
+          Top preset
+        </span>
+        {preset?.atlasVerified && (
+          <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[0.48rem] font-black uppercase tracking-[0.1em] text-green-300">
+            Verified
+          </span>
+        )}
+      </div>
+
+      {preset ? (
+        <div className="mt-2 min-w-0">
+          <p className="truncate text-sm font-black text-slate-200">
+            {preset.handheldName ?? "Unknown handheld"} · {preset.type}
+          </p>
+          <p className="mt-1 truncate text-xs text-slate-500">
+            {preset.averageFps !== null ? `${preset.averageFps} FPS avg` : "FPS not set"}
+            {preset.confirmationCount > 0
+              ? ` · ${preset.confirmationCount} confirmed`
+              : " · awaiting confirmations"}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-black text-slate-500">
+          No preset yet
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GameImageFallback({ name }: { name: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(239,68,68,0.12),transparent_35%),linear-gradient(135deg,#121826,#05070d)] p-5 text-center">
+      <div>
+        <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-red-400">
+          HandheldAtlas
+        </p>
+        <p className="mt-2 line-clamp-3 text-sm font-black text-slate-500">
+          {name}
+        </p>
+        <p className="mt-3 text-[0.55rem] font-black uppercase tracking-[0.14em] text-slate-700">
+          Cover unavailable
+        </p>
+      </div>
+    </div>
   );
 }
 
