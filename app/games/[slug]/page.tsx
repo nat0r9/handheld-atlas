@@ -447,7 +447,9 @@ export default async function GamePage({ params }: GamePageProps) {
       game.notes ??
       `${game.name} handheld presets, recommended settings and performance information.`,
     genre: game.genre,
-    image: game.cover_image_url ?? undefined,
+    image: game.cover_image_url
+      ? absoluteUrl(game.cover_image_url)
+      : undefined,
     datePublished: game.release_year?.toString(),
     author: game.developer
       ? {

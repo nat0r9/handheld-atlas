@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { usePathname } from "next/navigation";
 
 type ConsentValue = "granted" | "denied";
@@ -11,6 +17,7 @@ interface AnalyticsConsentProps {
 
 const STORAGE_KEY = "handheldatlas-analytics-consent-v1";
 const SCRIPT_ID = "handheldatlas-google-analytics";
+const CONSENT_CHANGE_EVENT = "handheldatlas-analytics-consent-change";
 
 declare global {
   interface Window {
@@ -25,13 +32,13 @@ function ensureGtag(): void {
   window.dataLayer = window.dataLayer ?? [];
 
   if (typeof window.gtag !== "function") {
-    window.gtag = function gtag() {
-      window.dataLayer.push(arguments);
+    window.gtag = (...args: unknown[]) => {
+      window.dataLayer.push(args);
     };
   }
 }
 
-function setConsent(value: ConsentValue): void {
+function updateGoogleConsent(value: ConsentValue): void {
   ensureGtag();
 
   window.gtag("consent", "update", {
@@ -40,6 +47,46 @@ function setConsent(value: ConsentValue): void {
     ad_user_data: "denied",
     ad_personalization: "denied",
   });
+}
+
+function readStoredConsent(): ConsentValue | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const value = window.localStorage.getItem(STORAGE_KEY);
+
+    return value === "granted" || value === "denied" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function subscribeToConsent(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(CONSENT_CHANGE_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(CONSENT_CHANGE_EVENT, onStoreChange);
+  };
+}
+
+function subscribeToHydration() {
+  return () => undefined;
+}
+
+function getClientHydrationSnapshot() {
+  return true;
+}
+
+function getServerHydrationSnapshot() {
+  return false;
 }
 
 function configureGoogleAnalytics(measurementId: string): void {
@@ -128,13 +175,24 @@ export default function AnalyticsConsent({
   measurementId,
 }: AnalyticsConsentProps) {
   const pathname = usePathname();
-  const [consent, setConsentState] =
+  const storedConsent = useSyncExternalStore(
+    subscribeToConsent,
+    readStoredConsent,
+    () => null,
+  );
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
+  const [consentOverride, setConsentOverride] =
     useState<ConsentValue | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isPanelManuallyOpen, setIsPanelManuallyOpen] = useState(false);
   const lastTrackedUrlRef = useRef<string | null>(null);
+  const consent = consentOverride ?? storedConsent;
+  const isPanelOpen = isPanelManuallyOpen || consent === null;
 
-  function trackCurrentPage(): void {
+  const trackCurrentPage = useCallback((): void => {
     const currentUrl = `${window.location.pathname}${window.location.search}`;
 
     if (lastTrackedUrlRef.current === currentUrl) {
@@ -143,7 +201,7 @@ export default function AnalyticsConsent({
 
     sendPageView(measurementId);
     lastTrackedUrlRef.current = currentUrl;
-  }
+  }, [measurementId]);
 
   useEffect(() => {
     ensureGtag();
@@ -156,25 +214,14 @@ export default function AnalyticsConsent({
       wait_for_update: 500,
     });
 
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
-
-    if (
-      storedValue === "granted" ||
-      storedValue === "denied"
-    ) {
-      setConsentState(storedValue);
-      setIsPanelOpen(false);
-      setConsent(storedValue);
-
-      if (storedValue === "granted") {
-        loadGoogleAnalytics(measurementId, trackCurrentPage);
-      }
-    } else {
-      setIsPanelOpen(true);
+    if (consent !== null) {
+      updateGoogleConsent(consent);
     }
 
-    setIsReady(true);
-  }, [measurementId]);
+    if (consent === "granted") {
+      loadGoogleAnalytics(measurementId, trackCurrentPage);
+    }
+  }, [consent, measurementId, trackCurrentPage]);
 
   useEffect(() => {
     if (consent !== "granted") {
@@ -182,21 +229,27 @@ export default function AnalyticsConsent({
     }
 
     loadGoogleAnalytics(measurementId, trackCurrentPage);
-  }, [pathname, consent, measurementId]);
+  }, [pathname, consent, measurementId, trackCurrentPage]);
 
   function saveConsent(value: ConsentValue): void {
-    window.localStorage.setItem(STORAGE_KEY, value);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, value);
+      setConsentOverride(null);
+      window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT));
+    } catch {
+      // Keep the in-memory choice for browsers that disable local storage.
+      setConsentOverride(value);
+    }
 
-    setConsentState(value);
-    setConsent(value);
-    setIsPanelOpen(false);
+    updateGoogleConsent(value);
+    setIsPanelManuallyOpen(false);
 
     if (value === "granted") {
       loadGoogleAnalytics(measurementId, trackCurrentPage);
     }
   }
 
-  if (!isReady) {
+  if (!isHydrated) {
     return null;
   }
 
@@ -252,7 +305,7 @@ export default function AnalyticsConsent({
       {!isPanelOpen && consent !== null && (
         <button
           type="button"
-          onClick={() => setIsPanelOpen(true)}
+          onClick={() => setIsPanelManuallyOpen(true)}
           aria-label="Open cookie settings"
           title="Cookie settings"
           className="fixed bottom-2 right-2 z-[90] rounded-full border border-white/[0.07] bg-[#070a12]/85 px-2 py-1 text-[0.46rem] font-black uppercase tracking-[0.08em] text-slate-600 shadow-sm backdrop-blur transition hover:border-cyan-500/35 hover:text-cyan-300 sm:bottom-3 sm:right-3"

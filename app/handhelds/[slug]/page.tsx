@@ -364,50 +364,33 @@ export default async function HandheldPage({
   const handheldImage =
     handheld.image_url;
   const handheldUrl = absoluteUrl(`/handhelds/${handheld.slug}`);
-  const additionalProperties = [
-    ["Operating system", handheld.operating_system],
-    ["Processor", handheld.processor],
-    ["Memory", handheld.memory],
-    ["Storage", handheld.storage],
-    ["Display size", handheld.display_size],
-    ["Resolution", handheld.resolution],
-    ["Refresh rate", handheld.refresh_rate],
-    ["Battery", handheld.battery],
-    ["Weight", handheld.weight],
-  ]
-    .filter((entry): entry is [string, string] => Boolean(entry[1]))
-    .map(([name, value]) => ({
-      "@type": "PropertyValue",
-      name,
-      value,
-    }));
+  const handheldDescription =
+    handheld.tagline ??
+    `${handheld.name} specifications, presets and handheld gaming benchmarks.`;
+  const handheldImageUrl = handheld.image_url
+    ? absoluteUrl(handheld.image_url)
+    : undefined;
   const handheldJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Product",
-    "@id": `${handheldUrl}#product`,
-    name: handheld.name,
+    "@type": "WebPage",
+    "@id": handheldUrl,
+    name: `${handheld.name} Specs and Benchmarks`,
     url: handheldUrl,
-    image: handheld.image_url ?? undefined,
-    description:
-      handheld.tagline ??
-      `${handheld.name} specifications, presets and handheld gaming benchmarks.`,
-    model: handheld.name,
-    category: "Handheld gaming PC",
-    brand: {
-      "@type": "Brand",
-      name: handheld.manufacturer,
+    description: handheldDescription,
+    image: handheldImageUrl,
+    isPartOf: {
+      "@id": `${siteConfig.url}/#website`,
     },
-    manufacturer: {
-      "@type": "Organization",
-      name: handheld.manufacturer,
+    about: {
+      "@type": "Thing",
+      "@id": `${handheldUrl}#device`,
+      name: handheld.name,
+      url: handheldUrl,
+      image: handheldImageUrl,
+      description: handheldDescription,
     },
-    additionalProperty: additionalProperties,
-    subjectOf: {
-      "@type": "WebPage",
-      "@id": handheldUrl,
-      publisher: {
-        "@id": `${siteConfig.url}/#organization`,
-      },
+    publisher: {
+      "@id": `${siteConfig.url}/#organization`,
     },
   };
   const breadcrumbJsonLd = {

@@ -321,7 +321,9 @@ export default async function NewsDetailPage({
     description: newsItem.excerpt,
     url: newsUrl,
     mainEntityOfPage: newsUrl,
-    image: newsItem.cover_image_url ?? undefined,
+    image: newsItem.cover_image_url
+      ? absoluteUrl(newsItem.cover_image_url)
+      : undefined,
     datePublished: newsItem.published_at ?? undefined,
     dateModified: newsItem.updated_at ?? newsItem.published_at ?? undefined,
     articleSection: newsItem.category,
@@ -342,7 +344,7 @@ export default async function NewsDetailPage({
         : null,
       relatedHandheld
         ? {
-            "@type": "Product",
+            "@type": "Thing",
             name: relatedHandheld.name,
             url: absoluteUrl(`/handhelds/${relatedHandheld.slug}`),
           }

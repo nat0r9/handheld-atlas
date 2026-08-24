@@ -356,7 +356,9 @@ export default async function GuidePage({
     description: guide.excerpt,
     url: guideUrl,
     mainEntityOfPage: guideUrl,
-    image: guide.cover_image_url ?? undefined,
+    image: guide.cover_image_url
+      ? absoluteUrl(guide.cover_image_url)
+      : undefined,
     datePublished: guide.published_at ?? undefined,
     dateModified: guide.updated_at ?? guide.published_at ?? undefined,
     articleSection: guide.category,
@@ -379,7 +381,7 @@ export default async function GuidePage({
         : null,
       relatedHandheld
         ? {
-            "@type": "Product",
+            "@type": "Thing",
             name: relatedHandheld.name,
             url: absoluteUrl(`/handhelds/${relatedHandheld.slug}`),
           }

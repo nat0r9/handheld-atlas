@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { siteConfig } from "../lib/site";
-import { createClient } from "../lib/supabase/server";
 
 export const revalidate = 3600;
 
@@ -56,8 +56,28 @@ function reportSitemapError(label: string, error: { message: string } | null) {
   }
 }
 
+function createSitemapClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabasePublishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !supabasePublishableKey) {
+    throw new Error("Missing public Supabase configuration for sitemap");
+  }
+
+  // The sitemap is public and must never inherit a visitor's auth cookies.
+  // A deterministic anonymous client also keeps its output safe to cache.
+  return createSupabaseClient(supabaseUrl, supabasePublishableKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient();
+  const supabase = createSitemapClient();
 
   const [
     gamesResult,

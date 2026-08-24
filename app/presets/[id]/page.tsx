@@ -422,9 +422,8 @@ export default async function PresetDetailPage({
         : null,
       preset.handhelds
         ? {
-            "@type": "Product",
+            "@type": "Thing",
             name: preset.handhelds.name,
-            brand: { "@type": "Brand", name: preset.handhelds.manufacturer },
             url: absoluteUrl(`/handhelds/${preset.handhelds.slug}`),
           }
         : null,
