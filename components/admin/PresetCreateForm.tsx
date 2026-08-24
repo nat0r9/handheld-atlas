@@ -32,6 +32,13 @@ const initialValues: PresetEditorValues = {
   summary: "",
   status: "draft",
   atlasVerified: false,
+  evidenceTier: "legacy_unclassified",
+  sourceName: "",
+  sourceUrl: "",
+  sourceCheckedAt: "",
+  gameVersion: "",
+  driverVersion: "",
+  osVersion: "",
 };
 
 const initialGroups: PresetEditorSettingGroup[] = [
