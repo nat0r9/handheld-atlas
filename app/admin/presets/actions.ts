@@ -110,6 +110,15 @@ type ContentStatus =
   | "published"
   | "archived";
 
+const evidenceTiers = [
+  "atlas_verified",
+  "community_verified",
+  "external_source",
+  "estimated",
+  "legacy_unclassified",
+] as const;
+type EvidenceTier = (typeof evidenceTiers)[number];
+
 async function requirePresetEditor() {
   return requireRole(
     PRESET_EDITOR_ROLES,
@@ -195,6 +204,13 @@ function getStatus(
   }
 
   return "draft";
+}
+
+function getEvidenceTier(formData: FormData): EvidenceTier {
+  const value = requiredText(formData, "evidenceTier");
+  return evidenceTiers.includes(value as EvidenceTier)
+    ? (value as EvidenceTier)
+    : "legacy_unclassified";
 }
 
 function getPresetType(
@@ -372,6 +388,10 @@ function validatePublishedPreset({
   onePercentLow,
   summary,
   settingGroups,
+  evidenceTier,
+  sourceName,
+  sourceUrl,
+  sourceCheckedAt,
   errorPath,
 }: {
   status: ContentStatus;
@@ -381,6 +401,10 @@ function validatePublishedPreset({
   onePercentLow: number | null;
   summary: string | null;
   settingGroups: ParsedSettingGroup[];
+  evidenceTier: EvidenceTier;
+  sourceName: string | null;
+  sourceUrl: string | null;
+  sourceCheckedAt: string | null;
   errorPath: string;
 }) {
   if (status !== "published") {
@@ -415,6 +439,17 @@ function validatePublishedPreset({
 
   if (completeSettingCount < 3) {
     missing.push("at least three complete settings");
+  }
+
+  if (evidenceTier === "legacy_unclassified") {
+    missing.push("an evidence tier");
+  }
+
+  if (
+    evidenceTier !== "atlas_verified" &&
+    (!sourceName || !sourceUrl || !sourceCheckedAt)
+  ) {
+    missing.push("source name, URL and review date");
   }
 
   if (
@@ -629,6 +664,10 @@ export async function createPreset(
   const upscaler = optionalText(formData, "upscaler");
   const batteryLife = optionalText(formData, "batteryLife");
   const summary = optionalText(formData, "summary");
+  const evidenceTier = atlasVerified ? "atlas_verified" : getEvidenceTier(formData);
+  const sourceName = optionalText(formData, "sourceName");
+  const sourceUrl = optionalText(formData, "sourceUrl");
+  const sourceCheckedAt = optionalText(formData, "sourceCheckedAt");
 
   validatePublishedPreset({
     status,
@@ -638,6 +677,10 @@ export async function createPreset(
     onePercentLow,
     summary,
     settingGroups,
+    evidenceTier,
+    sourceName,
+    sourceUrl,
+    sourceCheckedAt,
     errorPath: "/admin/presets",
   });
 
@@ -706,6 +749,13 @@ export async function createPreset(
       summary,
 
       atlas_verified: atlasVerified,
+      evidence_tier: evidenceTier,
+      source_name: sourceName,
+      source_url: sourceUrl,
+      source_checked_at: sourceCheckedAt,
+      game_version: optionalText(formData, "gameVersion"),
+      driver_version: optionalText(formData, "driverVersion"),
+      os_version: optionalText(formData, "osVersion"),
       verified_at:
         atlasVerified
           ? new Date().toISOString()
@@ -860,6 +910,10 @@ export async function updatePreset(
   const upscaler = optionalText(formData, "upscaler");
   const batteryLife = optionalText(formData, "batteryLife");
   const summary = optionalText(formData, "summary");
+  const requestedEvidenceTier = getEvidenceTier(formData);
+  const sourceName = optionalText(formData, "sourceName");
+  const sourceUrl = optionalText(formData, "sourceUrl");
+  const sourceCheckedAt = optionalText(formData, "sourceCheckedAt");
 
   validatePublishedPreset({
     status,
@@ -869,6 +923,10 @@ export async function updatePreset(
     onePercentLow,
     summary,
     settingGroups,
+    evidenceTier: requestedAtlasVerified ? "atlas_verified" : requestedEvidenceTier,
+    sourceName,
+    sourceUrl,
+    sourceCheckedAt,
     errorPath: editPath,
   });
 
@@ -967,6 +1025,12 @@ export async function updatePreset(
       ? requestedAtlasVerified
       : currentPreset.atlas_verified;
 
+  const evidenceTier: EvidenceTier = atlasVerified
+    ? "atlas_verified"
+    : requestedEvidenceTier === "atlas_verified"
+      ? "legacy_unclassified"
+      : requestedEvidenceTier;
+
   const verifiedAt =
     atlasVerified
       ? currentPreset.atlas_verified
@@ -1036,6 +1100,13 @@ export async function updatePreset(
         summary,
 
         atlas_verified: atlasVerified,
+        evidence_tier: evidenceTier,
+        source_name: sourceName,
+        source_url: sourceUrl,
+        source_checked_at: sourceCheckedAt,
+        game_version: optionalText(formData, "gameVersion"),
+        driver_version: optionalText(formData, "driverVersion"),
+        os_version: optionalText(formData, "osVersion"),
         verified_at: verifiedAt,
         verified_by: verifiedBy,
 
