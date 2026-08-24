@@ -38,6 +38,13 @@ export type PresetEditorStatus =
   | "published"
   | "archived";
 
+export type EvidenceTier =
+  | "atlas_verified"
+  | "community_verified"
+  | "external_source"
+  | "estimated"
+  | "legacy_unclassified";
+
 export interface PresetEditorValues {
   gameId: string;
   handheldId: string;
@@ -53,6 +60,13 @@ export interface PresetEditorValues {
   summary: string;
   status: PresetEditorStatus;
   atlasVerified: boolean;
+  evidenceTier: EvidenceTier;
+  sourceName: string;
+  sourceUrl: string;
+  sourceCheckedAt: string;
+  gameVersion: string;
+  driverVersion: string;
+  osVersion: string;
 }
 
 interface PresetEditorFormProps {
@@ -430,6 +444,19 @@ export default function PresetEditorForm({
         "Average FPS and 1% low are both documented.",
     },
     {
+      label: "Evidence provenance",
+      complete:
+        values.evidenceTier !== "legacy_unclassified" &&
+        (values.evidenceTier === "atlas_verified" ||
+          Boolean(
+            values.sourceName.trim() &&
+              values.sourceUrl.trim() &&
+              values.sourceCheckedAt,
+          )),
+      detail:
+        "Evidence tier and traceable source are documented.",
+    },
+    {
       label: "Useful summary",
       complete:
         values.summary.trim().length >= 60,
@@ -474,7 +501,10 @@ export default function PresetEditorForm({
 
   const isPublishReady =
     readinessChecks
-      .slice(0, 6)
+      .filter(
+        (check) =>
+          check.label !== "Learning context",
+      )
       .every((check) => check.complete);
 
   const serializedSettings = JSON.stringify(
@@ -980,6 +1010,42 @@ export default function PresetEditorForm({
             }}
           />
         )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-5">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <SelectControl
+            label="Evidence tier"
+            name="evidenceTier"
+            value={values.evidenceTier}
+            onChange={(value) =>
+              updateValue("evidenceTier", value as EvidenceTier)
+            }
+            options={[
+              "legacy_unclassified",
+              "atlas_verified",
+              "community_verified",
+              "external_source",
+              "estimated",
+            ]}
+            optionLabels={{
+              legacy_unclassified: "Unclassified — cannot publish",
+              atlas_verified: "Atlas Verified",
+              community_verified: "Community Verified",
+              external_source: "External Source",
+              estimated: "Estimated",
+            }}
+          />
+          <TextField label="Source name" name="sourceName" value={values.sourceName} onChange={(value) => updateValue("sourceName", value)} placeholder="ASUS ROG / LegionGoLife" />
+          <TextField label="Source URL" name="sourceUrl" value={values.sourceUrl} onChange={(value) => updateValue("sourceUrl", value)} placeholder="https://…" type="url" />
+          <TextField label="Source checked" name="sourceCheckedAt" value={values.sourceCheckedAt} onChange={(value) => updateValue("sourceCheckedAt", value)} type="date" />
+          <TextField label="Game version" name="gameVersion" value={values.gameVersion} onChange={(value) => updateValue("gameVersion", value)} placeholder="1.0.3" />
+          <TextField label="Driver version" name="driverVersion" value={values.driverVersion} onChange={(value) => updateValue("driverVersion", value)} placeholder="AMD 26.8.1" />
+          <TextField label="OS version" name="osVersion" value={values.osVersion} onChange={(value) => updateValue("osVersion", value)} placeholder="Windows 11 24H2" />
+        </div>
+        <p className="mt-4 text-xs leading-5 text-slate-500">
+          Reddit can corroborate a result, but a single post is not numeric proof. External and community records require a named URL and review date.
+        </p>
       </section>
 
       {canSetAtlasVerified && (
@@ -1539,7 +1605,7 @@ function TextField({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "url" | "date";
   required?: boolean;
   min?: string;
   max?: string;
