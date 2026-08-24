@@ -32,6 +32,12 @@ interface PresetLookup {
   atlas_verified: boolean;
   verified_at: string | null;
   verified_by: string | null;
+  evidence_artifact_type: EvidenceArtifactType | null;
+  evidence_artifact_url: string | null;
+  evidence_exception_approved: boolean;
+  evidence_exception_reason: string | null;
+  evidence_exception_approved_at: string | null;
+  evidence_exception_approved_by: string | null;
   games:
     | RelationWithSlug
     | RelationWithSlug[]
@@ -118,6 +124,14 @@ const evidenceTiers = [
   "legacy_unclassified",
 ] as const;
 type EvidenceTier = (typeof evidenceTiers)[number];
+
+const evidenceArtifactTypes = [
+  "frametime_capture",
+  "performance_screenshot",
+  "performance_video",
+] as const;
+type EvidenceArtifactType =
+  (typeof evidenceArtifactTypes)[number];
 
 async function requirePresetEditor() {
   return requireRole(
@@ -211,6 +225,35 @@ function getEvidenceTier(formData: FormData): EvidenceTier {
   return evidenceTiers.includes(value as EvidenceTier)
     ? (value as EvidenceTier)
     : "legacy_unclassified";
+}
+
+function getEvidenceArtifactType(
+  formData: FormData,
+): EvidenceArtifactType | null {
+  const value = requiredText(
+    formData,
+    "evidenceArtifactType",
+  );
+
+  return evidenceArtifactTypes.includes(
+    value as EvidenceArtifactType,
+  )
+    ? (value as EvidenceArtifactType)
+    : null;
+}
+
+function isHttpUrl(value: string | null) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ||
+      url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function getPresetType(
@@ -392,6 +435,10 @@ function validatePublishedPreset({
   sourceName,
   sourceUrl,
   sourceCheckedAt,
+  evidenceArtifactType,
+  evidenceArtifactUrl,
+  evidenceExceptionApproved,
+  evidenceExceptionReason,
   errorPath,
 }: {
   status: ContentStatus;
@@ -405,8 +452,51 @@ function validatePublishedPreset({
   sourceName: string | null;
   sourceUrl: string | null;
   sourceCheckedAt: string | null;
+  evidenceArtifactType: EvidenceArtifactType | null;
+  evidenceArtifactUrl: string | null;
+  evidenceExceptionApproved: boolean;
+  evidenceExceptionReason: string | null;
   errorPath: string;
 }) {
+  if (evidenceExceptionApproved) {
+    const exceptionErrors: string[] = [];
+
+    if (evidenceTier === "atlas_verified") {
+      exceptionErrors.push(
+        "Atlas Verified records cannot use an evidence exception",
+      );
+    }
+
+    if (!evidenceArtifactType) {
+      exceptionErrors.push(
+        "a frametime capture, performance screenshot or performance video",
+      );
+    }
+
+    if (!isHttpUrl(evidenceArtifactUrl)) {
+      exceptionErrors.push(
+        "a valid HTTP(S) proof URL",
+      );
+    }
+
+    if (
+      !evidenceExceptionReason ||
+      evidenceExceptionReason.length < 20
+    ) {
+      exceptionErrors.push(
+        "an exception reason of at least 20 characters",
+      );
+    }
+
+    if (exceptionErrors.length > 0) {
+      redirect(
+        `${errorPath}?error=${encodeURIComponent(
+          `Evidence exception requires ${exceptionErrors.join(", ")}`,
+        )}`,
+      );
+    }
+  }
+
   if (status !== "published") {
     return;
   }
@@ -425,11 +515,17 @@ function validatePublishedPreset({
     missing.push("TDP");
   }
 
-  if (fpsAverage === null) {
+  if (
+    fpsAverage === null &&
+    !evidenceExceptionApproved
+  ) {
     missing.push("average FPS");
   }
 
-  if (onePercentLow === null) {
+  if (
+    onePercentLow === null &&
+    !evidenceExceptionApproved
+  ) {
     missing.push("1% low");
   }
 
@@ -664,10 +760,34 @@ export async function createPreset(
   const upscaler = optionalText(formData, "upscaler");
   const batteryLife = optionalText(formData, "batteryLife");
   const summary = optionalText(formData, "summary");
-  const evidenceTier = atlasVerified ? "atlas_verified" : getEvidenceTier(formData);
+  const requestedEvidenceTier =
+    getEvidenceTier(formData);
+  const evidenceTier: EvidenceTier =
+    atlasVerified
+      ? "atlas_verified"
+      : requestedEvidenceTier ===
+          "atlas_verified"
+        ? "legacy_unclassified"
+        : requestedEvidenceTier;
   const sourceName = optionalText(formData, "sourceName");
   const sourceUrl = optionalText(formData, "sourceUrl");
   const sourceCheckedAt = optionalText(formData, "sourceCheckedAt");
+  const evidenceArtifactType =
+    getEvidenceArtifactType(formData);
+  const evidenceArtifactUrl = optionalText(
+    formData,
+    "evidenceArtifactUrl",
+  );
+  const evidenceExceptionApproved =
+    canSetAtlasVerified(role) &&
+    isChecked(
+      formData,
+      "evidenceExceptionApproved",
+    );
+  const evidenceExceptionReason = optionalText(
+    formData,
+    "evidenceExceptionReason",
+  );
 
   validatePublishedPreset({
     status,
@@ -681,6 +801,10 @@ export async function createPreset(
     sourceName,
     sourceUrl,
     sourceCheckedAt,
+    evidenceArtifactType,
+    evidenceArtifactUrl,
+    evidenceExceptionApproved,
+    evidenceExceptionReason,
     errorPath: "/admin/presets",
   });
 
@@ -756,6 +880,20 @@ export async function createPreset(
       game_version: optionalText(formData, "gameVersion"),
       driver_version: optionalText(formData, "driverVersion"),
       os_version: optionalText(formData, "osVersion"),
+      evidence_artifact_type: evidenceArtifactType,
+      evidence_artifact_url: evidenceArtifactUrl,
+      evidence_exception_approved:
+        evidenceExceptionApproved,
+      evidence_exception_reason:
+        evidenceExceptionReason,
+      evidence_exception_approved_at:
+        evidenceExceptionApproved
+          ? new Date().toISOString()
+          : null,
+      evidence_exception_approved_by:
+        evidenceExceptionApproved
+          ? user.id
+          : null,
       verified_at:
         atlasVerified
           ? new Date().toISOString()
@@ -863,10 +1001,8 @@ export async function updatePreset(
       : requestedStatus;
 
   const requestedAtlasVerified =
-    isChecked(
-      formData,
-      "atlasVerified",
-    );
+    canSetAtlasVerified(role) &&
+    isChecked(formData, "atlasVerified");
 
   const settingGroups =
     parseSettings(formData);
@@ -914,6 +1050,28 @@ export async function updatePreset(
   const sourceName = optionalText(formData, "sourceName");
   const sourceUrl = optionalText(formData, "sourceUrl");
   const sourceCheckedAt = optionalText(formData, "sourceCheckedAt");
+  const evidenceArtifactType =
+    getEvidenceArtifactType(formData);
+  const evidenceArtifactUrl = optionalText(
+    formData,
+    "evidenceArtifactUrl",
+  );
+  const requestedEvidenceExceptionApproved =
+    canSetAtlasVerified(role) &&
+    isChecked(
+      formData,
+      "evidenceExceptionApproved",
+    );
+  const evidenceExceptionReason = optionalText(
+    formData,
+    "evidenceExceptionReason",
+  );
+  const requestedNormalizedEvidenceTier:
+    EvidenceTier = requestedAtlasVerified
+      ? "atlas_verified"
+      : requestedEvidenceTier === "atlas_verified"
+        ? "legacy_unclassified"
+        : requestedEvidenceTier;
 
   validatePublishedPreset({
     status,
@@ -923,10 +1081,16 @@ export async function updatePreset(
     onePercentLow,
     summary,
     settingGroups,
-    evidenceTier: requestedAtlasVerified ? "atlas_verified" : requestedEvidenceTier,
+    evidenceTier:
+      requestedNormalizedEvidenceTier,
     sourceName,
     sourceUrl,
     sourceCheckedAt,
+    evidenceArtifactType,
+    evidenceArtifactUrl,
+    evidenceExceptionApproved:
+      requestedEvidenceExceptionApproved,
+    evidenceExceptionReason,
     errorPath: editPath,
   });
 
@@ -942,6 +1106,12 @@ export async function updatePreset(
       atlas_verified,
       verified_at,
       verified_by,
+      evidence_artifact_type,
+      evidence_artifact_url,
+      evidence_exception_approved,
+      evidence_exception_reason,
+      evidence_exception_approved_at,
+      evidence_exception_approved_by,
       games (
         slug
       ),
@@ -1031,6 +1201,37 @@ export async function updatePreset(
       ? "legacy_unclassified"
       : requestedEvidenceTier;
 
+  const evidenceExceptionApproved =
+    requestedEvidenceExceptionApproved;
+
+  const evidenceExceptionChanged =
+    evidenceArtifactType !==
+      currentPreset.evidence_artifact_type ||
+    evidenceArtifactUrl !==
+      currentPreset.evidence_artifact_url ||
+    evidenceExceptionReason !==
+      currentPreset.evidence_exception_reason;
+
+  const evidenceExceptionApprovedAt =
+    evidenceExceptionApproved
+      ? currentPreset
+          .evidence_exception_approved &&
+        !evidenceExceptionChanged
+        ? currentPreset
+            .evidence_exception_approved_at
+        : new Date().toISOString()
+      : null;
+
+  const evidenceExceptionApprovedBy =
+    evidenceExceptionApproved
+      ? currentPreset
+          .evidence_exception_approved &&
+        !evidenceExceptionChanged
+        ? currentPreset
+            .evidence_exception_approved_by
+        : user.id
+      : null;
+
   const verifiedAt =
     atlasVerified
       ? currentPreset.atlas_verified
@@ -1107,6 +1308,18 @@ export async function updatePreset(
         game_version: optionalText(formData, "gameVersion"),
         driver_version: optionalText(formData, "driverVersion"),
         os_version: optionalText(formData, "osVersion"),
+        evidence_artifact_type:
+          evidenceArtifactType,
+        evidence_artifact_url:
+          evidenceArtifactUrl,
+        evidence_exception_approved:
+          evidenceExceptionApproved,
+        evidence_exception_reason:
+          evidenceExceptionReason,
+        evidence_exception_approved_at:
+          evidenceExceptionApprovedAt,
+        evidence_exception_approved_by:
+          evidenceExceptionApprovedBy,
         verified_at: verifiedAt,
         verified_by: verifiedBy,
 

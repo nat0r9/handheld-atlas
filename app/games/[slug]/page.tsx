@@ -71,6 +71,7 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   atlas_verified: boolean;
+  evidence_exception_approved: boolean;
 
   handhelds: {
     name: string;
@@ -146,6 +147,7 @@ async function getGamePresets(gameId: string) {
       community_rating,
       summary,
       atlas_verified,
+      evidence_exception_approved,
       handhelds (
         name,
         slug,
@@ -801,6 +803,9 @@ export default async function GamePage({ params }: GamePageProps) {
                 });
                 const evidenceBadges = [
                   preset.atlas_verified ? "Atlas Verified" : null,
+                  preset.evidence_exception_approved
+                    ? "Evidence exception"
+                    : null,
                   `Confidence ${trustReport.score}/100`,
                   preset.fps_average !== null && preset.one_percent_low !== null
                     ? "Measured FPS"
@@ -871,7 +876,7 @@ export default async function GamePage({ params }: GamePageProps) {
                           value={
                             preset.fps_average !== null
                               ? `${preset.fps_average} FPS`
-                              : "Not set"
+                              : "Not reported"
                           }
                           highlighted
                         />
@@ -880,7 +885,7 @@ export default async function GamePage({ params }: GamePageProps) {
                           value={
                             preset.one_percent_low !== null
                               ? `${preset.one_percent_low} FPS`
-                              : "Not set"
+                              : "Not reported"
                           }
                         />
                       </div>

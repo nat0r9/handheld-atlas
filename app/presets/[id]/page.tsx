@@ -33,6 +33,11 @@ type PresetType =
   | "Docked"
   | "Custom";
 
+type EvidenceArtifactType =
+  | "frametime_capture"
+  | "performance_screenshot"
+  | "performance_video";
+
 interface DatabaseSettingItem {
   id: string;
   label: string;
@@ -69,6 +74,11 @@ interface DatabasePreset {
   game_version: string | null;
   driver_version: string | null;
   os_version: string | null;
+  evidence_artifact_type: EvidenceArtifactType | null;
+  evidence_artifact_url: string | null;
+  evidence_exception_approved: boolean;
+  evidence_exception_reason: string | null;
+  evidence_exception_approved_at: string | null;
   verified_at: string | null;
   created_by: string | null;
   games: {
@@ -174,6 +184,21 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+function getEvidenceArtifactLabel(
+  type: EvidenceArtifactType | null,
+) {
+  switch (type) {
+    case "frametime_capture":
+      return "Frametime capture";
+    case "performance_screenshot":
+      return "Performance screenshot";
+    case "performance_video":
+      return "Performance video";
+    default:
+      return "Linked performance proof";
+  }
+}
+
 function renderTextWithLinks(text: string) {
   const parts = text.split(/((?:https?:\/\/|www\.)[^\s]+)/gi);
 
@@ -257,6 +282,11 @@ export default async function PresetDetailPage({
         game_version,
         driver_version,
         os_version,
+        evidence_artifact_type,
+        evidence_artifact_url,
+        evidence_exception_approved,
+        evidence_exception_reason,
+        evidence_exception_approved_at,
         verified_at,
         created_by,
         games (id, name, slug),
@@ -582,12 +612,12 @@ export default async function PresetDetailPage({
             <PresetStat label="TDP" value={preset.tdp ?? "Not set"} />
             <PresetStat
               label="Average FPS"
-              value={preset.fps_average !== null ? `${preset.fps_average} FPS` : "Not set"}
+              value={preset.fps_average !== null ? `${preset.fps_average} FPS` : "Not reported"}
               highlighted
             />
             <PresetStat
               label="1% Low"
-              value={preset.one_percent_low !== null ? `${preset.one_percent_low} FPS` : "Not set"}
+              value={preset.one_percent_low !== null ? `${preset.one_percent_low} FPS` : "Not reported"}
             />
           </section>
 
@@ -606,6 +636,43 @@ export default async function PresetDetailPage({
                 <MetaPanel label="Game version" value={preset.game_version ?? "Not set"} />
                 <MetaPanel label="Driver" value={preset.driver_version ?? "Not set"} />
                 <MetaPanel label="OS" value={preset.os_version ?? "Not set"} />
+              </div>
+            </section>
+          )}
+
+          {preset.evidence_exception_approved && (
+            <section className="mt-5 rounded-2xl border border-orange-500/30 bg-orange-500/[0.07] p-5 sm:p-6">
+              <p className="text-[0.58rem] font-black uppercase tracking-[0.16em] text-orange-400">
+                Editor-approved evidence exception
+              </p>
+              <h2 className="mt-2 text-xl font-black text-white sm:text-2xl">
+                Some measured fields were not reported by the source
+              </h2>
+              <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-300">
+                {preset.evidence_exception_reason ??
+                  "An Atlas editor reviewed linked visual performance proof before publication."}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {preset.evidence_artifact_url && (
+                  <a
+                    href={preset.evidence_artifact_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-orange-500/35 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-200 transition hover:bg-orange-500 hover:text-slate-950"
+                  >
+                    Open {getEvidenceArtifactLabel(
+                      preset.evidence_artifact_type,
+                    )} ↗
+                  </a>
+                )}
+                <span className="text-xs text-slate-500">
+                  Missing values remain blank and are not estimated.
+                  {preset.evidence_exception_approved_at
+                    ? ` Reviewed ${formatDate(
+                        preset.evidence_exception_approved_at,
+                      )}.`
+                    : ""}
+                </span>
               </div>
             </section>
           )}

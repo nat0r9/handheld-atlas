@@ -39,6 +39,10 @@ const initialValues: PresetEditorValues = {
   gameVersion: "",
   driverVersion: "",
   osVersion: "",
+  evidenceArtifactType: "",
+  evidenceArtifactUrl: "",
+  evidenceExceptionApproved: false,
+  evidenceExceptionReason: "",
 };
 
 const initialGroups: PresetEditorSettingGroup[] = [

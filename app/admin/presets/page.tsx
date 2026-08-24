@@ -14,6 +14,7 @@ interface AdminPresetsPageProps {
   searchParams: Promise<{
     error?: string;
     success?: string;
+    status?: string;
   }>;
 }
 
@@ -35,6 +36,7 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   atlas_verified: boolean;
+  evidence_exception_approved: boolean;
   status: "draft" | "published" | "archived";
   created_by: string | null;
   created_at: string;
@@ -91,7 +93,18 @@ function getStatusStyle(
 export default async function AdminPresetsPage({
   searchParams,
 }: AdminPresetsPageProps) {
-  const { error, success } = await searchParams;
+  const {
+    error,
+    success,
+    status: requestedStatus,
+  } = await searchParams;
+
+  const statusFilter =
+    requestedStatus === "draft" ||
+    requestedStatus === "published" ||
+    requestedStatus === "archived"
+      ? requestedStatus
+      : null;
 
   const {
     supabase,
@@ -144,6 +157,7 @@ export default async function AdminPresetsPage({
           community_rating,
           summary,
           atlas_verified,
+          evidence_exception_approved,
           status,
           created_by,
           created_at,
@@ -168,6 +182,11 @@ export default async function AdminPresetsPage({
         query = query.eq(
           "created_by",
           user.id,
+        );
+      } else if (statusFilter) {
+        query = query.eq(
+          "status",
+          statusFilter,
         );
       }
 
@@ -310,7 +329,10 @@ export default async function AdminPresetsPage({
           />
         </section>
 
-        <section className="mt-12">
+        <section
+          id="preset-database"
+          className="mt-12 scroll-mt-6"
+        >
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
@@ -331,6 +353,37 @@ export default async function AdminPresetsPage({
                 : "presets"}
             </p>
           </div>
+
+          {!isBenchmarkTester && (
+            <nav className="mt-5 flex flex-wrap gap-2">
+              {([
+                ["All", null],
+                ["Drafts", "draft"],
+                ["Published", "published"],
+                ["Archived", "archived"],
+              ] as const).map(([label, value]) => {
+                const active =
+                  statusFilter === value;
+                const href = value
+                  ? `/admin/presets?status=${value}#preset-database`
+                  : "/admin/presets#preset-database";
+
+                return (
+                  <Link
+                    key={label}
+                    href={href}
+                    className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                      active
+                        ? "border-cyan-400 bg-cyan-500 text-slate-950"
+                        : "border-slate-700 bg-slate-900 text-slate-400 hover:border-cyan-500/50 hover:text-cyan-300"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
           {presets.length === 0 ? (
             <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-8">
@@ -387,6 +440,13 @@ export default async function AdminPresetsPage({
                       {preset.atlas_verified && (
                         <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-green-300">
                           Atlas Verified
+                        </span>
+                      )}
+
+                      {preset
+                        .evidence_exception_approved && (
+                        <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-orange-300">
+                          Evidence exception
                         </span>
                       )}
                     </div>

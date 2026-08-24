@@ -5,6 +5,7 @@ import PresetEditorForm, {
   type PresetEditorSettingGroup,
   type PresetEditorSettingItem,
   type PresetEditorType,
+  type EvidenceArtifactType,
   type EvidenceTier,
 } from "./PresetEditorForm";
 
@@ -40,6 +41,10 @@ export interface EditablePreset {
   gameVersion: string;
   driverVersion: string;
   osVersion: string;
+  evidenceArtifactType: EvidenceArtifactType;
+  evidenceArtifactUrl: string;
+  evidenceExceptionApproved: boolean;
+  evidenceExceptionReason: string;
   groups: PresetEditSettingGroup[];
 }
 
@@ -93,6 +98,14 @@ export default function PresetEditForm({
         gameVersion: preset.gameVersion,
         driverVersion: preset.driverVersion,
         osVersion: preset.osVersion,
+        evidenceArtifactType:
+          preset.evidenceArtifactType,
+        evidenceArtifactUrl:
+          preset.evidenceArtifactUrl,
+        evidenceExceptionApproved:
+          preset.evidenceExceptionApproved,
+        evidenceExceptionReason:
+          preset.evidenceExceptionReason,
       }}
       initialGroups={preset.groups}
       canSetAtlasVerified={canSetAtlasVerified}

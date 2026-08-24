@@ -66,6 +66,7 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   atlas_verified: boolean;
+  evidence_exception_approved: boolean;
   games: {
     name: string;
     slug: string;
@@ -141,6 +142,7 @@ async function getHandheldPresets(
       community_rating,
       summary,
       atlas_verified,
+      evidence_exception_approved,
       games (
         name,
         slug
@@ -834,6 +836,13 @@ export default async function HandheldPage({
                                 {preset.games?.name ??
                                   "Unknown game"}
                               </span>
+
+                              {preset
+                                .evidence_exception_approved && (
+                                <span className="rounded-full border border-orange-500/25 bg-orange-500/[0.08] px-2.5 py-1 text-[0.54rem] font-black uppercase tracking-[0.1em] text-orange-300">
+                                  Evidence exception
+                                </span>
+                              )}
                             </div>
 
                             <h3 className="mt-3 text-xl font-black">
@@ -878,7 +887,7 @@ export default async function HandheldPage({
                               preset.fps_average !==
                               null
                                 ? `${preset.fps_average} FPS`
-                                : "Not set"
+                                : "Not reported"
                             }
                             highlighted
                           />
@@ -889,7 +898,7 @@ export default async function HandheldPage({
                               preset.one_percent_low !==
                               null
                                 ? `${preset.one_percent_low} FPS`
-                                : "Not set"
+                                : "Not reported"
                             }
                           />
                         </div>

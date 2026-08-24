@@ -51,6 +51,7 @@ interface SummaryItem {
   label: string;
   value: number;
   description: string;
+  href: string;
 }
 
 function getStatusStyle(
@@ -217,6 +218,7 @@ export default async function AdminDashboardPage() {
       guidesCountResult,
       newsCountResult,
       publishedPresetsResult,
+      draftPresetsResult,
       publishedBenchmarksResult,
       draftGuidesResult,
       draftNewsResult,
@@ -281,6 +283,14 @@ export default async function AdminDashboardPage() {
           head: true,
         })
         .eq("status", "published"),
+
+      supabase
+        .from("presets")
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
+        .eq("status", "draft"),
 
       supabase
         .from("benchmarks")
@@ -459,6 +469,15 @@ export default async function AdminDashboardPage() {
           0,
         description:
           "Visible performance profiles",
+        href: "/admin/presets",
+      },
+      {
+        label: "Draft presets",
+        value:
+          draftPresetsResult.count ?? 0,
+        description:
+          "Waiting in the preset database",
+        href: "/admin/presets?status=draft#preset-database",
       },
       {
         label: "Published benchmarks",
@@ -467,6 +486,7 @@ export default async function AdminDashboardPage() {
           0,
         description:
           "Visible verified results",
+        href: "/admin/benchmarks",
       },
       {
         label: "Draft guides",
@@ -474,6 +494,7 @@ export default async function AdminDashboardPage() {
           draftGuidesResult.count ?? 0,
         description:
           "Waiting for publication",
+        href: "/admin/guides",
       },
       {
         label: "Draft news",
@@ -481,6 +502,7 @@ export default async function AdminDashboardPage() {
           draftNewsResult.count ?? 0,
         description:
           "Still in the newsroom",
+        href: "/admin/news",
       },
     ];
 
@@ -505,6 +527,7 @@ export default async function AdminDashboardPage() {
       handheldsCountResult.error
         ?.message ??
       presetsCountResult.error?.message ??
+      draftPresetsResult.error?.message ??
       settingsImpactCountResult.error?.message ??
       benchmarksCountResult.error
         ?.message ??
@@ -617,7 +640,7 @@ export default async function AdminDashboardPage() {
               )}
             </section>
 
-            <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {summaryItems.map(
                 (item) => (
                   <SummaryCard
@@ -885,7 +908,10 @@ function SummaryCard({
   item: SummaryItem;
 }) {
   return (
-    <article className="rounded-2xl border border-white/[0.07] bg-black/20 p-4">
+    <Link
+      href={item.href}
+      className="rounded-2xl border border-white/[0.07] bg-black/20 p-4 transition hover:border-cyan-500/35 hover:bg-cyan-500/[0.04]"
+    >
       <p className="text-[0.55rem] font-black uppercase tracking-[0.14em] text-slate-600">
         {item.label}
       </p>
@@ -897,7 +923,7 @@ function SummaryCard({
       <p className="mt-1 text-xs leading-5 text-slate-600">
         {item.description}
       </p>
-    </article>
+    </Link>
   );
 }
 

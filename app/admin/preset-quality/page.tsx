@@ -35,6 +35,7 @@ interface QualityPreset {
   one_percent_low: number | null;
   summary: string | null;
   atlas_verified: boolean;
+  evidence_exception_approved: boolean;
   created_at: string;
   games:
     | { name: string; slug: string }
@@ -137,9 +138,13 @@ function auditPreset(
       preset.tdp?.trim(),
   );
 
-  const hasPerformance =
+  const hasMeasuredPerformance =
     preset.fps_average !== null &&
     preset.one_percent_low !== null;
+
+  const hasPerformance =
+    hasMeasuredPerformance ||
+    preset.evidence_exception_approved;
 
   const hasUsefulSummary =
     (preset.summary?.trim().length ?? 0) >= 60;
@@ -176,7 +181,16 @@ function auditPreset(
   }
 
   if (!hasPerformance) {
-    issues.push("Missing average FPS or 1% low");
+    issues.push(
+      "Missing average FPS, 1% low or an approved visual-proof exception",
+    );
+  } else if (
+    !hasMeasuredPerformance &&
+    preset.evidence_exception_approved
+  ) {
+    issues.push(
+      "Published with an editor-approved evidence exception",
+    );
   }
 
   if (
@@ -298,6 +312,7 @@ export default async function PresetQualityPage({
       one_percent_low,
       summary,
       atlas_verified,
+      evidence_exception_approved,
       created_at,
       games (
         name,
@@ -508,6 +523,13 @@ export default async function PresetQualityPage({
                         {audit.preset.atlas_verified && (
                           <span className="rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] text-green-300">
                             Atlas Verified
+                          </span>
+                        )}
+
+                        {audit.preset
+                          .evidence_exception_approved && (
+                          <span className="rounded-full border border-orange-500/25 bg-orange-500/[0.08] px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] text-orange-300">
+                            Evidence exception
                           </span>
                         )}
                       </div>
