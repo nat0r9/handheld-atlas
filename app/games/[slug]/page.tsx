@@ -23,7 +23,14 @@ interface DatabaseGame {
   slug: string;
   genre: string;
   developer: string | null;
+  publisher: string | null;
+  release_date: string | null;
   release_year: number | null;
+  platforms: string[];
+  steam_app_id: number | null;
+  metacritic_critic_score: number | null;
+  metacritic_user_score: number | null;
+  metacritic_url: string | null;
   atlas_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
@@ -107,7 +114,7 @@ async function getGame(slug: string) {
   const { data, error } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, release_year, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_url, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url",
     )
     .eq("slug", slug)
     .eq("status", "published")
@@ -450,17 +457,25 @@ export default async function GamePage({ params }: GamePageProps) {
     image: game.cover_image_url
       ? absoluteUrl(game.cover_image_url)
       : undefined,
-    datePublished: game.release_year?.toString(),
+    datePublished: game.release_date ?? game.release_year?.toString(),
     author: game.developer
       ? {
           "@type": "Organization",
           name: game.developer,
         }
       : undefined,
-    publisher: {
-      "@id": `${siteConfig.url}/#organization`,
-    },
-    gamePlatform: ["PC", "Handheld gaming PC"],
+    publisher: game.publisher
+      ? {
+          "@type": "Organization",
+          name: game.publisher,
+        }
+      : {
+          "@id": `${siteConfig.url}/#organization`,
+        },
+    gamePlatform:
+      game.platforms.length > 0
+        ? game.platforms
+        : ["PC", "Handheld gaming PC"],
     aggregateRating:
       gameRatings.averageRating !== null && gameRatings.ratingCount > 0
         ? {
@@ -553,8 +568,10 @@ export default async function GamePage({ params }: GamePageProps) {
 
               <span className="atlas-chip">{game.genre}</span>
 
-              {game.release_year && (
-                <span className="atlas-chip">{game.release_year}</span>
+              {(game.release_date || game.release_year) && (
+                <span className="atlas-chip">
+                  {game.release_date ?? game.release_year}
+                </span>
               )}
             </div>
 
@@ -695,10 +712,40 @@ export default async function GamePage({ params }: GamePageProps) {
                 label="Developer"
                 value={game.developer ?? "Not set"}
               />
+              <OverviewRow
+                label="Publisher"
+                value={game.publisher ?? "Not set"}
+              />
               <OverviewRow label="Genre" value={game.genre} />
               <OverviewRow
-                label="Release year"
-                value={game.release_year?.toString() ?? "Not set"}
+                label="Release date"
+                value={
+                  game.release_date ??
+                  game.release_year?.toString() ??
+                  "Not set"
+                }
+              />
+              <OverviewRow
+                label="Platforms"
+                value={
+                  game.platforms.length > 0
+                    ? game.platforms.join(", ")
+                    : "Not set"
+                }
+              />
+              <OverviewRow
+                label="Steam App ID"
+                value={game.steam_app_id?.toString() ?? "Not set"}
+              />
+              <OverviewRow
+                label="Metacritic"
+                value={
+                  game.metacritic_critic_score !== null &&
+                  game.metacritic_user_score !== null
+                    ? `${game.metacritic_critic_score} critics · ${game.metacritic_user_score} users`
+                    : "Not set"
+                }
+                href={game.metacritic_url ?? undefined}
                 isLast
               />
 </dl>
@@ -1092,10 +1139,12 @@ function OverviewStat({
 function OverviewRow({
   label,
   value,
+  href,
   isLast = false,
 }: {
   label: string;
   value: string;
+  href?: string;
   isLast?: boolean;
 }) {
   return (
@@ -1106,7 +1155,18 @@ function OverviewRow({
     >
       <dt className="text-sm text-slate-600">{label}</dt>
       <dd className="max-w-[65%] break-words text-right text-sm font-black text-slate-300">
-        {value}
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="text-cyan-400 transition hover:text-white"
+          >
+            {value} ↗
+          </a>
+        ) : (
+          value
+        )}
       </dd>
     </div>
   );

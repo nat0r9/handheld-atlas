@@ -24,7 +24,18 @@ interface DatabaseGame {
   slug: string;
   genre: string;
   developer: string | null;
+  publisher: string | null;
+  release_date: string | null;
   release_year: number | null;
+  platforms: string[];
+  steam_app_id: number | null;
+  metacritic_critic_score: number | null;
+  metacritic_user_score: number | null;
+  metacritic_critic_reviews: number | null;
+  metacritic_user_ratings: number | null;
+  metacritic_url: string | null;
+  cover_source_name: string | null;
+  cover_source_url: string | null;
   atlas_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
@@ -50,7 +61,7 @@ export default async function EditGamePage({
   const { data, error: gameError } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, release_year, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_critic_reviews, metacritic_user_ratings, metacritic_url, cover_source_name, cover_source_url, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status",
     )
     .eq("id", id)
     .single();
@@ -134,7 +145,20 @@ export default async function EditGamePage({
               />
 
               <FormField
-                label="Release year"
+                label="Publisher"
+                name="publisher"
+                defaultValue={game.publisher ?? ""}
+              />
+
+              <FormField
+                label="Release date"
+                name="releaseDate"
+                type="date"
+                defaultValue={game.release_date ?? ""}
+              />
+
+              <FormField
+                label="Release year (fallback)"
                 name="releaseYear"
                 type="number"
                 defaultValue={
@@ -142,6 +166,76 @@ export default async function EditGamePage({
                 }
                 min="1970"
                 max="2100"
+              />
+
+              <FormField
+                label="Platforms"
+                name="platforms"
+                defaultValue={game.platforms.join(", ")}
+                helpText="Comma-separated. Use the platforms for the tracked PC release."
+              />
+
+              <FormField
+                label="Steam App ID"
+                name="steamAppId"
+                type="number"
+                defaultValue={game.steam_app_id?.toString() ?? ""}
+                min="1"
+              />
+
+              <FormField
+                label="Metacritic critic score"
+                name="metacriticCriticScore"
+                type="number"
+                defaultValue={game.metacritic_critic_score?.toString() ?? ""}
+                min="0"
+                max="100"
+              />
+
+              <FormField
+                label="Metacritic user score"
+                name="metacriticUserScore"
+                type="number"
+                defaultValue={game.metacritic_user_score?.toString() ?? ""}
+                min="0"
+                max="10"
+                step="0.1"
+              />
+
+              <FormField
+                label="Critic review count"
+                name="metacriticCriticReviews"
+                type="number"
+                defaultValue={game.metacritic_critic_reviews?.toString() ?? ""}
+                min="0"
+              />
+
+              <FormField
+                label="User rating count"
+                name="metacriticUserRatings"
+                type="number"
+                defaultValue={game.metacritic_user_ratings?.toString() ?? ""}
+                min="0"
+              />
+
+              <FormField
+                label="Metacritic URL"
+                name="metacriticUrl"
+                type="url"
+                defaultValue={game.metacritic_url ?? ""}
+              />
+
+              <FormField
+                label="Cover source"
+                name="coverSourceName"
+                defaultValue={game.cover_source_name ?? ""}
+              />
+
+              <FormField
+                label="Cover source URL"
+                name="coverSourceUrl"
+                type="url"
+                defaultValue={game.cover_source_url ?? ""}
               />
 
               <FormField
@@ -269,10 +363,11 @@ interface FormFieldProps {
   name: string;
   defaultValue?: string;
   helpText?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date" | "url";
   required?: boolean;
   min?: string;
   max?: string;
+  step?: string;
 }
 
 function FormField({
@@ -284,6 +379,7 @@ function FormField({
   required = false,
   min,
   max,
+  step,
 }: FormFieldProps) {
   return (
     <div>
@@ -302,6 +398,7 @@ function FormField({
         required={required}
         min={min}
         max={max}
+        step={step}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
       />
 

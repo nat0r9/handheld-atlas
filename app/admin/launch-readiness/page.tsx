@@ -7,6 +7,16 @@ interface GameRow {
   name: string;
   slug: string;
   cover_image_url: string | null;
+  developer: string | null;
+  publisher: string | null;
+  release_date: string | null;
+  platforms: string[];
+  steam_app_id: number | null;
+  metacritic_critic_score: number | null;
+  metacritic_user_score: number | null;
+  metacritic_url: string | null;
+  cover_source_name: string | null;
+  cover_source_url: string | null;
   notes: string | null;
   atlas_score: number | null;
   best_handheld: string | null;
@@ -121,7 +131,7 @@ export default async function LaunchReadinessPage() {
     supabase
       .from("games")
       .select(
-        "id, name, slug, cover_image_url, notes, atlas_score, best_handheld, recommended_tdp",
+        "id, name, slug, cover_image_url, developer, publisher, release_date, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_url, cover_source_name, cover_source_url, notes, atlas_score, best_handheld, recommended_tdp",
       )
       .eq("status", "published")
       .order("name"),
@@ -207,11 +217,6 @@ export default async function LaunchReadinessPage() {
       .map((preset) => preset.handheld_id)
       .filter((id): id is string => Boolean(id)),
   );
-  const benchmarkGameIds = new Set(
-    benchmarks
-      .map((benchmark) => benchmark.game_id)
-      .filter((id): id is string => Boolean(id)),
-  );
   const benchmarkHandheldIds = new Set(
     benchmarks
       .map((benchmark) => benchmark.handheld_id)
@@ -228,12 +233,56 @@ export default async function LaunchReadinessPage() {
       href,
       action: "Edit game",
     });
+    check(hasText(game.developer) && hasText(game.publisher), {
+      severity: "critical",
+      area: "Game metadata",
+      title: `${game.name} is missing developer or publisher`,
+      detail: "Both credits are required by the game research workflow.",
+      href,
+      action: "Complete credits",
+    });
+    check(
+      Boolean(game.release_date) &&
+        game.platforms.length > 0 &&
+        game.steam_app_id !== null,
+      {
+        severity: "critical",
+        area: "Game metadata",
+        title: `${game.name} has incomplete release metadata`,
+        detail: "Add the exact release date, tracked platforms and Steam App ID.",
+        href,
+        action: "Complete release data",
+      },
+    );
+    check(
+      game.metacritic_critic_score !== null &&
+        game.metacritic_user_score !== null &&
+        hasText(game.metacritic_url),
+      {
+        severity: "critical",
+        area: "Game metadata",
+        title: `${game.name} has incomplete Metacritic data`,
+        detail: "Store both scores and a direct source URL before publishing.",
+        href,
+        action: "Add Metacritic data",
+      },
+    );
+    check(
+      hasText(game.cover_source_name) && hasText(game.cover_source_url),
+      {
+        area: "Game metadata",
+        title: `${game.name} has no cover attribution`,
+        detail: "Record the cover provider and original source page.",
+        href,
+        action: "Add cover source",
+      },
+    );
     check(hasText(game.notes, 100), {
       area: "Game",
-      title: `${game.name} has thin performance notes`,
-      detail: "Add at least 100 characters of original handheld-specific context.",
+      title: `${game.name} has a thin game description`,
+      detail: "Add at least 100 characters describing the premise and gameplay.",
       href,
-      action: "Improve notes",
+      action: "Improve description",
     });
     check(game.atlas_score !== null, {
       area: "Game",
@@ -256,11 +305,11 @@ export default async function LaunchReadinessPage() {
       href,
       action: "Set power target",
     });
-    check(presetGameIds.has(game.id) || benchmarkGameIds.has(game.id), {
+    check(presetGameIds.has(game.id), {
       severity: "critical",
       area: "Coverage",
       title: `${game.name} is an empty public profile`,
-      detail: "The game has neither a published preset nor a published benchmark.",
+      detail: "The game has no published preset. Benchmarks are optional supporting evidence.",
       href,
       action: "Add performance data",
     });

@@ -20,7 +20,13 @@ interface DatabaseGame {
   slug: string;
   genre: string;
   developer: string | null;
+  publisher: string | null;
+  release_date: string | null;
   release_year: number | null;
+  platforms: string[];
+  steam_app_id: number | null;
+  metacritic_critic_score: number | null;
+  metacritic_user_score: number | null;
   atlas_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
@@ -59,7 +65,7 @@ export default async function AdminGamesPage({
   const { data, error: gamesError } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, release_year, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status, created_at, updated_at",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status, created_at, updated_at",
     )
     .order("created_at", {
       ascending: false,
@@ -149,12 +155,92 @@ export default async function AdminGamesPage({
               />
 
               <FormField
-                label="Release year"
+                label="Publisher"
+                name="publisher"
+                placeholder="CD Projekt"
+              />
+
+              <FormField
+                label="Release date"
+                name="releaseDate"
+                type="date"
+              />
+
+              <FormField
+                label="Release year (fallback)"
                 name="releaseYear"
                 type="number"
                 placeholder="2020"
                 min="1970"
                 max="2100"
+              />
+
+              <FormField
+                label="Platforms"
+                name="platforms"
+                placeholder="Windows, macOS"
+                helpText="Comma-separated. Use the platforms for the tracked PC release."
+              />
+
+              <FormField
+                label="Steam App ID"
+                name="steamAppId"
+                type="number"
+                placeholder="1091500"
+                min="1"
+              />
+
+              <FormField
+                label="Metacritic critic score"
+                name="metacriticCriticScore"
+                type="number"
+                placeholder="86"
+                min="0"
+                max="100"
+              />
+
+              <FormField
+                label="Metacritic user score"
+                name="metacriticUserScore"
+                type="number"
+                placeholder="7.2"
+                min="0"
+                max="10"
+                step="0.1"
+              />
+
+              <FormField
+                label="Critic review count"
+                name="metacriticCriticReviews"
+                type="number"
+                min="0"
+              />
+
+              <FormField
+                label="User rating count"
+                name="metacriticUserRatings"
+                type="number"
+                min="0"
+              />
+
+              <FormField
+                label="Metacritic URL"
+                name="metacriticUrl"
+                type="url"
+                placeholder="https://www.metacritic.com/game/..."
+              />
+
+              <FormField
+                label="Cover source"
+                name="coverSourceName"
+                placeholder="SteamGridDB"
+              />
+
+              <FormField
+                label="Cover source URL"
+                name="coverSourceUrl"
+                type="url"
+                placeholder="https://www.steamgriddb.com/..."
               />
 
               <FormField
@@ -341,7 +427,19 @@ export default async function AdminGamesPage({
                       <GameStat
                         label="Release"
                         value={
-                          game.release_year?.toString() ?? "Not set"
+                          game.release_date ??
+                          game.release_year?.toString() ??
+                          "Not set"
+                        }
+                      />
+
+                      <GameStat
+                        label="Metacritic"
+                        value={
+                          game.metacritic_critic_score !== null &&
+                          game.metacritic_user_score !== null
+                            ? `${game.metacritic_critic_score} / ${game.metacritic_user_score}`
+                            : "Research pending"
                         }
                       />
 
@@ -409,10 +507,11 @@ interface FormFieldProps {
   name: string;
   placeholder?: string;
   helpText?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date" | "url";
   required?: boolean;
   min?: string;
   max?: string;
+  step?: string;
 }
 
 function FormField({
@@ -424,6 +523,7 @@ function FormField({
   required = false,
   min,
   max,
+  step,
 }: FormFieldProps) {
   return (
     <div>
@@ -442,6 +542,7 @@ function FormField({
         required={required}
         min={min}
         max={max}
+        step={step}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
       />
 
