@@ -217,6 +217,7 @@ export default async function AdminDashboardPage() {
       benchmarksCountResult,
       guidesCountResult,
       newsCountResult,
+      websiteUpdatesCountResult,
       publishedPresetsResult,
       draftPresetsResult,
       publishedBenchmarksResult,
@@ -271,6 +272,13 @@ export default async function AdminDashboardPage() {
 
       supabase
         .from("news")
+        .select("id", {
+          count: "exact",
+          head: true,
+        }),
+
+      supabase
+        .from("website_updates")
         .select("id", {
           count: "exact",
           head: true,
@@ -459,6 +467,18 @@ export default async function AdminDashboardPage() {
           "Manage news",
         tone: "cyan",
       },
+      {
+        label: "Website updates",
+        value:
+          websiteUpdatesCountResult.count ??
+          0,
+        href: "/admin/website-updates",
+        description:
+          "Manual Discord announcements for meaningful website changes.",
+        actionLabel:
+          "Publish site update",
+        tone: "red",
+      },
     ];
 
     summaryItems = [
@@ -533,6 +553,8 @@ export default async function AdminDashboardPage() {
         ?.message ??
       guidesCountResult.error?.message ??
       newsCountResult.error?.message ??
+      websiteUpdatesCountResult.error
+        ?.message ??
       recentNewsResult.error?.message ??
       recentGuidesResult.error
         ?.message ??
@@ -682,7 +704,7 @@ export default async function AdminDashboardPage() {
               description="Jump directly into the most common editorial workflows."
             />
 
-            <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
               <QuickAction
                 href="/admin/games"
                 label="Add game"
@@ -716,6 +738,11 @@ export default async function AdminDashboardPage() {
               <QuickAction
                 href="/admin/news"
                 label="Write news"
+              />
+
+              <QuickAction
+                href="/admin/website-updates"
+                label="Post site update"
               />
             </section>
 
