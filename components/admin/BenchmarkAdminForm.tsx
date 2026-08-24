@@ -6,6 +6,7 @@ import SearchableSelect, {
 } from "./SearchableSelect";
 
 type BenchmarkStatus = "draft" | "published" | "archived";
+type EvidenceTier = "atlas_verified" | "community_verified" | "external_source" | "estimated" | "legacy_unclassified";
 
 export interface BenchmarkPresetOption {
   id: string;
@@ -30,9 +31,19 @@ export interface BenchmarkFormDefaults {
   tdp?: string;
   averageFps?: string;
   onePercentLow?: string;
+  pointOnePercentLow?: string;
   batteryLife?: string;
   testNotes?: string;
   status?: BenchmarkStatus;
+  evidenceTier?: EvidenceTier;
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceCheckedAt?: string;
+  captureTool?: string;
+  captureDurationSeconds?: string;
+  runCount?: string;
+  testRoute?: string;
+  testedAt?: string;
 }
 
 interface BenchmarkAdminFormProps {
@@ -93,11 +104,21 @@ export default function BenchmarkAdminForm({
   const [onePercentLow, setOnePercentLow] = useState(
     defaults?.onePercentLow ?? "",
   );
+  const [pointOnePercentLow, setPointOnePercentLow] = useState(defaults?.pointOnePercentLow ?? "");
   const [batteryLife, setBatteryLife] = useState(defaults?.batteryLife ?? "");
   const [testNotes, setTestNotes] = useState(defaults?.testNotes ?? "");
   const [status, setStatus] = useState<BenchmarkStatus>(
     defaults?.status ?? "draft",
   );
+  const [evidenceTier, setEvidenceTier] = useState<EvidenceTier>(defaults?.evidenceTier ?? "legacy_unclassified");
+  const [sourceName, setSourceName] = useState(defaults?.sourceName ?? "");
+  const [sourceUrl, setSourceUrl] = useState(defaults?.sourceUrl ?? "");
+  const [sourceCheckedAt, setSourceCheckedAt] = useState(defaults?.sourceCheckedAt ?? "");
+  const [captureTool, setCaptureTool] = useState(defaults?.captureTool ?? "");
+  const [captureDurationSeconds, setCaptureDurationSeconds] = useState(defaults?.captureDurationSeconds ?? "");
+  const [runCount, setRunCount] = useState(defaults?.runCount ?? "");
+  const [testRoute, setTestRoute] = useState(defaults?.testRoute ?? "");
+  const [testedAt, setTestedAt] = useState(defaults?.testedAt ?? "");
 
   const matchingPresets = useMemo(() => {
     const filtered = presets.filter((preset) => {
@@ -280,6 +301,8 @@ export default function BenchmarkAdminForm({
           step="0.01"
         />
 
+        <FormField label="0.1% Low" name="pointOnePercentLow" type="number" value={pointOnePercentLow} onChange={setPointOnePercentLow} min="0" step="0.01" />
+
         <FormField
           label="Battery life"
           name="batteryLife"
@@ -317,6 +340,27 @@ export default function BenchmarkAdminForm({
             </select>
           )}
         </div>
+      </div>
+
+      <div className="mt-6 grid gap-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-5 md:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <label htmlFor="evidenceTier" className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Evidence tier</label>
+          <select id="evidenceTier" name="evidenceTier" value={evidenceTier} onChange={(event) => setEvidenceTier(event.target.value as EvidenceTier)} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500">
+            <option value="legacy_unclassified">Unclassified — cannot publish</option>
+            <option value="atlas_verified">Atlas Verified</option>
+            <option value="community_verified">Community Verified</option>
+            <option value="external_source">External Source</option>
+            <option value="estimated">Estimated</option>
+          </select>
+        </div>
+        <FormField label="Source name" name="sourceName" value={sourceName} onChange={setSourceName} placeholder="LegionGoLife" />
+        <FormField label="Source URL" name="sourceUrl" value={sourceUrl} onChange={setSourceUrl} placeholder="https://…" />
+        <FormField label="Source checked" name="sourceCheckedAt" type="date" value={sourceCheckedAt} onChange={setSourceCheckedAt} />
+        <FormField label="Capture tool" name="captureTool" value={captureTool} onChange={setCaptureTool} placeholder="CapFrameX" />
+        <FormField label="Capture duration (s)" name="captureDurationSeconds" type="number" value={captureDurationSeconds} onChange={setCaptureDurationSeconds} min="1" step="1" />
+        <FormField label="Run count" name="runCount" type="number" value={runCount} onChange={setRunCount} min="1" step="1" />
+        <FormField label="Test route" name="testRoute" value={testRoute} onChange={setTestRoute} placeholder="Exact repeatable route / scene" />
+        <FormField label="Tested at" name="testedAt" type="date" value={testedAt} onChange={setTestedAt} />
       </div>
 
       <div className="mt-6">
@@ -382,7 +426,7 @@ interface FormFieldProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date";
   min?: string;
   step?: string;
 }

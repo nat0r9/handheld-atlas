@@ -5,6 +5,7 @@ import PresetEditorForm, {
   type PresetEditorSettingGroup,
   type PresetEditorSettingItem,
   type PresetEditorType,
+  type EvidenceTier,
 } from "./PresetEditorForm";
 
 export type PresetEditSelectOption =
@@ -32,6 +33,13 @@ export interface EditablePreset {
   summary: string;
   status: "draft" | "published" | "archived";
   atlasVerified: boolean;
+  evidenceTier: EvidenceTier;
+  sourceName: string;
+  sourceUrl: string;
+  sourceCheckedAt: string;
+  gameVersion: string;
+  driverVersion: string;
+  osVersion: string;
   groups: PresetEditSettingGroup[];
 }
 
@@ -78,6 +86,13 @@ export default function PresetEditForm({
         status: preset.status,
         atlasVerified:
           preset.atlasVerified,
+        evidenceTier: preset.evidenceTier,
+        sourceName: preset.sourceName,
+        sourceUrl: preset.sourceUrl,
+        sourceCheckedAt: preset.sourceCheckedAt,
+        gameVersion: preset.gameVersion,
+        driverVersion: preset.driverVersion,
+        osVersion: preset.osVersion,
       }}
       initialGroups={preset.groups}
       canSetAtlasVerified={canSetAtlasVerified}

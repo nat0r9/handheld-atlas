@@ -7,6 +7,7 @@ import { requireRole } from "../../../lib/auth/require-role";
 import { createClient } from "../../../lib/supabase/server";
 
 type ContentStatus = "draft" | "published" | "archived";
+type EvidenceTier = "atlas_verified" | "community_verified" | "external_source" | "estimated" | "legacy_unclassified";
 
 interface RelationWithSlug {
   slug: string;
@@ -34,8 +35,18 @@ interface BenchmarkDuplicateLookup {
   tdp: string | null;
   average_fps: number | null;
   one_percent_low: number | null;
+  point_one_percent_low: number | null;
   battery_life: string | null;
   test_notes: string | null;
+  evidence_tier: EvidenceTier;
+  source_name: string | null;
+  source_url: string | null;
+  source_checked_at: string | null;
+  capture_tool: string | null;
+  capture_duration_seconds: number | null;
+  run_count: number | null;
+  test_route: string | null;
+  tested_at: string | null;
   created_by: string | null;
   games: RelationWithSlug | RelationWithSlug[] | null;
   handhelds: RelationWithSlug | RelationWithSlug[] | null;
@@ -75,6 +86,33 @@ function getStatus(formData: FormData): ContentStatus {
   }
 
   return "draft";
+}
+
+function getEvidenceTier(formData: FormData): EvidenceTier {
+  const value = requiredText(formData, "evidenceTier");
+  return ["atlas_verified", "community_verified", "external_source", "estimated"].includes(value)
+    ? (value as EvidenceTier)
+    : "legacy_unclassified";
+}
+
+function validatePublishedEvidence(formData: FormData, status: ContentStatus, errorPath: string) {
+  if (status !== "published") return;
+  const tier = getEvidenceTier(formData);
+  const missing: string[] = [];
+  if (tier === "legacy_unclassified") missing.push("evidence tier");
+  if (tier !== "atlas_verified" && (!optionalText(formData, "sourceName") || !optionalText(formData, "sourceUrl") || !optionalText(formData, "sourceCheckedAt"))) {
+    missing.push("source name, URL and review date");
+  }
+  if (tier === "atlas_verified") {
+    const duration = optionalNumber(formData, "captureDurationSeconds");
+    const runs = optionalNumber(formData, "runCount");
+    if (optionalText(formData, "captureTool")?.toLowerCase() !== "capframex") missing.push("CapFrameX capture tool");
+    if (duration === null || duration < 60 || duration > 90) missing.push("60–90 second capture");
+    if (runs === null || runs < 3) missing.push("at least three runs");
+    if (optionalNumber(formData, "pointOnePercentLow") === null) missing.push("0.1% low");
+    if (!optionalText(formData, "testRoute") || !optionalText(formData, "testedAt")) missing.push("test route and date");
+  }
+  if (missing.length) redirect(`${errorPath}?error=${encodeURIComponent(`Cannot publish without ${missing.join(", ")}`)}`);
 }
 
 function getRelationSlug(
@@ -178,6 +216,7 @@ export async function createBenchmark(formData: FormData) {
   const requestedStatus = getStatus(formData);
 
   const status = role === "benchmark_tester" ? "draft" : requestedStatus;
+  validatePublishedEvidence(formData, status, "/admin/benchmarks");
 
   if (!gameId || !handheldId) {
     redirect("/admin/benchmarks?error=Game%20and%20handheld%20are%20required");
@@ -227,10 +266,20 @@ export async function createBenchmark(formData: FormData) {
       average_fps: averageFps,
 
       one_percent_low: onePercentLow,
+      point_one_percent_low: optionalNumber(formData, "pointOnePercentLow"),
 
       battery_life: optionalText(formData, "batteryLife"),
 
       test_notes: optionalText(formData, "testNotes"),
+      evidence_tier: getEvidenceTier(formData),
+      source_name: optionalText(formData, "sourceName"),
+      source_url: optionalText(formData, "sourceUrl"),
+      source_checked_at: optionalText(formData, "sourceCheckedAt"),
+      capture_tool: optionalText(formData, "captureTool"),
+      capture_duration_seconds: optionalNumber(formData, "captureDurationSeconds"),
+      run_count: optionalNumber(formData, "runCount"),
+      test_route: optionalText(formData, "testRoute"),
+      tested_at: optionalText(formData, "testedAt"),
 
       status,
       created_by: user.id,
@@ -271,6 +320,7 @@ export async function updateBenchmark(formData: FormData) {
   const requestedStatus = getStatus(formData);
 
   const status = role === "benchmark_tester" ? "draft" : requestedStatus;
+  validatePublishedEvidence(formData, status, `/admin/benchmarks/${benchmarkId}/edit`);
 
   if (!benchmarkId) {
     redirect("/admin/benchmarks?error=Missing%20benchmark%20ID");
@@ -360,10 +410,20 @@ export async function updateBenchmark(formData: FormData) {
       average_fps: averageFps,
 
       one_percent_low: onePercentLow,
+      point_one_percent_low: optionalNumber(formData, "pointOnePercentLow"),
 
       battery_life: optionalText(formData, "batteryLife"),
 
       test_notes: optionalText(formData, "testNotes"),
+      evidence_tier: getEvidenceTier(formData),
+      source_name: optionalText(formData, "sourceName"),
+      source_url: optionalText(formData, "sourceUrl"),
+      source_checked_at: optionalText(formData, "sourceCheckedAt"),
+      capture_tool: optionalText(formData, "captureTool"),
+      capture_duration_seconds: optionalNumber(formData, "captureDurationSeconds"),
+      run_count: optionalNumber(formData, "runCount"),
+      test_route: optionalText(formData, "testRoute"),
+      tested_at: optionalText(formData, "testedAt"),
 
       status,
       published_at: publishedAt,
@@ -416,8 +476,18 @@ export async function duplicateBenchmark(formData: FormData) {
       tdp,
       average_fps,
       one_percent_low,
+      point_one_percent_low,
       battery_life,
       test_notes,
+      evidence_tier,
+      source_name,
+      source_url,
+      source_checked_at,
+      capture_tool,
+      capture_duration_seconds,
+      run_count,
+      test_route,
+      tested_at,
       created_by,
       games (
         slug
@@ -452,10 +522,20 @@ export async function duplicateBenchmark(formData: FormData) {
       tdp: benchmark.tdp,
       average_fps: benchmark.average_fps,
       one_percent_low: benchmark.one_percent_low,
+      point_one_percent_low: benchmark.point_one_percent_low,
       battery_life: benchmark.battery_life,
       test_notes: benchmark.test_notes
         ? `${benchmark.test_notes}\n\nDuplicated from benchmark ${benchmark.id}. Update the test notes, test area and measured values before publishing.`
         : `Duplicated from benchmark ${benchmark.id}. Update the test notes, test area and measured values before publishing.`,
+      evidence_tier: benchmark.evidence_tier,
+      source_name: benchmark.source_name,
+      source_url: benchmark.source_url,
+      source_checked_at: benchmark.source_checked_at,
+      capture_tool: benchmark.capture_tool,
+      capture_duration_seconds: benchmark.capture_duration_seconds,
+      run_count: benchmark.run_count,
+      test_route: benchmark.test_route,
+      tested_at: benchmark.tested_at,
       status: "draft",
       created_by: user.id,
       published_at: null,

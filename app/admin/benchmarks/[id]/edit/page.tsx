@@ -44,8 +44,18 @@ interface DatabaseBenchmark {
   tdp: string | null;
   average_fps: number | null;
   one_percent_low: number | null;
+  point_one_percent_low: number | null;
   battery_life: string | null;
   test_notes: string | null;
+  evidence_tier: "atlas_verified" | "community_verified" | "external_source" | "estimated" | "legacy_unclassified";
+  source_name: string | null;
+  source_url: string | null;
+  source_checked_at: string | null;
+  capture_tool: string | null;
+  capture_duration_seconds: number | null;
+  run_count: number | null;
+  test_route: string | null;
+  tested_at: string | null;
   status: "draft" | "published" | "archived";
   created_by: string | null;
   games: {
@@ -115,8 +125,18 @@ export default async function EditBenchmarkPage({
         tdp,
         average_fps,
         one_percent_low,
+        point_one_percent_low,
         battery_life,
         test_notes,
+        evidence_tier,
+        source_name,
+        source_url,
+        source_checked_at,
+        capture_tool,
+        capture_duration_seconds,
+        run_count,
+        test_route,
+        tested_at,
         status,
         created_by,
         games (
@@ -255,9 +275,19 @@ export default async function EditBenchmarkPage({
                   benchmark.one_percent_low !== null
                     ? String(benchmark.one_percent_low)
                     : "",
+                pointOnePercentLow: benchmark.point_one_percent_low !== null ? String(benchmark.point_one_percent_low) : "",
                 batteryLife: benchmark.battery_life ?? "",
                 testNotes: benchmark.test_notes ?? "",
                 status: benchmark.status,
+                evidenceTier: benchmark.evidence_tier ?? "legacy_unclassified",
+                sourceName: benchmark.source_name ?? "",
+                sourceUrl: benchmark.source_url ?? "",
+                sourceCheckedAt: benchmark.source_checked_at?.slice(0, 10) ?? "",
+                captureTool: benchmark.capture_tool ?? "",
+                captureDurationSeconds: benchmark.capture_duration_seconds !== null ? String(benchmark.capture_duration_seconds) : "",
+                runCount: benchmark.run_count !== null ? String(benchmark.run_count) : "",
+                testRoute: benchmark.test_route ?? "",
+                testedAt: benchmark.tested_at?.slice(0, 10) ?? "",
               }}
             />
           </div>

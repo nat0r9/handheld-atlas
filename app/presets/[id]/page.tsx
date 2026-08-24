@@ -6,6 +6,7 @@ import JsonLd from "../../../components/JsonLd";
 import PresetDetailConfirmation from "../../../components/PresetDetailConfirmation";
 import PresetDetailVote from "../../../components/PresetDetailVote";
 import ContributorAttribution from "../../../components/ContributorAttribution";
+import EvidenceBadge, { type EvidenceTier } from "../../../components/EvidenceBadge";
 import type { PublicContributor } from "../../../lib/contributors";
 import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import {
@@ -61,6 +62,13 @@ interface DatabasePreset {
   summary: string | null;
   published_at: string | null;
   atlas_verified: boolean;
+  evidence_tier: EvidenceTier;
+  source_name: string | null;
+  source_url: string | null;
+  source_checked_at: string | null;
+  game_version: string | null;
+  driver_version: string | null;
+  os_version: string | null;
   verified_at: string | null;
   created_by: string | null;
   games: {
@@ -242,6 +250,13 @@ export default async function PresetDetailPage({
         summary,
         published_at,
         atlas_verified,
+        evidence_tier,
+        source_name,
+        source_url,
+        source_checked_at,
+        game_version,
+        driver_version,
+        os_version,
         verified_at,
         created_by,
         games (id, name, slug),
@@ -507,6 +522,14 @@ export default async function PresetDetailPage({
                   {renderTextWithLinks(summaryText)}
                 </p>
                 <div className="mt-5">
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
+                    <EvidenceBadge tier={preset.evidence_tier ?? "legacy_unclassified"} />
+                    {preset.source_url && (
+                      <a href={preset.source_url} target="_blank" rel="noreferrer" className="text-xs font-bold text-cyan-400 hover:text-cyan-300">
+                        Source: {preset.source_name ?? "Open reference"} ↗
+                      </a>
+                    )}
+                  </div>
                   <ContributorAttribution profile={contributor} label="Submitted by" />
                 </div>
               </div>
@@ -574,6 +597,18 @@ export default async function PresetDetailPage({
             <MetaPanel label="Profile goal" value={profileGuide.shortLabel} />
             <MetaPanel label="Settings" value={`${settingsCount} values`} />
           </section>
+
+          {(preset.source_checked_at || preset.game_version || preset.driver_version || preset.os_version) && (
+            <section className="atlas-panel mt-5 p-5 sm:p-6">
+              <p className="atlas-section-label">Evidence context</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <MetaPanel label="Checked" value={preset.source_checked_at ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(preset.source_checked_at)) : "Not set"} />
+                <MetaPanel label="Game version" value={preset.game_version ?? "Not set"} />
+                <MetaPanel label="Driver" value={preset.driver_version ?? "Not set"} />
+                <MetaPanel label="OS" value={preset.os_version ?? "Not set"} />
+              </div>
+            </section>
+          )}
 
           <section className="atlas-panel mt-5 p-5 sm:p-6">
             <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
