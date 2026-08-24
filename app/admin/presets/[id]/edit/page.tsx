@@ -58,6 +58,13 @@ interface DatabasePreset {
   community_rating: number | null;
   summary: string | null;
   atlas_verified: boolean;
+  evidence_tier: "atlas_verified" | "community_verified" | "external_source" | "estimated" | "legacy_unclassified";
+  source_name: string | null;
+  source_url: string | null;
+  source_checked_at: string | null;
+  game_version: string | null;
+  driver_version: string | null;
+  os_version: string | null;
   status: "draft" | "published" | "archived";
   created_by: string | null;
   preset_setting_groups: DatabaseSettingGroup[];
@@ -130,6 +137,13 @@ export default async function EditPresetPage({
         community_rating,
         summary,
         atlas_verified,
+        evidence_tier,
+        source_name,
+        source_url,
+        source_checked_at,
+        game_version,
+        driver_version,
+        os_version,
         status,
         created_by,
         games (
@@ -253,6 +267,13 @@ export default async function EditPresetPage({
     status: databasePreset.status,
     atlasVerified:
       databasePreset.atlas_verified ?? false,
+    evidenceTier: databasePreset.evidence_tier ?? "legacy_unclassified",
+    sourceName: databasePreset.source_name ?? "",
+    sourceUrl: databasePreset.source_url ?? "",
+    sourceCheckedAt: databasePreset.source_checked_at?.slice(0, 10) ?? "",
+    gameVersion: databasePreset.game_version ?? "",
+    driverVersion: databasePreset.driver_version ?? "",
+    osVersion: databasePreset.os_version ?? "",
     groups: sortedGroups,
   };
 
