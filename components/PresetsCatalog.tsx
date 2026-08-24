@@ -46,6 +46,7 @@ export interface PublicPreset {
   summary: string | null;
   publishedAt: string | null;
   atlasVerified: boolean;
+  evidenceExceptionApproved: boolean;
   upvoteCount: number;
   hasUpvoted: boolean;
   confirmationCount: number;
@@ -663,6 +664,9 @@ export default function PresetsCatalog({
                 const trustState = getTrustState(preset);
                 const coverageBadges = [
                   preset.atlasVerified ? "Atlas Verified" : null,
+                  preset.evidenceExceptionApproved
+                    ? "Editor-reviewed evidence exception"
+                    : null,
                   preset.averageFps !== null && preset.onePercentLow !== null
                     ? "Measured FPS"
                     : null,
@@ -822,7 +826,7 @@ export default function PresetsCatalog({
                           value={
                             preset.averageFps !== null
                               ? `${preset.averageFps} FPS`
-                              : "Not set"
+                              : "Not reported"
                           }
                           highlighted
                         />
@@ -831,7 +835,7 @@ export default function PresetsCatalog({
                           value={
                             preset.onePercentLow !== null
                               ? `${preset.onePercentLow} FPS`
-                              : "Not set"
+                              : "Not reported"
                           }
                         />
                       </div>

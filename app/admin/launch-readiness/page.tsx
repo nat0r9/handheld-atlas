@@ -46,6 +46,7 @@ interface PresetRow {
   one_percent_low: number | null;
   summary: string | null;
   atlas_verified: boolean;
+  evidence_exception_approved: boolean;
 }
 
 interface BenchmarkRow {
@@ -145,7 +146,7 @@ export default async function LaunchReadinessPage() {
     supabase
       .from("presets")
       .select(
-        "id, name, game_id, handheld_id, resolution, tdp, fps_average, one_percent_low, summary, atlas_verified",
+        "id, name, game_id, handheld_id, resolution, tdp, fps_average, one_percent_low, summary, atlas_verified, evidence_exception_approved",
       )
       .eq("status", "published")
       .order("published_at", { ascending: false, nullsFirst: false }),
@@ -377,14 +378,20 @@ export default async function LaunchReadinessPage() {
       href,
       action: "Complete target",
     });
-    check(preset.fps_average !== null && preset.one_percent_low !== null, {
+    check(
+      (
+        preset.fps_average !== null &&
+        preset.one_percent_low !== null
+      ) || preset.evidence_exception_approved,
+      {
       severity: "critical",
       area: "Preset",
-      title: `${preset.name} is missing measured FPS`,
-      detail: "Average FPS and 1% low are the minimum useful performance pair.",
+      title: `${preset.name} is missing performance proof`,
+      detail: "Add average FPS and 1% low, or an editor-approved frametime, screenshot or video exception.",
       href,
-      action: "Add measurements",
-    });
+      action: "Add or review evidence",
+      },
+    );
     check(
       !(
         preset.fps_average !== null &&

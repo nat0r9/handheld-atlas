@@ -38,6 +38,7 @@ interface DatabasePreset {
   summary: string | null;
   published_at: string | null;
   atlas_verified: boolean;
+  evidence_exception_approved: boolean;
   created_by: string | null;
   games: {
     name: string;
@@ -80,6 +81,7 @@ export default async function PresetsPage() {
       summary,
       published_at,
       atlas_verified,
+      evidence_exception_approved,
       created_by,
       games (
         name,
@@ -176,6 +178,9 @@ export default async function PresetsPage() {
         summary: preset.summary,
         publishedAt: preset.published_at,
         atlasVerified,
+        evidenceExceptionApproved:
+          preset
+            .evidence_exception_approved ?? false,
         upvoteCount,
         hasUpvoted:
           user !== null &&

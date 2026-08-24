@@ -45,6 +45,12 @@ export type EvidenceTier =
   | "estimated"
   | "legacy_unclassified";
 
+export type EvidenceArtifactType =
+  | ""
+  | "frametime_capture"
+  | "performance_screenshot"
+  | "performance_video";
+
 export interface PresetEditorValues {
   gameId: string;
   handheldId: string;
@@ -67,6 +73,10 @@ export interface PresetEditorValues {
   gameVersion: string;
   driverVersion: string;
   osVersion: string;
+  evidenceArtifactType: EvidenceArtifactType;
+  evidenceArtifactUrl: string;
+  evidenceExceptionApproved: boolean;
+  evidenceExceptionReason: string;
 }
 
 interface PresetEditorFormProps {
@@ -180,7 +190,7 @@ function getStructuredNoteCount(
 }
 
 const CREATE_DRAFT_STORAGE_KEY =
-  "handheldatlas-admin-preset-create-v1";
+  "handheldatlas-admin-preset-create-v2";
 
 function normalizeSnapshot(
   values: PresetEditorValues,
@@ -244,6 +254,10 @@ export default function PresetEditorForm({
       atlasVerified:
         canSetAtlasVerified &&
         initialValues.atlasVerified,
+      evidenceExceptionApproved:
+        canSetAtlasVerified &&
+        initialValues
+          .evidenceExceptionApproved,
     }),
     [
       canSetAtlasVerified,
@@ -270,7 +284,7 @@ export default function PresetEditorForm({
   const storageKey =
     mode === "create"
       ? CREATE_DRAFT_STORAGE_KEY
-      : `handheldatlas-admin-preset-edit-${presetId ?? "unknown"}-v1`;
+      : `handheldatlas-admin-preset-edit-${presetId ?? "unknown"}-v2`;
 
   const initialSnapshot = useMemo(
     () =>
@@ -414,6 +428,18 @@ export default function PresetEditorForm({
     [groups],
   );
 
+  const hasApprovedEvidenceException =
+    values.evidenceExceptionApproved &&
+    !values.atlasVerified &&
+    values.evidenceTier !==
+      "atlas_verified" &&
+    Boolean(
+      values.evidenceArtifactType &&
+        values.evidenceArtifactUrl.trim() &&
+        values.evidenceExceptionReason
+          .trim().length >= 20,
+    );
+
   const readinessChecks: ReadinessCheck[] = [
     {
       label: "Core identity",
@@ -437,11 +463,12 @@ export default function PresetEditorForm({
     {
       label: "Performance evidence",
       complete: Boolean(
-        values.fpsAverage.trim() &&
-          values.onePercentLow.trim(),
+        (values.fpsAverage.trim() &&
+          values.onePercentLow.trim()) ||
+          hasApprovedEvidenceException,
       ),
       detail:
-        "Average FPS and 1% low are both documented.",
+        "Average FPS and 1% low are documented, or an editor approved linked visual proof.",
     },
     {
       label: "Evidence provenance",
@@ -771,6 +798,12 @@ export default function PresetEditorForm({
       atlasVerified:
         canSetAtlasVerified &&
         recoverableDraft.values.atlasVerified,
+      evidenceExceptionApproved:
+        canSetAtlasVerified &&
+        Boolean(
+          recoverableDraft.values
+            .evidenceExceptionApproved,
+        ),
     });
     setGroups(recoverableDraft.groups);
     setCollapsedGroupIds([]);
@@ -1048,6 +1081,110 @@ export default function PresetEditorForm({
         </p>
       </section>
 
+      <section className="mt-6 rounded-2xl border border-orange-500/25 bg-orange-500/[0.05] p-5">
+        <div className="grid gap-5 md:grid-cols-2">
+          <SelectControl
+            label="Visual proof type"
+            name="evidenceArtifactType"
+            value={values.evidenceArtifactType}
+            onChange={(value) =>
+              updateValue(
+                "evidenceArtifactType",
+                value as EvidenceArtifactType,
+              )
+            }
+            options={[
+              "",
+              "frametime_capture",
+              "performance_screenshot",
+              "performance_video",
+            ]}
+            optionLabels={{
+              "": "No linked proof",
+              frametime_capture:
+                "Frametime capture",
+              performance_screenshot:
+                "Performance screenshot",
+              performance_video:
+                "Performance video",
+            }}
+          />
+
+          <TextField
+            label="Visual proof URL"
+            name="evidenceArtifactUrl"
+            value={values.evidenceArtifactUrl}
+            onChange={(value) =>
+              updateValue(
+                "evidenceArtifactUrl",
+                value,
+              )
+            }
+            placeholder="https://…"
+            type="url"
+          />
+        </div>
+
+        <div className="mt-5">
+          <label
+            htmlFor="evidenceExceptionReason"
+            className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
+          >
+            Evidence exception reason
+          </label>
+          <textarea
+            id="evidenceExceptionReason"
+            name="evidenceExceptionReason"
+            rows={3}
+            value={values.evidenceExceptionReason}
+            onChange={(event) =>
+              updateValue(
+                "evidenceExceptionReason",
+                event.target.value,
+              )
+            }
+            placeholder="Explain exactly which metrics or versions are missing, what the linked proof shows and why publication is still useful."
+            className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-orange-500"
+          />
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            This reason is public when the exception is approved. It never upgrades the record to Atlas Verified.
+          </p>
+        </div>
+
+        {canSetAtlasVerified && (
+          <label className="mt-5 flex cursor-pointer items-start gap-4 rounded-xl border border-orange-500/30 bg-orange-500/[0.08] p-4">
+            <input
+              type="checkbox"
+              name="evidenceExceptionApproved"
+              checked={
+                values.evidenceExceptionApproved
+              }
+              onChange={(event) =>
+                setValues((currentValues) => ({
+                  ...currentValues,
+                  evidenceExceptionApproved:
+                    event.target.checked,
+                  atlasVerified:
+                    event.target.checked
+                      ? false
+                      : currentValues
+                          .atlasVerified,
+                }))
+              }
+              className="mt-1 h-5 w-5 rounded border-slate-700 bg-slate-950 accent-orange-500"
+            />
+            <span>
+              <span className="block text-sm font-black text-orange-200">
+                Approve controlled evidence exception
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                Use only when the linked frametime, screenshot or video visibly supports the exact device, target and settings. Missing metrics stay empty.
+              </span>
+            </span>
+          </label>
+        )}
+      </section>
+
       {canSetAtlasVerified && (
         <label className="mt-6 flex cursor-pointer items-start gap-4 rounded-2xl border border-green-500/25 bg-green-500/[0.06] p-5">
           <input
@@ -1055,10 +1192,16 @@ export default function PresetEditorForm({
             name="atlasVerified"
             checked={values.atlasVerified}
             onChange={(event) =>
-              updateValue(
-                "atlasVerified",
-                event.target.checked,
-              )
+              setValues((currentValues) => ({
+                ...currentValues,
+                atlasVerified:
+                  event.target.checked,
+                evidenceExceptionApproved:
+                  event.target.checked
+                    ? false
+                    : currentValues
+                        .evidenceExceptionApproved,
+              }))
             }
             className="mt-1 h-5 w-5 rounded border-slate-700 bg-slate-950 accent-green-500"
           />

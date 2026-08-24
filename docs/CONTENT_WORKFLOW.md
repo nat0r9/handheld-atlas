@@ -59,6 +59,27 @@ Settings from one device may not be copied to another merely because the APUs
 look similar. They can be used only as a labelled estimate until that exact
 device has matching evidence.
 
+### Controlled evidence exceptions
+
+A missing 1% low, exact scalar average FPS, game build or driver version does
+not automatically make a useful sourced preset unpublishable. An Atlas Editor
+or admin may approve a controlled exception only when all of these conditions
+are met:
+
+1. The exact handheld, resolution, power target and complete settings are
+   documented.
+2. The source name, direct URL and source-check date are present.
+3. A separate proof link shows a frametime capture, visible performance
+   screenshot or performance video for the same target.
+4. The public exception reason states exactly what is missing and what the
+   linked proof supports.
+5. Missing numeric values remain empty. A reported range or visual overlay is
+   described in prose and is never converted into an invented average or low.
+
+Every approved exception is displayed publicly with its proof type, link,
+review date and editorial reason. It remains `External Source`, `Community
+Verified` or `Estimated`; it can never be labelled `Atlas Verified`.
+
 ## Atlas benchmark protocol
 
 1. Use CapFrameX on the exact target handheld.

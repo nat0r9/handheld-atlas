@@ -65,6 +65,10 @@ interface DatabasePreset {
   game_version: string | null;
   driver_version: string | null;
   os_version: string | null;
+  evidence_artifact_type: "frametime_capture" | "performance_screenshot" | "performance_video" | null;
+  evidence_artifact_url: string | null;
+  evidence_exception_approved: boolean;
+  evidence_exception_reason: string | null;
   status: "draft" | "published" | "archived";
   created_by: string | null;
   preset_setting_groups: DatabaseSettingGroup[];
@@ -144,6 +148,10 @@ export default async function EditPresetPage({
         game_version,
         driver_version,
         os_version,
+        evidence_artifact_type,
+        evidence_artifact_url,
+        evidence_exception_approved,
+        evidence_exception_reason,
         status,
         created_by,
         games (
@@ -274,6 +282,16 @@ export default async function EditPresetPage({
     gameVersion: databasePreset.game_version ?? "",
     driverVersion: databasePreset.driver_version ?? "",
     osVersion: databasePreset.os_version ?? "",
+    evidenceArtifactType:
+      databasePreset.evidence_artifact_type ?? "",
+    evidenceArtifactUrl:
+      databasePreset.evidence_artifact_url ?? "",
+    evidenceExceptionApproved:
+      databasePreset
+        .evidence_exception_approved ?? false,
+    evidenceExceptionReason:
+      databasePreset
+        .evidence_exception_reason ?? "",
     groups: sortedGroups,
   };
 
