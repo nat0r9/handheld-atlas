@@ -99,8 +99,7 @@ function missingPublishingFields(
     [metadata.release_date, "release date"],
     [metadata.platforms.length > 0, "platforms"],
     [metadata.steam_app_id, "Steam App ID"],
-    [metadata.metacritic_critic_score !== null, "Metacritic critic score"],
-    [metadata.metacritic_user_score !== null, "Metacritic user score"],
+    [metadata.metacritic_critic_score !== null, "PC Metacritic critic score"],
     [metadata.metacritic_url, "Metacritic URL"],
     [coverImageUrl, "cover image"],
     [metadata.cover_source_name, "cover source"],
@@ -132,18 +131,19 @@ export async function createGame(formData: FormData) {
     );
   }
 
-  const atlasScore = optionalNumber(formData, "atlasScore");
   const metadata = gameMetadata(formData);
   const coverImageUrl = optionalText(formData, "coverImageUrl");
 
   if (status === "published") {
     const missing = missingPublishingFields(metadata, coverImageUrl);
-    missing.push("at least one published preset (create the game as a draft first)");
-    redirect(
-      `/admin/games?error=${encodeURIComponent(
-        `Cannot publish: ${missing.join(", ")}`,
-      )}`,
-    );
+
+    if (missing.length > 0) {
+      redirect(
+        `/admin/games?error=${encodeURIComponent(
+          `Cannot publish: ${missing.join(", ")}`,
+        )}`,
+      );
+    }
   }
 
   const { error } = await supabase.from("games").insert({
@@ -151,7 +151,6 @@ export async function createGame(formData: FormData) {
     slug,
     genre,
     ...metadata,
-    atlas_score: atlasScore,
     best_handheld: optionalText(formData, "bestHandheld"),
     recommended_tdp: optionalText(formData, "recommendedTdp"),
     notes: optionalText(formData, "notes"),
@@ -170,6 +169,7 @@ export async function createGame(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/admin/games");
+  revalidatePath("/");
   revalidatePath("/games");
 
   redirect("/admin/games?success=Game%20created");
@@ -202,7 +202,6 @@ export async function updateGame(formData: FormData) {
     );
   }
 
-  const atlasScore = optionalNumber(formData, "atlasScore");
   const metadata = gameMetadata(formData);
   const coverImageUrl = optionalText(formData, "coverImageUrl");
 
@@ -220,16 +219,7 @@ export async function updateGame(formData: FormData) {
   }
 
   if (status === "published") {
-    const { count: presetCount } = await supabase
-      .from("presets")
-      .select("id", { count: "exact", head: true })
-      .eq("game_id", gameId)
-      .eq("status", "published");
     const missing = missingPublishingFields(metadata, coverImageUrl);
-
-    if ((presetCount ?? 0) === 0) {
-      missing.push("at least one published preset");
-    }
 
     if (missing.length > 0) {
       redirect(
@@ -252,7 +242,6 @@ export async function updateGame(formData: FormData) {
       slug,
       genre,
       ...metadata,
-      atlas_score: atlasScore,
       best_handheld: optionalText(formData, "bestHandheld"),
       recommended_tdp: optionalText(formData, "recommendedTdp"),
       notes: optionalText(formData, "notes"),
@@ -273,6 +262,7 @@ export async function updateGame(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/games");
   revalidatePath(`/admin/games/${gameId}/edit`);
+  revalidatePath("/");
   revalidatePath("/games");
   revalidatePath(`/games/${slug}`);
 
@@ -303,6 +293,7 @@ export async function deleteGame(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/admin/games");
+  revalidatePath("/");
   revalidatePath("/games");
 
   redirect("/admin/games?success=Game%20deleted");

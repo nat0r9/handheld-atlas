@@ -27,7 +27,6 @@ interface DatabaseGame {
   steam_app_id: number | null;
   metacritic_critic_score: number | null;
   metacritic_user_score: number | null;
-  atlas_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
   notes: string | null;
@@ -65,7 +64,7 @@ export default async function AdminGamesPage({
   const { data, error: gamesError } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status, created_at, updated_at",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, best_handheld, recommended_tdp, notes, cover_image_url, status, created_at, updated_at",
     )
     .order("created_at", {
       ascending: false,
@@ -191,16 +190,17 @@ export default async function AdminGamesPage({
               />
 
               <FormField
-                label="Metacritic critic score"
+                label="PC Metacritic critic score"
                 name="metacriticCriticScore"
                 type="number"
                 placeholder="86"
                 min="0"
                 max="100"
+                helpText="Displayed publicly as Atlas Score. Leave blank when no verified PC Metascore exists."
               />
 
               <FormField
-                label="Metacritic user score"
+                label="Metacritic user score (optional)"
                 name="metacriticUserScore"
                 type="number"
                 placeholder="7.2"
@@ -241,15 +241,6 @@ export default async function AdminGamesPage({
                 name="coverSourceUrl"
                 type="url"
                 placeholder="https://www.steamgriddb.com/..."
-              />
-
-              <FormField
-                label="Atlas Score"
-                name="atlasScore"
-                type="number"
-                placeholder="91"
-                min="0"
-                max="100"
               />
 
               <FormField
@@ -434,21 +425,20 @@ export default async function AdminGamesPage({
                       />
 
                       <GameStat
-                        label="Metacritic"
+                        label="Atlas Score"
                         value={
-                          game.metacritic_critic_score !== null &&
-                          game.metacritic_user_score !== null
-                            ? `${game.metacritic_critic_score} / ${game.metacritic_user_score}`
-                            : "Research pending"
+                          game.metacritic_critic_score !== null
+                            ? `${game.metacritic_critic_score}/100`
+                            : "Not verified"
                         }
                       />
 
                       <GameStat
-                        label="Atlas Score"
+                        label="Metacritic users"
                         value={
-                          game.atlas_score !== null
-                            ? `${game.atlas_score}/100`
-                            : "Not set"
+                          game.metacritic_user_score !== null
+                            ? `${game.metacritic_user_score}/10`
+                            : "Optional"
                         }
                       />
 

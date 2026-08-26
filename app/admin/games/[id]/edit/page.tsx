@@ -36,7 +36,6 @@ interface DatabaseGame {
   metacritic_url: string | null;
   cover_source_name: string | null;
   cover_source_url: string | null;
-  atlas_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
   notes: string | null;
@@ -61,7 +60,7 @@ export default async function EditGamePage({
   const { data, error: gameError } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_critic_reviews, metacritic_user_ratings, metacritic_url, cover_source_name, cover_source_url, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_critic_reviews, metacritic_user_ratings, metacritic_url, cover_source_name, cover_source_url, best_handheld, recommended_tdp, notes, cover_image_url, status",
     )
     .eq("id", id)
     .single();
@@ -184,16 +183,17 @@ export default async function EditGamePage({
               />
 
               <FormField
-                label="Metacritic critic score"
+                label="PC Metacritic critic score"
                 name="metacriticCriticScore"
                 type="number"
                 defaultValue={game.metacritic_critic_score?.toString() ?? ""}
                 min="0"
                 max="100"
+                helpText="Displayed publicly as Atlas Score. Leave blank when no verified PC Metascore exists."
               />
 
               <FormField
-                label="Metacritic user score"
+                label="Metacritic user score (optional)"
                 name="metacriticUserScore"
                 type="number"
                 defaultValue={game.metacritic_user_score?.toString() ?? ""}
@@ -236,17 +236,6 @@ export default async function EditGamePage({
                 name="coverSourceUrl"
                 type="url"
                 defaultValue={game.cover_source_url ?? ""}
-              />
-
-              <FormField
-                label="Atlas Score"
-                name="atlasScore"
-                type="number"
-                defaultValue={
-                  game.atlas_score?.toString() ?? ""
-                }
-                min="0"
-                max="100"
               />
 
               <FormField

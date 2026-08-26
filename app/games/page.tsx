@@ -39,7 +39,7 @@ interface DatabaseGame {
   genre: string;
   developer: string | null;
   release_year: number | null;
-  atlas_score: number | null;
+  metacritic_critic_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
   notes: string | null;
@@ -94,14 +94,14 @@ export default async function GamesPage() {
         genre,
         developer,
         release_year,
-        atlas_score,
+        metacritic_critic_score,
         best_handheld,
         recommended_tdp,
         notes,
         cover_image_url
       `)
       .eq("status", "published")
-      .order("atlas_score", {
+      .order("metacritic_critic_score", {
         ascending: false,
         nullsFirst: false,
       }),
@@ -179,7 +179,7 @@ export default async function GamesPage() {
       genre: game.genre,
       developer: game.developer,
       releaseYear: game.release_year,
-      atlasScore: game.atlas_score,
+      atlasScore: game.metacritic_critic_score,
       bestHandheld: game.best_handheld,
       recommendedTdp: game.recommended_tdp,
       notes: game.notes,

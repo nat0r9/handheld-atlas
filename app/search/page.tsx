@@ -14,7 +14,7 @@ interface GameResult {
   slug: string;
   genre: string;
   developer: string | null;
-  atlas_score: number | null;
+  metacritic_critic_score: number | null;
   cover_image_url: string | null;
 }
 
@@ -202,7 +202,7 @@ export default async function SearchPage({
         slug,
         genre,
         developer,
-        atlas_score,
+        metacritic_critic_score,
         cover_image_url
       `)
       .eq("status", "published")
@@ -471,10 +471,10 @@ export default async function SearchPage({
                               {game.genre}
                             </span>
 
-                            {game.atlas_score !==
+                            {game.metacritic_critic_score !==
                               null && (
                               <span className="rounded-full border border-cyan-500/40 bg-cyan-500/20 px-3 py-1 text-xs font-black text-cyan-300 backdrop-blur">
-                                {game.atlas_score}
+                                {game.metacritic_critic_score}
                                 /100
                               </span>
                             )}

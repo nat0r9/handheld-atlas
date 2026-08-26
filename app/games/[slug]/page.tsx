@@ -31,7 +31,6 @@ interface DatabaseGame {
   metacritic_critic_score: number | null;
   metacritic_user_score: number | null;
   metacritic_url: string | null;
-  atlas_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
   notes: string | null;
@@ -115,7 +114,7 @@ async function getGame(slug: string) {
   const { data, error } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_url, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_url, best_handheld, recommended_tdp, notes, cover_image_url",
     )
     .eq("slug", slug)
     .eq("status", "published")
@@ -335,38 +334,24 @@ export async function generateMetadata({
   };
 }
 
-function getCompatibilityData(score: number | null) {
-  if (score === null) {
+function getPerformanceStatus(presetCount: number, benchmarkCount: number) {
+  if (benchmarkCount > 0) {
     return {
-      label: "Unrated",
-      style: "border-slate-500/30 bg-slate-500/10 text-slate-300",
-    };
-  }
-
-  if (score >= 90) {
-    return {
-      label: "Excellent",
+      label: "Verified performance data",
       style: "border-green-500/30 bg-green-500/10 text-green-400",
     };
   }
 
-  if (score >= 85) {
+  if (presetCount > 0) {
     return {
-      label: "Great",
+      label: "Preset available",
       style: "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
     };
   }
 
-  if (score >= 75) {
-    return {
-      label: "Playable",
-      style: "border-orange-500/30 bg-orange-500/10 text-orange-400",
-    };
-  }
-
   return {
-    label: "Tweaks Required",
-    style: "border-red-500/30 bg-red-500/10 text-red-400",
+    label: "Performance not tested",
+    style: "border-orange-500/30 bg-orange-500/10 text-orange-300",
   };
 }
 
@@ -444,7 +429,10 @@ export default async function GamePage({ params }: GamePageProps) {
     getGameRatings(game.id),
   ]);
 
-  const compatibility = getCompatibilityData(game.atlas_score);
+  const performanceStatus = getPerformanceStatus(
+    gamePresets.length,
+    gameBenchmarks.length,
+  );
   const gameUrl = absoluteUrl(`/games/${game.slug}`);
   const gameJsonLd = {
     "@context": "https://schema.org",
@@ -563,9 +551,9 @@ export default async function GamePage({ params }: GamePageProps) {
 
             <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
               <span
-                className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] backdrop-blur ${compatibility.style}`}
+                className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] backdrop-blur ${performanceStatus.style}`}
               >
-                {compatibility.label}
+                {performanceStatus.label}
               </span>
 
               <span className="atlas-chip">{game.genre}</span>
@@ -609,7 +597,7 @@ export default async function GamePage({ params }: GamePageProps) {
 
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
             <AtlasScore
-              score={game.atlas_score}
+              score={game.metacritic_critic_score}
               variant="large"
               className="h-full"
             />
@@ -639,7 +627,7 @@ export default async function GamePage({ params }: GamePageProps) {
                   : "No data"
               }
             />
-            <StripStat label="Compatibility" value={compatibility.label} />
+            <StripStat label="Performance status" value={performanceStatus.label} />
           </div>
         </div>
       </section>
@@ -658,9 +646,9 @@ export default async function GamePage({ params }: GamePageProps) {
 
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <AtlasScore
-                score={game.atlas_score}
+                score={game.metacritic_critic_score}
                 variant="card"
-                label="Score"
+                label="Atlas Score"
                 className="h-full"
               />
               <OverviewStat
@@ -683,7 +671,7 @@ export default async function GamePage({ params }: GamePageProps) {
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Community ratings are separate from the editorial Atlas Score and use one live vote per account.
+                Community ratings measure player opinion separately from the PC Metacritic score displayed as Atlas Score, with one live vote per account.
               </p>
 
               <div className="mt-4">
@@ -739,15 +727,24 @@ export default async function GamePage({ params }: GamePageProps) {
                 label="Steam App ID"
                 value={game.steam_app_id?.toString() ?? "Not set"}
               />
+              {game.metacritic_user_score !== null && (
+                <OverviewRow
+                  label="Metacritic users"
+                  value={`${game.metacritic_user_score}/10`}
+                />
+              )}
               <OverviewRow
-                label="Metacritic"
+                label="Score source"
                 value={
-                  game.metacritic_critic_score !== null &&
-                  game.metacritic_user_score !== null
-                    ? `${game.metacritic_critic_score} critics · ${game.metacritic_user_score} users`
-                    : "Not set"
+                  game.metacritic_critic_score !== null
+                    ? "Metacritic PC critics"
+                    : "Not available"
                 }
-                href={game.metacritic_url ?? undefined}
+                href={
+                  game.metacritic_critic_score !== null
+                    ? game.metacritic_url ?? undefined
+                    : undefined
+                }
                 isLast
               />
 </dl>

@@ -170,7 +170,7 @@ export default function GamesCatalog({ games, databaseError }: GamesCatalogProps
               </h1>
 
               <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-                Browse published games, Atlas Scores and recommended handheld settings backed by live
+                Browse published games, PC Metacritic-sourced Atlas Scores and recommended handheld settings backed by live
                 database data.
               </p>
             </div>

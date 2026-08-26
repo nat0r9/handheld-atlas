@@ -19,7 +19,7 @@ interface DatabaseGame {
   genre: string;
   developer: string | null;
   release_year: number | null;
-  atlas_score: number | null;
+  metacritic_critic_score: number | null;
   best_handheld: string | null;
   recommended_tdp: string | null;
   notes: string | null;
@@ -70,7 +70,7 @@ export default async function AdminGamesPage({
   const { data, error: gamesError } = await supabase
     .from("games")
     .select(
-      "id, name, slug, genre, developer, release_year, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, status, created_at, updated_at",
+      "id, name, slug, genre, developer, release_year, metacritic_critic_score, best_handheld, recommended_tdp, notes, cover_image_url, status, created_at, updated_at",
     )
     .order("created_at", {
       ascending: false,
@@ -169,8 +169,8 @@ export default async function AdminGamesPage({
               />
 
               <FormField
-                label="Atlas Score"
-                name="atlasScore"
+                label="PC Metacritic critic score"
+                name="metacriticCriticScore"
                 type="number"
                 placeholder="91"
                 min="0"
@@ -337,8 +337,8 @@ export default async function AdminGamesPage({
                       <GameStat
                         label="Atlas Score"
                         value={
-                          game.atlas_score !== null
-                            ? `${game.atlas_score}/100`
+                          game.metacritic_critic_score !== null
+                            ? `${game.metacritic_critic_score}/100`
                             : "Not set"
                         }
                       />

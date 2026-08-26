@@ -82,7 +82,6 @@ export async function createGame(formData: FormData) {
   }
 
   const releaseYear = optionalNumber(formData, "releaseYear");
-  const atlasScore = optionalNumber(formData, "atlasScore");
 
   const { error } = await supabase.from("games").insert({
     name,
@@ -90,7 +89,7 @@ export async function createGame(formData: FormData) {
     genre,
     developer: optionalText(formData, "developer"),
     release_year: releaseYear,
-    atlas_score: atlasScore,
+    metacritic_critic_score: optionalNumber(formData, "metacriticCriticScore"),
     best_handheld: optionalText(formData, "bestHandheld"),
     recommended_tdp: optionalText(formData, "recommendedTdp"),
     notes: optionalText(formData, "notes"),
@@ -142,7 +141,6 @@ export async function updateGame(formData: FormData) {
   }
 
   const releaseYear = optionalNumber(formData, "releaseYear");
-  const atlasScore = optionalNumber(formData, "atlasScore");
 
   const { data: currentGame, error: currentGameError } =
     await supabase
@@ -170,7 +168,7 @@ export async function updateGame(formData: FormData) {
       genre,
       developer: optionalText(formData, "developer"),
       release_year: releaseYear,
-      atlas_score: atlasScore,
+      metacritic_critic_score: optionalNumber(formData, "metacriticCriticScore"),
       best_handheld: optionalText(formData, "bestHandheld"),
       recommended_tdp: optionalText(formData, "recommendedTdp"),
       notes: optionalText(formData, "notes"),

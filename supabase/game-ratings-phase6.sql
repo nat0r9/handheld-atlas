@@ -385,7 +385,7 @@ as $$
     games.name::text,
     games.slug::text,
     games.genre::text,
-    games.atlas_score::integer,
+    games.metacritic_critic_score::integer,
     games.cover_image_url::text,
     round(monthly_scores.average_rating, 2) as average_rating,
     monthly_scores.rating_count,
@@ -397,7 +397,7 @@ as $$
   order by
     monthly_scores.weighted_score desc,
     monthly_scores.rating_count desc,
-    games.atlas_score desc nulls last,
+    games.metacritic_critic_score desc nulls last,
     games.name asc
   limit least(greatest(p_limit, 1), 20);
 $$;

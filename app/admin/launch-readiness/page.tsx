@@ -13,14 +13,10 @@ interface GameRow {
   platforms: string[];
   steam_app_id: number | null;
   metacritic_critic_score: number | null;
-  metacritic_user_score: number | null;
   metacritic_url: string | null;
   cover_source_name: string | null;
   cover_source_url: string | null;
   notes: string | null;
-  atlas_score: number | null;
-  best_handheld: string | null;
-  recommended_tdp: string | null;
 }
 
 interface HandheldRow {
@@ -132,7 +128,7 @@ export default async function LaunchReadinessPage() {
     supabase
       .from("games")
       .select(
-        "id, name, slug, cover_image_url, developer, publisher, release_date, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_url, cover_source_name, cover_source_url, notes, atlas_score, best_handheld, recommended_tdp",
+        "id, name, slug, cover_image_url, developer, publisher, release_date, platforms, steam_app_id, metacritic_critic_score, metacritic_url, cover_source_name, cover_source_url, notes",
       )
       .eq("status", "published")
       .order("name"),
@@ -213,6 +209,11 @@ export default async function LaunchReadinessPage() {
   const presetGameIds = new Set(
     presets.map((preset) => preset.game_id).filter((id): id is string => Boolean(id)),
   );
+  const benchmarkGameIds = new Set(
+    benchmarks
+      .map((benchmark) => benchmark.game_id)
+      .filter((id): id is string => Boolean(id)),
+  );
   const presetHandheldIds = new Set(
     presets
       .map((preset) => preset.handheld_id)
@@ -256,14 +257,12 @@ export default async function LaunchReadinessPage() {
       },
     );
     check(
-      game.metacritic_critic_score !== null &&
-        game.metacritic_user_score !== null &&
-        hasText(game.metacritic_url),
+      game.metacritic_critic_score !== null && hasText(game.metacritic_url),
       {
         severity: "critical",
         area: "Game metadata",
         title: `${game.name} has incomplete Metacritic data`,
-        detail: "Store both scores and a direct source URL before publishing.",
+        detail: "Store the verified PC critic score and its direct Metacritic source URL before publishing.",
         href,
         action: "Add Metacritic data",
       },
@@ -285,32 +284,10 @@ export default async function LaunchReadinessPage() {
       href,
       action: "Improve description",
     });
-    check(game.atlas_score !== null, {
-      area: "Game",
-      title: `${game.name} has no Atlas Score`,
-      detail: "The public profile cannot communicate editorial compatibility yet.",
-      href,
-      action: "Set score",
-    });
-    check(hasText(game.best_handheld), {
-      area: "Game",
-      title: `${game.name} has no best handheld`,
-      detail: "Add a current editorial recommendation or explicitly document that data is still developing.",
-      href,
-      action: "Set recommendation",
-    });
-    check(hasText(game.recommended_tdp), {
-      area: "Game",
-      title: `${game.name} has no recommended TDP`,
-      detail: "A power target helps players understand where the recommendation starts.",
-      href,
-      action: "Set power target",
-    });
-    check(presetGameIds.has(game.id), {
-      severity: "critical",
+    check(presetGameIds.has(game.id) || benchmarkGameIds.has(game.id), {
       area: "Coverage",
-      title: `${game.name} is an empty public profile`,
-      detail: "The game has no published preset. Benchmarks are optional supporting evidence.",
+      title: `${game.name} is awaiting performance coverage`,
+      detail: "Its catalog profile can remain published; add a verified preset or benchmark when credible evidence is available.",
       href,
       action: "Add performance data",
     });
@@ -544,6 +521,9 @@ export default async function LaunchReadinessPage() {
   });
 
   const score = percentage(completedChecks, totalChecks);
+  const performanceCoveredGames = games.filter(
+    (game) => presetGameIds.has(game.id) || benchmarkGameIds.has(game.id),
+  ).length;
   const criticalCount = issues.filter((issue) => issue.severity === "critical").length;
   const warningCount = issues.length - criticalCount;
   const launchLabel =
@@ -606,10 +586,10 @@ export default async function LaunchReadinessPage() {
         )}
 
         <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MetricCard label="Checks passed" value={completedChecks} detail={`of ${totalChecks}`} />
+          <MetricCard label="Catalog games" value={games.length} detail="Published profiles" />
+          <MetricCard label="Performance covered" value={performanceCoveredGames} detail={`of ${games.length} games`} tone="cyan" />
           <MetricCard label="Critical blockers" value={criticalCount} detail="Published data gaps" tone="red" />
           <MetricCard label="Warnings" value={warningCount} detail="Polish and depth" tone="orange" />
-          <MetricCard label="Public records" value={games.length + handhelds.length + presets.length + benchmarks.length + guides.length + news.length} detail="Across all modules" tone="cyan" />
         </section>
 
         <section className="atlas-panel mt-5 p-5 sm:p-6">

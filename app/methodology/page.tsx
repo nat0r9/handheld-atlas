@@ -5,7 +5,7 @@ import { absoluteUrl, createPageMetadata, siteConfig } from "../../lib/site";
 export const metadata = createPageMetadata({
   title: "How HandheldAtlas Tests and Scores Data",
   description:
-    "Learn how HandheldAtlas separates editorial scores, measured benchmarks, preset confidence and community signals.",
+    "Learn how HandheldAtlas separates PC Metacritic-sourced Atlas Scores, measured benchmarks, preset confidence and community signals.",
   pathname: "/methodology",
   type: "article",
 });
@@ -17,7 +17,7 @@ const principles = [
   },
   {
     title: "Separate evidence",
-    text: "Atlas Score, community game ratings, preset upvotes, Worked for me confirmations and Atlas Verified are different signals. They are shown separately because mixing them into one mystery number would be bullshit.",
+    text: "Atlas Score, performance status, community game ratings, preset upvotes, Worked for me confirmations and Atlas Verified are different signals. They are shown separately because mixing them into one mystery number would be bullshit.",
   },
   {
     title: "Explain the trade-off",
@@ -32,9 +32,9 @@ const principles = [
 const signals = [
   {
     name: "Atlas Score",
-    owner: "Editorial",
+    owner: "Metacritic PC critics",
     purpose:
-      "A curated compatibility and handheld-experience score for a game. It is not the same as the community's enjoyment rating.",
+      "The verified PC Metascore from Metacritic, displayed under the Atlas Score label. It never measures handheld performance and remains blank when no verified PC score is available.",
   },
   {
     name: "Atlas Confidence",

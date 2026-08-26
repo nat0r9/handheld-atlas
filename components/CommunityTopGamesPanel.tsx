@@ -208,7 +208,7 @@ export default function CommunityTopGamesPanel({
       aria-label={
         mode === "community"
           ? `Community Top 5 Games for ${monthLabel}`
-          : "Atlas Top 5 Games"
+          : "PC Metacritic Top 5 Games"
       }
       className="group relative min-h-[31rem] overflow-hidden rounded-[2rem] border border-red-500/20 bg-[#070a11]/95 shadow-[0_0_70px_rgba(239,35,60,0.14)] backdrop-blur sm:min-h-[34rem] lg:min-h-[29rem]"
     >
@@ -237,13 +237,13 @@ export default function CommunityTopGamesPanel({
             <p className="text-[0.58rem] font-black uppercase tracking-[0.18em] text-red-400">
               {mode === "community"
                 ? `Community Top 5 · ${monthLabel}`
-                : "Atlas Top 5"}
+                : "Atlas Top 5 · PC Metacritic"}
             </p>
 
             <p className="mt-2 text-xs text-slate-500">
               {mode === "community"
                 ? "One vote per account, game and month · ranked with a weighted score"
-                : "Editorial fallback until at least three games earn enough monthly votes"}
+                : "PC Metacritic fallback until at least three games earn enough monthly votes"}
             </p>
           </div>
 
@@ -298,7 +298,7 @@ export default function CommunityTopGamesPanel({
               value={
                 mode === "community" && activeItem.weightedScore !== null
                   ? activeItem.weightedScore.toFixed(2)
-                  : "Editorial"
+                  : "PC Metacritic"
               }
             />
 

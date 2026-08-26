@@ -28,7 +28,7 @@ interface GameItem {
   slug: string;
   genre: string;
   developer: string | null;
-  atlas_score: number | null;
+  metacritic_critic_score: number | null;
   cover_image_url: string | null;
 }
 
@@ -243,13 +243,13 @@ export default async function HomePage() {
         slug,
         genre,
         developer,
-        atlas_score,
+        metacritic_critic_score,
         best_handheld,
         recommended_tdp,
         cover_image_url
       `)
       .eq("status", "published")
-      .order("atlas_score", {
+      .order("metacritic_critic_score", {
         ascending: false,
         nullsFirst: false,
       })
@@ -430,11 +430,11 @@ export default async function HomePage() {
         slug: game.slug,
         genre: game.genre,
         coverImageUrl: game.cover_image_url,
-        atlasScore: game.atlas_score,
+        atlasScore: game.metacritic_critic_score,
         communityRating: null,
         ratingCount: 0,
         weightedScore: null,
-        confidenceLabel: "Editorial",
+        confidenceLabel: "PC Metacritic",
       }));
 
   const handhelds =
@@ -679,14 +679,14 @@ export default async function HomePage() {
                       <div className="absolute right-3 top-3">
                         <div
                           className={`flex h-12 w-12 flex-col items-center justify-center rounded-xl border backdrop-blur sm:h-14 sm:w-14 ${getAtlasScoreClass(
-                            game.atlas_score,
+                            game.metacritic_critic_score,
                           )}`}
                         >
                           <span className="text-[0.42rem] font-black uppercase tracking-[0.1em] sm:text-[0.45rem]">
                             Atlas
                           </span>
                           <strong className="mt-0.5 text-lg leading-none sm:text-xl">
-                            {game.atlas_score ?? "—"}
+                            {game.metacritic_critic_score ?? "—"}
                           </strong>
                         </div>
                       </div>

@@ -43,9 +43,9 @@ const resourceConfig: Record<
     table: "games",
     identifier: "slug",
     listSelect:
-      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, published_at, updated_at",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, atlas_score:metacritic_critic_score, best_handheld, recommended_tdp, notes, cover_image_url, published_at, updated_at",
     detailSelect:
-      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_critic_reviews, metacritic_user_ratings, metacritic_url, atlas_score, best_handheld, recommended_tdp, notes, cover_image_url, cover_source_name, cover_source_url, published_at, updated_at",
+      "id, name, slug, genre, developer, publisher, release_date, release_year, platforms, steam_app_id, metacritic_critic_score, metacritic_user_score, metacritic_critic_reviews, metacritic_user_ratings, metacritic_url, atlas_score:metacritic_critic_score, best_handheld, recommended_tdp, notes, cover_image_url, cover_source_name, cover_source_url, published_at, updated_at",
   },
   presets: {
     table: "presets",
