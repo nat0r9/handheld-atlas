@@ -644,23 +644,6 @@ export default async function GamePage({ params }: GamePageProps) {
               {performanceOverview}
             </p>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <AtlasScore
-                score={game.metacritic_critic_score}
-                variant="card"
-                label="Atlas Score"
-                className="h-full"
-              />
-              <OverviewStat
-                label="Best FPS"
-                value={highestTestedFps !== null ? `${highestTestedFps}` : "—"}
-              />
-              <OverviewStat
-                label="Average FPS"
-                value={averageTestedFps !== null ? `${averageTestedFps}` : "—"}
-              />
-</div>
-
             <div className="mt-5 border-t border-white/[0.07] pt-5">
               <p className="atlas-section-label">
                 Community rating
@@ -1103,38 +1086,6 @@ function SectionHeading({
       <p className="atlas-section-label">{eyebrow}</p>
       <h2 className="mt-1 text-xl font-black">{title}</h2>
     </div>
-  );
-}
-
-function OverviewStat({
-  label,
-  value,
-  highlighted = false,
-}: {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}) {
-  return (
-    <article
-      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
-        highlighted
-          ? "border-red-500/25 bg-red-500/[0.07]"
-          : "border-white/[0.07] bg-black/20"
-      }`}
-    >
-      <p className="text-[0.5rem] font-black uppercase tracking-[0.12em] text-slate-600">
-        {label}
-      </p>
-
-      <p
-        className={`mt-2 break-words text-xl font-black ${
-          highlighted ? "text-red-400" : "text-white"
-        }`}
-      >
-        {value}
-      </p>
-    </article>
   );
 }
 
