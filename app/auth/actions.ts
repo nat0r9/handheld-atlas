@@ -17,6 +17,48 @@ function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
+const configuredSiteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+const siteUrl = (
+  configuredSiteUrl ||
+  "https://www.handheldatlas.com"
+).replace(/\/+$/, "");
+
+function registrationErrorMessage(
+  message: string,
+) {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("confirmation email") ||
+    normalized.includes("email not sent") ||
+    normalized.includes("smtp")
+  ) {
+    return "We couldn't send the confirmation email right now. Please try again in a moment.";
+  }
+
+  if (normalized.includes("rate limit")) {
+    return "Too many sign-up attempts. Please wait a minute and try again.";
+  }
+
+  return "We couldn't create your account. Please check your details and try again.";
+}
+
+function loginErrorMessage(
+  message?: string,
+) {
+  if (
+    message
+      ?.toLowerCase()
+      .includes("email not confirmed")
+  ) {
+    return "Confirm your email address before signing in. Check your inbox and spam folder.";
+  }
+
+  return "Invalid email or password.";
+}
+
 function redirectWithError(
   path: string,
   message: string,
@@ -105,6 +147,7 @@ export async function registerUser(
     email,
     password,
     options: {
+      emailRedirectTo: `${siteUrl}/login`,
       data: {
         display_name: displayName,
       },
@@ -112,9 +155,17 @@ export async function registerUser(
   });
 
   if (error) {
+    console.error(
+      "Supabase registration failed",
+      {
+        status: error.status,
+        message: error.message,
+      },
+    );
+
     redirectWithError(
       "/register",
-      error.message,
+      registrationErrorMessage(error.message),
     );
   }
 
@@ -133,7 +184,7 @@ export async function registerUser(
 
   redirectWithSuccess(
     "/login",
-    "Account created. Check your email to confirm the account, then sign in.",
+    "Account created. Check your inbox and spam folder, confirm your email, then sign in.",
   );
 }
 
@@ -169,7 +220,7 @@ export async function loginUser(
   if (error || !data.user) {
     redirectWithError(
       "/login",
-      "Invalid email or password.",
+      loginErrorMessage(error?.message),
     );
   }
 
