@@ -15,6 +15,11 @@ export interface PublicBenchmark {
   testNotes: string | null;
   publishedAt: string | null;
   contributor: PublicContributor | null;
+  evidenceTier: string;
+  sourceName: string | null;
+  sourceUrl: string | null;
+  sourceCheckedAt: string | null;
+  testedAt: string | null;
 
   game: {
     name: string;
@@ -193,6 +198,7 @@ export default function BenchmarksCatalog({
         benchmark.tdp ?? "",
         benchmark.batteryLife ?? "",
         benchmark.testNotes ?? "",
+        benchmark.sourceName ?? "",
       ]
         .join(" ")
         .toLowerCase();
@@ -519,7 +525,19 @@ export default function BenchmarksCatalog({
                           </p>
 
                           <div className="mt-3">
-                            <ContributorAttribution profile={benchmark.contributor} label="Tested by" compact />
+                            {benchmark.evidenceTier === "atlas_verified" ? (
+                              <ContributorAttribution profile={benchmark.contributor} label="Tested by" compact />
+                            ) : (
+                              <span className="text-xs text-slate-500">
+                                {benchmark.evidenceTier === "external_source"
+                                  ? "External benchmark"
+                                  : benchmark.evidenceTier === "community_verified"
+                                    ? "Community benchmark"
+                                    : benchmark.evidenceTier === "estimated"
+                                      ? "Estimated performance"
+                                      : "Evidence awaiting review"}
+                              </span>
+                            )}
                           </div>
 
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -532,7 +550,7 @@ export default function BenchmarksCatalog({
                             </span>
 
                             <span className="atlas-chip-cyan atlas-chip">
-                              {benchmark.preset?.preset_type ?? "Custom"}
+                              {benchmark.preset?.preset_type ?? "See test settings"}
                             </span>
                           </div>
                         </div>
@@ -585,7 +603,7 @@ export default function BenchmarksCatalog({
                         />
                         <MetaItem
                           label="Preset"
-                          value={benchmark.preset?.name ?? "Custom"}
+                          value={benchmark.preset?.name ?? "See test notes"}
                         />
                         <MetaItem
                           label="Published"
@@ -602,13 +620,31 @@ export default function BenchmarksCatalog({
                                 Benchmark details
                               </h4>
 
-                              <p className="mt-4 max-w-4xl break-words text-sm leading-7 text-slate-400">
+                              <div className="mt-3 space-y-1 text-xs text-slate-500">
+                                <p>Source: {benchmark.sourceName ?? "Not reported"}</p>
+                                <p>Test date: {benchmark.testedAt ? formatPublishedDate(benchmark.testedAt) : "Not reported; see source context below"}</p>
+                                {benchmark.sourceCheckedAt && (
+                                  <p>Source checked: {formatPublishedDate(benchmark.sourceCheckedAt)}. This is not a new performance test.</p>
+                                )}
+                              </div>
+
+                              <p className="mt-4 max-w-4xl whitespace-pre-line break-words text-sm leading-7 text-slate-400">
                                 {benchmark.testNotes ??
                                   "No additional test notes were provided for this benchmark."}
                               </p>
                             </div>
 
                             <div className="grid gap-2 sm:flex sm:flex-wrap">
+                              {benchmark.sourceUrl && /^https?:\/\//i.test(benchmark.sourceUrl) && (
+                                <a
+                                  href={benchmark.sourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="atlas-button-secondary w-full sm:w-auto"
+                                >
+                                  View source evidence
+                                </a>
+                              )}
                               {benchmark.game && (
                                 <Link
                                   href={`/games/${benchmark.game.slug}`}

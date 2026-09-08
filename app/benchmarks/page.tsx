@@ -14,6 +14,11 @@ interface DatabaseBenchmark {
   test_notes: string | null;
   published_at: string | null;
   created_by: string | null;
+  evidence_tier: string;
+  source_name: string | null;
+  source_url: string | null;
+  source_checked_at: string | null;
+  tested_at: string | null;
 
   games: {
     name: string;
@@ -48,6 +53,11 @@ export default async function BenchmarksPage() {
       test_notes,
       published_at,
       created_by,
+      evidence_tier,
+      source_name,
+      source_url,
+      source_checked_at,
+      tested_at,
       games (
         name,
         slug
@@ -92,6 +102,11 @@ export default async function BenchmarksPage() {
       batteryLife: benchmark.battery_life,
       testNotes: benchmark.test_notes,
       publishedAt: benchmark.published_at,
+      evidenceTier: benchmark.evidence_tier,
+      sourceName: benchmark.source_name,
+      sourceUrl: benchmark.source_url,
+      sourceCheckedAt: benchmark.source_checked_at,
+      testedAt: benchmark.tested_at,
       game: benchmark.games,
       handheld: benchmark.handhelds,
       preset: benchmark.presets,
