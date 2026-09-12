@@ -1,297 +1,134 @@
 "use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { PublicGame, PublicGameTopPreset } from "../app/games/page";
-
-type RatingFilter =
-  | "All"
-  | "Excellent"
-  | "Great"
-  | "Playable"
-  | "Mixed"
-  | "Unrated";
-
-type SortOption = "Score" | "Community" | "Name" | "Newest" | "Oldest";
-
-interface GamesCatalogProps {
+import Pagination from "./catalog/Pagination";
+import { Field, Select } from "./catalog/Filters";
+export default function GamesCatalog({
+  games,
+  total,
+  page,
+  values,
+  genreOptions,
+  handheldOptions,
+}: {
   games: PublicGame[];
-  databaseError: string | null;
-}
-
-interface RatingData {
-  label: "Excellent" | "Great" | "Playable" | "Mixed" | "Unrated";
-  scoreClassName: string;
-}
-
-function getRatingData(score: number | null): RatingData {
-  if (score === null) {
-    return {
-      label: "Unrated",
-      scoreClassName: "border-slate-500/30 bg-slate-500/10 text-slate-300",
-    };
-  }
-
-  if (score >= 90) {
-    return {
-      label: "Excellent",
-      scoreClassName: "border-green-500/30 bg-green-500/15 text-green-300",
-    };
-  }
-
-  if (score >= 85) {
-    return {
-      label: "Great",
-      scoreClassName: "border-cyan-500/30 bg-cyan-500/15 text-cyan-300",
-    };
-  }
-
-  if (score >= 75) {
-    return {
-      label: "Playable",
-      scoreClassName: "border-orange-500/30 bg-orange-500/15 text-orange-300",
-    };
-  }
-
-  return {
-    label: "Mixed",
-    scoreClassName: "border-red-500/30 bg-red-500/15 text-red-300",
-  };
-}
-
-export default function GamesCatalog({ games, databaseError }: GamesCatalogProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [ratingFilter, setRatingFilter] = useState<RatingFilter>("All");
-  const [genreFilter, setGenreFilter] = useState("All");
-  const [sortOption, setSortOption] = useState<SortOption>("Score");
-
-  const genreOptions = useMemo(
-    () => ["All", ...Array.from(new Set(games.map((game) => game.genre).filter(Boolean))).sort()],
-    [games],
-  );
-
-  const filteredGames = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    const matchingGames = games.filter((game) => {
-      const rating = getRatingData(game.atlasScore);
-      const searchableText = [
-        game.name,
-        game.genre,
-        game.developer ?? "",
-        game.notes ?? "",
-        game.topPreset?.name ?? "",
-        game.topPreset?.handheldName ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return (
-        (normalizedQuery.length === 0 || searchableText.includes(normalizedQuery)) &&
-        (ratingFilter === "All" || rating.label === ratingFilter) &&
-        (genreFilter === "All" || game.genre === genreFilter)
-      );
-    });
-
-    return [...matchingGames].sort((first, second) => {
-      switch (sortOption) {
-        case "Community": {
-          const ratingDifference =
-            (second.communityRating ?? -1) -
-            (first.communityRating ?? -1);
-
-          if (ratingDifference !== 0) {
-            return ratingDifference;
-          }
-
-          return second.ratingCount - first.ratingCount;
-        }
-        case "Name":
-          return first.name.localeCompare(second.name);
-        case "Newest":
-          return (second.releaseYear ?? 0) - (first.releaseYear ?? 0);
-        case "Oldest":
-          return (
-            (first.releaseYear ?? Number.MAX_SAFE_INTEGER) -
-            (second.releaseYear ?? Number.MAX_SAFE_INTEGER)
-          );
-        default:
-          return (second.atlasScore ?? -1) - (first.atlasScore ?? -1);
-      }
-    });
-  }, [
-    games,
-    searchQuery,
-    ratingFilter,
-    genreFilter,
-    sortOption,
-  ]);
-
-  const ratedGames = games.filter((game) => game.atlasScore !== null);
-  const averageScore =
-    ratedGames.length > 0
-      ? Math.round(
-          ratedGames.reduce((total, game) => total + (game.atlasScore ?? 0), 0) /
-            ratedGames.length,
-        )
-      : null;
-  const communityVotes = games.reduce(
-    (total, game) => total + game.ratingCount,
-    0,
-  );
-
-  const hasActiveFilters =
-    searchQuery.length > 0 ||
-    ratingFilter !== "All" ||
-    genreFilter !== "All" ||
-    sortOption !== "Score";
-
-  function resetFilters() {
-    setSearchQuery("");
-    setRatingFilter("All");
-    setGenreFilter("All");
-    setSortOption("Score");
-  }
-
+  total: number;
+  page: number;
+  values: Record<string, string>;
+  genreOptions: string[];
+  handheldOptions: { value: string; label: string }[];
+}) {
   return (
-    <main className="atlas-page overflow-x-hidden pb-14 text-white">
-      <section className="border-b border-white/[0.06]">
-        <div className="atlas-shell py-8 sm:py-12">
-          <div className="grid gap-7 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div>
-              <p className="atlas-section-label">Game database</p>
-
-              <h1 className="mt-4 text-4xl font-black leading-[0.94] tracking-[-0.055em] min-[390px]:text-[2.7rem] sm:text-6xl">
-                Find the best way
-                <span className="block">
-                  to play <span className="atlas-text-red">every game.</span>
-                </span>
-              </h1>
-
-              <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-                Browse published games, PC Metacritic-sourced Atlas Scores and recommended handheld settings backed by live
-                database data.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <HeroStat label="Published" value={games.length.toString()} />
-              <HeroStat
-                label="Average score"
-                value={averageScore !== null ? averageScore.toString() : "—"}
-                highlighted
+    <main className="atlas-page pb-14">
+      <header className="atlas-shell py-8">
+        <p className="atlas-section-label">Game database</p>
+        <h1 className="mt-3 text-4xl sm:text-5xl">
+          Find something <span className="atlas-text-red">to play.</span>
+        </h1>
+        <p className="mt-4 text-slate-300">
+          Find games with documented benchmarks or presets for your handheld.
+          Atlas Score is the PC Metacritic critic score, not a performance or
+          compatibility rating.
+        </p>
+      </header>
+      <div className="atlas-shell">
+        <form
+          key={JSON.stringify(values)}
+          action="/games"
+          method="get"
+          className="atlas-panel p-4 sm:p-5"
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <Field label="Search games" name="q">
+              <input
+                id="catalog-q"
+                name="q"
+                type="search"
+                defaultValue={values.q}
+                placeholder="Game name"
+                className="w-full rounded-lg px-3 py-3 text-sm"
               />
-              <HeroStat
-                label="Community votes"
-                value={communityVotes.toString()}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="atlas-shell pt-5 sm:pt-6">
-        {databaseError && (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-            <p className="font-black">Could not load the game database.</p>
-            <p className="mt-2 break-words">{databaseError}</p>
-          </div>
-        )}
-
-        <section className="atlas-panel p-4 md:p-5">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[1.7fr_repeat(4,minmax(0,1fr))_auto]">
-            <div className="col-span-2 xl:col-span-1">
-              <FilterLabel htmlFor="game-search" label="Search" />
-              <div className="relative">
-                <input
-                  id="game-search"
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search games, studios, presets..."
-                  className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-4 py-3 pr-10 text-sm"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
-                  <SearchIcon />
-                </span>
-              </div>
-            </div>
-
-            <FilterSelect
-              label="Score"
-              value={ratingFilter}
-              options={["All", "Excellent", "Great", "Playable", "Mixed", "Unrated"]}
-              onChange={(value) => setRatingFilter(value as RatingFilter)}
+            </Field>
+            <Select
+              label="Available data"
+              name="coverage"
+              value={values.coverage}
+              options={[
+                { value: "benchmarks", label: "Has benchmarks" },
+                { value: "presets", label: "Has presets" },
+                { value: "any", label: "Has either" },
+              ]}
             />
-            <FilterSelect label="Genre" value={genreFilter} options={genreOptions} onChange={setGenreFilter} />
-            <FilterSelect
+            <Select
+              label="Tested / configured for"
+              name="handheld"
+              value={values.handheld}
+              options={handheldOptions}
+            />
+            <Select
+              label="Genre"
+              name="genre"
+              value={values.genre}
+              options={genreOptions.map((value) => ({ value, label: value }))}
+            />
+            <Select
               label="Sort"
-              value={sortOption}
-              options={["Score", "Community", "Name", "Newest", "Oldest"]}
-              onChange={(value) => setSortOption(value as SortOption)}
+              name="sort"
+              value={values.sort}
+              options={[
+                { value: "score", label: "PC critic score" },
+                { value: "name", label: "Name" },
+                { value: "newest", label: "Newest release" },
+                { value: "community", label: "Community rating" },
+              ]}
             />
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              disabled={!hasActiveFilters}
-              className="atlas-button-primary col-span-2 mt-1 w-full self-end xl:col-span-1 xl:mt-0 xl:w-auto disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              Reset
+          </div>
+          <div className="mt-4 flex gap-3">
+            <button type="submit" className="atlas-button-primary">
+              Show games
             </button>
+            <Link className="atlas-button-secondary" href="/games">
+              Reset filters
+            </Link>
           </div>
-        </section>
-
-        <section className="mt-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-3">
-            <div>
-              <p className="atlas-section-label">Published library</p>
-              <h2 className="mt-1 text-xl font-black">
-                {filteredGames.length} {filteredGames.length === 1 ? "game" : "games"}
-              </h2>
-            </div>
-
-            <p className="w-full text-[0.58rem] font-bold uppercase tracking-[0.13em] text-slate-600 sm:w-auto sm:text-xs sm:tracking-[0.15em]">
-              Score, top preset and community signal
+        </form>
+        <h2 className="my-5 text-xl">{total} games</h2>
+        {games.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {games.map((game) => (
+              <GameCard key={game.id} game={game} />
+            ))}
+          </div>
+        ) : (
+          <section className="atlas-panel p-8">
+            <h2 className="text-2xl">No matching games</h2>
+            <p className="mt-3 text-slate-300">
+              Try a different title or remove a filter. A game without
+              measurements may still be in the full catalogue.
             </p>
-          </div>
-
-          {filteredGames.length === 0 ? (
-            <div className="atlas-panel mt-5 p-10 text-center">
-              <p className="atlas-section-label">No matches</p>
-              <h3 className="mt-3 text-3xl font-black">No games found</h3>
-              <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-400">
-                Change the filters or publish another game through the admin dashboard.
-              </p>
-              {hasActiveFilters && (
-                <button type="button" onClick={resetFilters} className="atlas-button-primary mt-6">
-                  Reset filters
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {filteredGames.map((game) => (
-                <GameCard key={game.id} game={game} />
-              ))}
-            </div>
-          )}
-        </section>
+            <Link href="/games" className="atlas-button-primary mt-5">
+              Browse all games
+            </Link>
+          </section>
+        )}
+        <Pagination path="/games" values={values} page={page} total={total} />
       </div>
     </main>
   );
 }
-
 function GameCard({ game }: { game: PublicGame }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const rating = getRatingData(game.atlasScore);
+  const rating = {
+    scoreClassName: "border-cyan-400/30 bg-black/60 text-cyan-200",
+  };
   const showImage = Boolean(game.coverImageUrl) && !imageFailed;
 
   return (
     <Link href={`/games/${game.slug}`} className="group min-w-0">
       <article className="atlas-card atlas-card-hover flex h-full min-w-0 flex-col">
-        <div className="relative aspect-[16/11] overflow-hidden sm:aspect-[4/5]">
+        <div className="relative aspect-[16/10] overflow-hidden">
           {showImage ? (
             <Image
               src={game.coverImageUrl ?? ""}
@@ -336,6 +173,9 @@ function GameCard({ game }: { game: PublicGame }) {
         </div>
 
         <div className="flex flex-1 flex-col p-4">
+          <p className="mb-3 text-sm font-bold text-cyan-300">
+            {game.benchmarkCount} benchmarks · {game.presetCount} presets
+          </p>
           <TopPresetSummary preset={game.topPreset} />
 
           <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
@@ -378,16 +218,16 @@ function TopPresetSummary({ preset }: { preset: PublicGameTopPreset | null }) {
             {preset.handheldName ?? "Unknown handheld"} · {preset.type}
           </p>
           <p className="mt-1 truncate text-xs text-slate-500">
-            {preset.averageFps !== null ? `${preset.averageFps} FPS avg` : "FPS not set"}
+            {preset.averageFps !== null
+              ? `${preset.averageFps} FPS avg`
+              : "FPS not set"}
             {preset.confirmationCount > 0
               ? ` · ${preset.confirmationCount} confirmed`
               : " · awaiting confirmations"}
           </p>
         </div>
       ) : (
-        <p className="mt-2 text-sm font-black text-slate-500">
-          No preset yet
-        </p>
+        <p className="mt-2 text-sm font-black text-slate-500">No preset yet</p>
       )}
     </div>
   );
@@ -408,88 +248,5 @@ function GameImageFallback({ name }: { name: string }) {
         </p>
       </div>
     </div>
-  );
-}
-
-function HeroStat({
-  label,
-  value,
-  highlighted = false,
-}: {
-  label: string;
-  value: string;
-  highlighted?: boolean;
-}) {
-  return (
-    <article
-      className={`min-w-0 rounded-xl border p-3 sm:p-4 ${
-        highlighted ? "border-red-500/30 bg-red-500/10" : "border-white/[0.08] bg-black/20"
-      }`}
-    >
-      <p className="text-[0.45rem] font-black uppercase leading-tight tracking-[0.1em] text-slate-600 sm:text-[0.52rem] sm:tracking-[0.14em]">
-        {label}
-      </p>
-      <p className={`mt-2 text-2xl font-black sm:text-3xl ${highlighted ? "text-red-400" : "text-white"}`}>
-        {value}
-      </p>
-    </article>
-  );
-}
-
-function FilterLabel({ htmlFor, label }: { htmlFor: string; label: string }) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="mb-2 block text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[0.58rem] sm:tracking-[0.15em]"
-    >
-      {label}
-    </label>
-  );
-}
-
-interface FilterSelectProps {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-}
-
-function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
-  const id = `filter-${label.toLowerCase().replaceAll(" ", "-")}`;
-
-  return (
-    <div className="min-w-0">
-      <FilterLabel htmlFor={id} label={label} />
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full min-w-0 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </svg>
   );
 }

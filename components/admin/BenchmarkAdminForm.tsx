@@ -184,7 +184,7 @@ export default function BenchmarkAdminForm({
     }
 
     if (!batteryLife.trim()) {
-      items.push("Battery estimate is missing.");
+      items.push("Battery life was not reported (optional).");
     }
 
     if (normalize(testNotes).length < 30) {
@@ -356,7 +356,7 @@ export default function BenchmarkAdminForm({
         <FormField label="Source name" name="sourceName" value={sourceName} onChange={setSourceName} placeholder="LegionGoLife" />
         <FormField label="Source URL" name="sourceUrl" value={sourceUrl} onChange={setSourceUrl} placeholder="https://…" />
         <FormField label="Source checked" name="sourceCheckedAt" type="date" value={sourceCheckedAt} onChange={setSourceCheckedAt} />
-        <FormField label="Capture tool" name="captureTool" value={captureTool} onChange={setCaptureTool} placeholder="CapFrameX" />
+        <FormField label="Capture tool" name="captureTool" value={captureTool} onChange={setCaptureTool} placeholder="CapFrameX or MangoHud" />
         <FormField label="Capture duration (s)" name="captureDurationSeconds" type="number" value={captureDurationSeconds} onChange={setCaptureDurationSeconds} min="1" step="1" />
         <FormField label="Run count" name="runCount" type="number" value={runCount} onChange={setRunCount} min="1" step="1" />
         <FormField label="Test route" name="testRoute" value={testRoute} onChange={setTestRoute} placeholder="Exact repeatable route / scene" />

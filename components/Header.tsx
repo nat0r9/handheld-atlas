@@ -119,6 +119,8 @@ export default function Header() {
       return;
     }
 
+    const onEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setIsMenuOpen(false); };
+    window.addEventListener("keydown", onEscape);
     const originalOverflow =
       document.body.style.overflow;
 
@@ -126,6 +128,7 @@ export default function Header() {
       "hidden";
 
     return () => {
+      window.removeEventListener("keydown", onEscape);
       document.body.style.overflow =
         originalOverflow;
     };
@@ -426,6 +429,7 @@ export default function Header() {
 
         <div
           id="mobile-navigation"
+          inert={!isMenuOpen}
           className={`grid transition-all duration-300 xl:hidden ${
             isMenuOpen
               ? "grid-rows-[1fr] opacity-100"

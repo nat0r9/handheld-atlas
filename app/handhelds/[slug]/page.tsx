@@ -1,3 +1,11 @@
+import { withBenchmarkContributors } from "../../../lib/benchmark-contributors";
+import { cache } from "react";
+import BenchmarkCard from "../../../components/BenchmarkCard";
+import {
+  BENCHMARK_SELECT,
+  type BenchmarkRecord,
+} from "../../../lib/benchmarks";
+import { catalogUrl } from "../../../lib/catalog/query";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -51,12 +59,7 @@ interface DatabaseSettingGroup {
 interface DatabasePreset {
   id: string;
   name: string;
-  preset_type:
-    | "Performance"
-    | "Balanced"
-    | "Battery"
-    | "Docked"
-    | "Custom";
+  preset_type: "Performance" | "Balanced" | "Battery" | "Docked" | "Custom";
   resolution: string | null;
   tdp: string | null;
   fps_average: number | null;
@@ -80,25 +83,9 @@ interface DatabasePreset {
   }>;
 }
 
-interface DatabaseBenchmark {
-  id: string;
-  resolution: string | null;
-  tdp: string | null;
-  average_fps: number | null;
-  one_percent_low: number | null;
-  battery_life: string | null;
-  test_notes: string | null;
-  games: {
-    name: string;
-    slug: string;
-  } | null;
-  presets: {
-    name: string;
-    preset_type: string;
-  } | null;
-}
+type DatabaseBenchmark = BenchmarkRecord;
 
-async function getHandheld(slug: string) {
+const getHandheld = cache(async function getHandheld(slug: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -111,25 +98,21 @@ async function getHandheld(slug: string) {
     .maybeSingle();
 
   if (error) {
-    console.error(
-      "Could not load handheld:",
-      error.message,
-    );
+    console.error("Could not load handheld:", error.message);
 
-    return null;
+    throw new Error("Could not load the handheld. Please try again.");
   }
 
   return data as DatabaseHandheld | null;
-}
+});
 
-async function getHandheldPresets(
-  handheldId: string,
-) {
+async function getHandheldPresets(handheldId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("presets")
-    .select(`
+    .select(
+      `
       id,
       name,
       preset_type,
@@ -165,7 +148,8 @@ async function getHandheldPresets(
       preset_confirmations (
         user_id
       )
-    `)
+    `,
+    )
     .eq("handheld_id", handheldId)
     .eq("status", "published")
     .order("published_at", {
@@ -174,60 +158,40 @@ async function getHandheldPresets(
     });
 
   if (error) {
-    console.error(
-      "Could not load handheld presets:",
-      error.message,
-    );
+    console.error("Could not load handheld presets:", error.message);
 
-    return [];
+    throw new Error(
+      "Performance data is temporarily unavailable. Please try again.",
+    );
   }
 
-  return (data ??
-    []) as unknown as DatabasePreset[];
+  return (data ?? []) as unknown as DatabasePreset[];
 }
 
-async function getHandheldBenchmarks(
-  handheldId: string,
-) {
+async function getHandheldBenchmarks(handheldId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("benchmarks")
-    .select(`
-      id,
-      resolution,
-      tdp,
-      average_fps,
-      one_percent_low,
-      battery_life,
-      test_notes,
-      games (
-        name,
-        slug
-      ),
-      presets (
-        name,
-        preset_type
-      )
-    `)
+    .select(BENCHMARK_SELECT)
     .eq("handheld_id", handheldId)
     .eq("status", "published")
-    .order("average_fps", {
+    .order("published_at", {
       ascending: false,
       nullsFirst: false,
     });
 
   if (error) {
-    console.error(
-      "Could not load handheld benchmarks:",
-      error.message,
-    );
+    console.error("Could not load handheld benchmarks:", error.message);
 
-    return [];
+    throw new Error(
+      "Performance data is temporarily unavailable. Please try again.",
+    );
   }
 
-  return (data ??
-    []) as unknown as DatabaseBenchmark[];
+  return withBenchmarkContributors(
+    (data ?? []) as unknown as DatabaseBenchmark[],
+  );
 }
 
 export async function generateMetadata({
@@ -273,9 +237,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: `${handheld.name} | HandheldAtlas`,
       description,
-      images: handheld.image_url
-        ? [handheld.image_url]
-        : [],
+      images: handheld.image_url ? [handheld.image_url] : [],
     },
   };
 }
@@ -296,9 +258,7 @@ function getDeviceStatusStyle(status: string) {
   }
 }
 
-function getPresetStyle(
-  type: DatabasePreset["preset_type"],
-) {
+function getPresetStyle(type: DatabasePreset["preset_type"]) {
   switch (type) {
     case "Performance":
       return "border-red-500/30 bg-red-500/10 text-red-400";
@@ -317,9 +277,7 @@ function getPresetStyle(
   }
 }
 
-export default async function HandheldPage({
-  params,
-}: HandheldPageProps) {
+export default async function HandheldPage({ params }: HandheldPageProps) {
   const { slug } = await params;
   const handheld = await getHandheld(slug);
 
@@ -327,44 +285,19 @@ export default async function HandheldPage({
     notFound();
   }
 
-  const [
-    handheldPresets,
-    handheldBenchmarks,
-  ] = await Promise.all([
+  const [handheldPresets, handheldBenchmarks] = await Promise.all([
     getHandheldPresets(handheld.id),
     getHandheldBenchmarks(handheld.id),
   ]);
 
-  const benchmarkScores =
-    handheldBenchmarks
-      .map(
-        (benchmark) =>
-          benchmark.average_fps,
-      )
-      .filter(
-        (value): value is number =>
-          value !== null,
-      );
+  const testedGames = new Set(
+    handheldBenchmarks.map((b) => b.games?.slug).filter(Boolean),
+  ).size;
+  const resolutions = new Set(
+    handheldBenchmarks.map((b) => b.resolution).filter(Boolean),
+  ).size;
 
-  const bestAverageFps =
-    benchmarkScores.length > 0
-      ? Math.max(...benchmarkScores)
-      : null;
-
-  const averageBenchmarkFps =
-    benchmarkScores.length > 0
-      ? Math.round(
-          benchmarkScores.reduce(
-            (total, value) =>
-              total + value,
-            0,
-          ) /
-            benchmarkScores.length,
-        )
-      : null;
-
-  const handheldImage =
-    handheld.image_url;
+  const handheldImage = handheld.image_url;
   const handheldUrl = absoluteUrl(`/handhelds/${handheld.slug}`);
   const handheldDescription =
     handheld.tagline ??
@@ -418,395 +351,286 @@ export default async function HandheldPage({
     <>
       <JsonLd data={[handheldJsonLd, breadcrumbJsonLd]} />
       <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
-      <section className="relative overflow-hidden border-b border-white/[0.06]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(24,215,255,0.14),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.13),transparent_26%),linear-gradient(135deg,#05070d,#090d16_55%,#120810)]" />
+        <section className="relative overflow-hidden border-b border-white/[0.06]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_45%,rgba(24,215,255,0.14),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.13),transparent_26%),linear-gradient(135deg,#05070d,#090d16_55%,#120810)]" />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/92 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/92 to-transparent" />
 
-        <div className="atlas-shell relative grid min-h-0 items-center gap-7 py-9 sm:min-h-[35rem] sm:gap-10 sm:py-12 lg:grid-cols-[1fr_1.1fr]">
-          <div>
-            <Link
-              href="/handhelds"
-              className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
-            >
-              ← Back to handhelds
-            </Link>
-
-            <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
-              <span
-                className={`rounded-full border px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] ${getDeviceStatusStyle(
-                  handheld.device_status,
-                )}`}
-              >
-                {handheld.device_status}
-              </span>
-
-              <span className="atlas-chip">
-                {handheld.manufacturer}
-              </span>
-            </div>
-
-            <h1 className="mt-4 break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-5 sm:text-6xl lg:text-7xl">
-              {handheld.name}
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-              {handheld.tagline ??
-                "Detailed handheld specifications, presets and performance data."}
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
+          <div className="atlas-shell relative grid min-h-0 items-center gap-7 py-9 sm:min-h-[35rem] sm:gap-10 sm:py-12 lg:grid-cols-[1fr_1.1fr]">
+            <div>
               <Link
-                href="/presets"
-                className="atlas-button-primary w-full sm:w-auto"
+                href="/handhelds"
+                className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
               >
-                Browse presets
+                ← Back to handhelds
               </Link>
 
-              <Link
-                href="/compare"
-                className="atlas-button-secondary w-full sm:w-auto"
-              >
-                Compare devices
-              </Link>
-            </div>
+              <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
+                <span
+                  className={`rounded-full border px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.15em] ${getDeviceStatusStyle(
+                    handheld.device_status,
+                  )}`}
+                >
+                  {handheld.device_status}
+                </span>
 
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <HeroMetric
-                label="Presets"
-                value={handheldPresets.length.toString()}
-              />
+                <span className="atlas-chip">{handheld.manufacturer}</span>
+              </div>
 
-              <HeroMetric
-                label="Benchmarks"
-                value={handheldBenchmarks.length.toString()}
-              />
+              <h1 className="mt-4 break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-5 sm:text-6xl lg:text-7xl">
+                {handheld.name}
+              </h1>
 
-              <HeroMetric
-                label="Best FPS"
-                value={
-                  bestAverageFps !== null
-                    ? bestAverageFps.toString()
-                    : "—"
-                }
-                highlighted
-              />
+              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
+                {handheld.tagline ??
+                  "Detailed handheld specifications, presets and performance data."}
+              </p>
 
-              <HeroMetric
-                label="Avg FPS"
-                value={
-                  averageBenchmarkFps !== null
-                    ? averageBenchmarkFps.toString()
-                    : "—"
-                }
-              />
-            </div>
-          </div>
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
+                <Link
+                  href={catalogUrl("/presets", { handheld: handheld.slug })}
+                  className="atlas-button-primary w-full sm:w-auto"
+                >
+                  Browse presets
+                </Link>
 
-          <div className="relative flex min-h-[15rem] items-center justify-center sm:min-h-[25rem]">
-            <div className="absolute h-64 w-64 rounded-full bg-cyan-500/15 blur-[90px]" />
+                <Link
+                  href={catalogUrl("/compare", { devices: handheld.slug })}
+                  className="atlas-button-secondary w-full sm:w-auto"
+                >
+                  Compare devices
+                </Link>
+              </div>
 
-            <div className="absolute h-44 w-44 translate-x-24 translate-y-12 rounded-full bg-red-500/12 blur-[80px]" />
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <HeroMetric
+                  label="Presets"
+                  value={handheldPresets.length.toString()}
+                />
 
-            {handheldImage ? (
-              <div className="relative h-56 w-full max-w-3xl atlas-float sm:h-80 md:h-[26rem]">
-                <Image
-                  src={handheldImage}
-                  alt={handheld.name}
-                  fill
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-contain object-center drop-shadow-[0_40px_55px_rgba(0,0,0,0.8)]"
+                <HeroMetric
+                  label="Benchmarks"
+                  value={handheldBenchmarks.length.toString()}
+                />
+
+                <HeroMetric
+                  label="Tested games"
+                  value={testedGames.toString()}
+                  highlighted
+                />
+
+                <HeroMetric
+                  label="Resolutions"
+                  value={resolutions.toString()}
                 />
               </div>
-            ) : (
-              <div className="atlas-panel-soft flex h-52 w-full max-w-2xl items-center justify-center sm:h-72">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">
-                  Device image coming soon
-                </p>
-              </div>
-            )}
+            </div>
+
+            <div className="relative flex min-h-[15rem] items-center justify-center sm:min-h-[25rem]">
+              <div className="absolute h-64 w-64 rounded-full bg-cyan-500/15 blur-[90px]" />
+
+              <div className="absolute h-44 w-44 translate-x-24 translate-y-12 rounded-full bg-red-500/12 blur-[80px]" />
+
+              {handheldImage ? (
+                <div className="relative h-56 w-full max-w-3xl atlas-float sm:h-80 md:h-[26rem]">
+                  <Image
+                    src={handheldImage}
+                    alt={handheld.name}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-contain object-center drop-shadow-[0_40px_55px_rgba(0,0,0,0.8)]"
+                  />
+                </div>
+              ) : (
+                <div className="atlas-panel-soft flex h-52 w-full max-w-2xl items-center justify-center sm:h-72">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">
+                    Device image coming soon
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="atlas-shell relative pb-6 sm:pb-8">
-          <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-            <StripStat
-              label="Operating system"
-              value={
-                handheld.operating_system ??
-                "Not set"
-              }
-            />
-
-            <StripStat
-              label="Processor"
-              value={
-                handheld.processor ??
-                "Not set"
-              }
-            />
-
-            <StripStat
-              label="Memory"
-              value={
-                handheld.memory ??
-                "Not set"
-              }
-            />
-
-            <StripStat
-              label="Display"
-              value={
-                handheld.display_size ??
-                "Not set"
-              }
-            />
-
-            <StripStat
-              label="Battery"
-              value={
-                handheld.battery ??
-                "Not set"
-              }
-            />
-
-            <StripStat
-              label="Weight"
-              value={
-                handheld.weight ??
-                "Not set"
-              }
-            />
-          </div>
-        </div>
-      </section>
-
-      <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
-        <section className="grid min-w-0 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="atlas-panel min-w-0 p-4 sm:p-5">
-            <SectionHeader
-              title="Technical specifications"
-              eyebrow="Hardware"
-            />
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <SpecCard
+          <div className="atlas-shell relative pb-6 sm:pb-8">
+            <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+              <StripStat
                 label="Operating system"
-                value={
-                  handheld.operating_system ??
-                  "Not set"
-                }
+                value={handheld.operating_system ?? "Not set"}
               />
 
-              <SpecCard
+              <StripStat
                 label="Processor"
-                value={
-                  handheld.processor ??
-                  "Not set"
-                }
-                highlighted
+                value={handheld.processor ?? "Not set"}
               />
 
-              <SpecCard
-                label="Memory"
-                value={
-                  handheld.memory ??
-                  "Not set"
-                }
+              <StripStat label="Memory" value={handheld.memory ?? "Not set"} />
+
+              <StripStat
+                label="Display"
+                value={handheld.display_size ?? "Not set"}
               />
 
-              <SpecCard
-                label="Storage"
-                value={
-                  handheld.storage ??
-                  "Not set"
-                }
-              />
-
-              <SpecCard
-                label="Display size"
-                value={
-                  handheld.display_size ??
-                  "Not set"
-                }
-              />
-
-              <SpecCard
-                label="Resolution"
-                value={
-                  handheld.resolution ??
-                  "Not set"
-                }
-              />
-
-              <SpecCard
-                label="Refresh rate"
-                value={
-                  handheld.refresh_rate ??
-                  "Not set"
-                }
-              />
-
-              <SpecCard
+              <StripStat
                 label="Battery"
-                value={
-                  handheld.battery ??
-                  "Not set"
-                }
+                value={handheld.battery ?? "Not set"}
               />
 
-              <SpecCard
-                label="Weight"
-                value={
-                  handheld.weight ??
-                  "Not set"
-                }
-              />
-            </div>
-          </div>
-
-          <div className="atlas-panel min-w-0 p-4 sm:p-5">
-            <SectionHeader
-              title="Performance overview"
-              eyebrow="Atlas data"
-            />
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <PerformanceCard
-                label="Highest tested"
-                value={
-                  bestAverageFps !== null
-                    ? `${bestAverageFps} FPS`
-                    : "No data"
-                }
-                accent="red"
-              />
-
-              <PerformanceCard
-                label="Average tested"
-                value={
-                  averageBenchmarkFps !== null
-                    ? `${averageBenchmarkFps} FPS`
-                    : "No data"
-                }
-                accent="cyan"
-              />
-
-              <PerformanceCard
-                label="Published presets"
-                value={handheldPresets.length.toString()}
-              />
-
-              <PerformanceCard
-                label="Published benchmarks"
-                value={handheldBenchmarks.length.toString()}
-              />
-            </div>
-
-            <div className="mt-5 rounded-xl border border-white/[0.07] bg-black/20 p-4">
-              <p className="text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600">
-                Device profile
-              </p>
-
-              <p className="mt-2 text-sm leading-7 text-slate-400">
-                Performance data and presets shown below
-                are loaded directly from the live
-                HandheldAtlas database.
-              </p>
+              <StripStat label="Weight" value={handheld.weight ?? "Not set"} />
             </div>
           </div>
         </section>
 
-        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionHeader
-              title="Recommended presets"
-              eyebrow="Game settings"
-              noBorder
-            />
+        <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
+          <section className="grid min-w-0 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="atlas-panel min-w-0 p-4 sm:p-5">
+              <SectionHeader
+                title="Technical specifications"
+                eyebrow="Hardware"
+              />
 
-            <Link
-              href="/presets"
-              className="text-xs font-black text-cyan-400 transition hover:text-white"
-            >
-              View all presets →
-            </Link>
-          </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <SpecCard
+                  label="Operating system"
+                  value={handheld.operating_system ?? "Not set"}
+                />
 
-          {handheldPresets.length === 0 ? (
-            <EmptyState text="No published presets available for this handheld." />
-          ) : (
-            <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
-              {handheldPresets.map(
-                (preset) => {
-                  const sortedGroups = [
-                    ...(preset.preset_setting_groups ??
-                      []),
-                  ]
+                <SpecCard
+                  label="Processor"
+                  value={handheld.processor ?? "Not set"}
+                  highlighted
+                />
+
+                <SpecCard label="Memory" value={handheld.memory ?? "Not set"} />
+
+                <SpecCard
+                  label="Storage"
+                  value={handheld.storage ?? "Not set"}
+                />
+
+                <SpecCard
+                  label="Display size"
+                  value={handheld.display_size ?? "Not set"}
+                />
+
+                <SpecCard
+                  label="Resolution"
+                  value={handheld.resolution ?? "Not set"}
+                />
+
+                <SpecCard
+                  label="Refresh rate"
+                  value={handheld.refresh_rate ?? "Not set"}
+                />
+
+                <SpecCard
+                  label="Battery"
+                  value={handheld.battery ?? "Not set"}
+                />
+
+                <SpecCard label="Weight" value={handheld.weight ?? "Not set"} />
+              </div>
+            </div>
+
+            <div className="atlas-panel min-w-0 p-4 sm:p-5">
+              <SectionHeader
+                title="Performance overview"
+                eyebrow="Atlas data"
+              />
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <PerformanceCard
+                  label="Tested games"
+                  value={testedGames.toString()}
+                  accent="red"
+                />
+
+                <PerformanceCard
+                  label="Resolutions"
+                  value={resolutions.toString()}
+                  accent="cyan"
+                />
+
+                <PerformanceCard
+                  label="Published presets"
+                  value={handheldPresets.length.toString()}
+                />
+
+                <PerformanceCard
+                  label="Published benchmarks"
+                  value={handheldBenchmarks.length.toString()}
+                />
+              </div>
+
+              <div className="mt-5 rounded-xl border border-white/[0.07] bg-black/20 p-4">
+                <p className="text-[0.58rem] font-black uppercase tracking-[0.15em] text-slate-600">
+                  Device profile
+                </p>
+
+                <p className="mt-2 text-sm leading-7 text-slate-400">
+                  Performance data and presets shown below are loaded directly
+                  from the live HandheldAtlas database.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <SectionHeader
+                title="Recommended presets"
+                eyebrow="Game settings"
+                noBorder
+              />
+
+              <Link
+                href={catalogUrl("/presets", { handheld: handheld.slug })}
+                className="text-xs font-black text-cyan-400 transition hover:text-white"
+              >
+                View all presets →
+              </Link>
+            </div>
+
+            {handheldPresets.length === 0 ? (
+              <EmptyState text="No published presets available for this handheld." />
+            ) : (
+              <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
+                {handheldPresets.map((preset) => {
+                  const sortedGroups = [...(preset.preset_setting_groups ?? [])]
                     .sort(
-                      (first, second) =>
-                        first.sort_order -
-                        second.sort_order,
+                      (first, second) => first.sort_order - second.sort_order,
                     )
                     .map((group) => ({
                       ...group,
 
                       preset_setting_items: [
-                        ...(group.preset_setting_items ??
-                          []),
+                        ...(group.preset_setting_items ?? []),
                       ].sort(
-                        (first, second) =>
-                          first.sort_order -
-                          second.sort_order,
+                        (first, second) => first.sort_order - second.sort_order,
                       ),
                     }));
 
-                  const settingsCount =
-                    sortedGroups.reduce(
-                      (total, group) =>
-                        total +
-                        group
-                          .preset_setting_items
-                          .length,
-                      0,
-                    );
+                  const settingsCount = sortedGroups.reduce(
+                    (total, group) => total + group.preset_setting_items.length,
+                    0,
+                  );
 
-                  const trustReport =
-                    calculatePresetTrust({
-                      averageFps:
-                        preset.fps_average,
-                      onePercentLow:
-                        preset.one_percent_low,
-                      resolution:
-                        preset.resolution,
-                      tdp: preset.tdp,
-                      upscaler:
-                        preset.upscaler,
-                      batteryLife:
-                        preset.battery_life,
-                      summary:
-                        preset.summary,
-                      communityRating:
-                        preset.community_rating,
-                      upvoteCount:
-                        preset.preset_votes
-                          ?.length ?? 0,
-                      confirmationCount:
-                        preset
-                          .preset_confirmations
-                          ?.length ?? 0,
-                      atlasVerified:
-                        preset.atlas_verified ??
-                        false,
-                      groups:
-                        sortedGroups.map(
-                          (group) => ({
-                            items:
-                              group.preset_setting_items,
-                          }),
-                        ),
-                    });
+                  const trustReport = calculatePresetTrust({
+                    averageFps: preset.fps_average,
+                    onePercentLow: preset.one_percent_low,
+                    resolution: preset.resolution,
+                    tdp: preset.tdp,
+                    upscaler: preset.upscaler,
+                    batteryLife: preset.battery_life,
+                    summary: preset.summary,
+                    communityRating: preset.community_rating,
+                    upvoteCount: preset.preset_votes?.length ?? 0,
+                    confirmationCount: preset.preset_confirmations?.length ?? 0,
+                    atlasVerified: preset.atlas_verified ?? false,
+                    groups: sortedGroups.map((group) => ({
+                      items: group.preset_setting_items,
+                    })),
+                  });
 
                   return (
                     <details
@@ -833,12 +657,10 @@ export default async function HandheldPage({
                               />
 
                               <span className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-400">
-                                {preset.games?.name ??
-                                  "Unknown game"}
+                                {preset.games?.name ?? "Unknown game"}
                               </span>
 
-                              {preset
-                                .evidence_exception_approved && (
+                              {preset.evidence_exception_approved && (
                                 <span className="rounded-full border border-orange-500/25 bg-orange-500/[0.08] px-2.5 py-1 text-[0.54rem] font-black uppercase tracking-[0.1em] text-orange-300">
                                   Evidence exception
                                 </span>
@@ -855,7 +677,9 @@ export default async function HandheldPage({
                             </p>
 
                             <p className="mt-3 text-[0.62rem] font-black uppercase tracking-[0.11em] text-slate-600">
-                              Confidence {trustReport.score}/100 · {preset.preset_confirmations?.length ?? 0} confirmed
+                              Confidence {trustReport.score}/100 ·{" "}
+                              {preset.preset_confirmations?.length ?? 0}{" "}
+                              confirmed
                             </p>
                           </div>
 
@@ -867,25 +691,18 @@ export default async function HandheldPage({
                         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                           <PresetStat
                             label="Resolution"
-                            value={
-                              preset.resolution ??
-                              "Not set"
-                            }
+                            value={preset.resolution ?? "Not set"}
                           />
 
                           <PresetStat
                             label="TDP"
-                            value={
-                              preset.tdp ??
-                              "Not set"
-                            }
+                            value={preset.tdp ?? "Not set"}
                           />
 
                           <PresetStat
                             label="Average"
                             value={
-                              preset.fps_average !==
-                              null
+                              preset.fps_average !== null
                                 ? `${preset.fps_average} FPS`
                                 : "Not reported"
                             }
@@ -895,8 +712,7 @@ export default async function HandheldPage({
                           <PresetStat
                             label="1% Low"
                             value={
-                              preset.one_percent_low !==
-                              null
+                              preset.one_percent_low !== null
                                 ? `${preset.one_percent_low} FPS`
                                 : "Not reported"
                             }
@@ -907,8 +723,7 @@ export default async function HandheldPage({
                           <span>
                             Upscaler:{" "}
                             <strong className="text-slate-300">
-                              {preset.upscaler ??
-                                "Not set"}
+                              {preset.upscaler ?? "Not set"}
                             </strong>
                           </span>
 
@@ -917,88 +732,67 @@ export default async function HandheldPage({
                           <span>
                             Battery:{" "}
                             <strong className="text-slate-300">
-                              {preset.battery_life ??
-                                "Not set"}
+                              {preset.battery_life ?? "Not set"}
                             </strong>
                           </span>
 
                           <span>•</span>
 
-                          <span>
-                            {settingsCount} settings
-                          </span>
+                          <span>{settingsCount} settings</span>
                         </div>
                       </summary>
 
                       <div className="border-t border-white/[0.07] bg-black/20 p-4">
-                        {sortedGroups.length ===
-                        0 ? (
+                        {sortedGroups.length === 0 ? (
                           <p className="text-sm text-slate-500">
-                            No detailed settings
-                            available.
+                            No detailed settings available.
                           </p>
                         ) : (
                           <div className="grid gap-4 md:grid-cols-2">
-                            {sortedGroups.map(
-                              (group) => (
-                                <section
-                                  key={group.id}
-                                  className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
-                                >
-                                  <div className="border-b border-white/[0.07] px-4 py-3">
-                                    <h4 className="text-sm font-black">
-                                      {group.name}
-                                    </h4>
-                                  </div>
+                            {sortedGroups.map((group) => (
+                              <section
+                                key={group.id}
+                                className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20"
+                              >
+                                <div className="border-b border-white/[0.07] px-4 py-3">
+                                  <h4 className="text-sm font-black">
+                                    {group.name}
+                                  </h4>
+                                </div>
 
-                                  <dl>
-                                    {group.preset_setting_items.map(
-                                      (
-                                        item,
-                                        index,
-                                      ) => (
-                                        <div
-                                          key={
-                                            item.id
-                                          }
-                                          className={`grid grid-cols-[1fr_auto] gap-3 px-4 py-3 text-sm ${
-                                            index ===
-                                            group
-                                              .preset_setting_items
-                                              .length -
-                                              1
-                                              ? ""
-                                              : "border-b border-white/[0.06]"
-                                          }`}
-                                        >
-                                          <div>
-                                            <dt className="font-bold text-slate-300">
-                                              {
-                                                item.label
-                                              }
-                                            </dt>
+                                <dl>
+                                  {group.preset_setting_items.map(
+                                    (item, index) => (
+                                      <div
+                                        key={item.id}
+                                        className={`grid grid-cols-[1fr_auto] gap-3 px-4 py-3 text-sm ${
+                                          index ===
+                                          group.preset_setting_items.length - 1
+                                            ? ""
+                                            : "border-b border-white/[0.06]"
+                                        }`}
+                                      >
+                                        <div>
+                                          <dt className="font-bold text-slate-300">
+                                            {item.label}
+                                          </dt>
 
-                                            {item.note && (
-                                              <p className="mt-1 text-xs text-slate-600">
-                                                {
-                                                  item.note
-                                                }
-                                              </p>
-                                            )}
-                                          </div>
-
-                                          <dd className="font-black text-cyan-400">
-                                            {
-                                              item.value
-                                            }
-                                          </dd>
+                                          {item.note && (
+                                            <p className="mt-1 text-xs text-slate-600">
+                                              {item.note}
+                                            </p>
+                                          )}
                                         </div>
-                                      ),
-                                    )}
-                                  </dl>
-                                </section>
-                              ),
-                            )}
+
+                                        <dd className="font-black text-cyan-400">
+                                          {item.value}
+                                        </dd>
+                                      </div>
+                                    ),
+                                  )}
+                                </dl>
+                              </section>
+                            ))}
                           </div>
                         )}
 
@@ -1013,114 +807,38 @@ export default async function HandheldPage({
                       </div>
                     </details>
                   );
-                },
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionHeader
-              title="Benchmark wall"
-              eyebrow="Performance data"
-              noBorder
-            />
-
-            <Link
-              href="/benchmarks"
-              className="text-xs font-black text-cyan-400 transition hover:text-white"
-            >
-              View all benchmarks →
-            </Link>
-          </div>
-
-          {handheldBenchmarks.length === 0 ? (
-            <EmptyState text="No published benchmarks available for this handheld." />
-          ) : (
-            <div className="mt-5 max-w-full overflow-hidden rounded-xl border border-white/[0.07]">
-              <div className="max-w-full overflow-x-auto">
-                <table className="min-w-[48rem] text-left md:min-w-full">
-                  <thead className="bg-black/30">
-                    <tr>
-                      <TableHeading label="Game" />
-                      <TableHeading label="Preset" />
-                      <TableHeading label="Resolution" />
-                      <TableHeading label="TDP" />
-                      <TableHeading label="Average" />
-                      <TableHeading label="1% Low" />
-                      <TableHeading label="Battery" />
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {handheldBenchmarks.map(
-                      (benchmark) => (
-                        <tr
-                          key={benchmark.id}
-                          className="border-t border-white/[0.06] transition hover:bg-white/[0.025]"
-                        >
-                          <td className="px-4 py-4">
-                            {benchmark.games ? (
-                              <Link
-                                href={`/games/${benchmark.games.slug}`}
-                                className="font-black text-slate-200 transition hover:text-cyan-400"
-                              >
-                                {benchmark.games.name}
-                              </Link>
-                            ) : (
-                              <span className="text-slate-500">
-                                Unknown game
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="px-4 py-4 text-sm text-slate-400">
-                            {benchmark.presets
-                              ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
-                              : "Custom"}
-                          </td>
-
-                          <td className="px-4 py-4 text-sm text-slate-400">
-                            {benchmark.resolution ??
-                              "Not set"}
-                          </td>
-
-                          <td className="px-4 py-4 text-sm text-slate-400">
-                            {benchmark.tdp ??
-                              "Not set"}
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <span className="rounded-lg border border-red-500/25 bg-red-500/[0.07] px-3 py-1.5 font-black text-red-400">
-                              {benchmark.average_fps !==
-                              null
-                                ? `${benchmark.average_fps} FPS`
-                                : "—"}
-                            </span>
-                          </td>
-
-                          <td className="px-4 py-4 font-black text-slate-300">
-                            {benchmark.one_percent_low !==
-                            null
-                              ? `${benchmark.one_percent_low} FPS`
-                              : "—"}
-                          </td>
-
-                          <td className="px-4 py-4 text-sm text-slate-400">
-                            {benchmark.battery_life ??
-                              "Not set"}
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
+                })}
               </div>
+            )}
+          </section>
+
+          <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <SectionHeader
+                title="Benchmark wall"
+                eyebrow="Performance data"
+                noBorder
+              />
+
+              <Link
+                href={catalogUrl("/benchmarks", { handheld: handheld.slug })}
+                className="text-xs font-black text-cyan-400 transition hover:text-white"
+              >
+                View all benchmarks →
+              </Link>
             </div>
-          )}
-        </section>
-      </div>
+
+            {handheldBenchmarks.length === 0 ? (
+              <EmptyState text="No published benchmark results yet." />
+            ) : (
+              <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
+                {handheldBenchmarks.slice(0, 6).map((benchmark) => (
+                  <BenchmarkCard key={benchmark.id} benchmark={benchmark} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </main>
     </>
   );
@@ -1149,9 +867,7 @@ function HeroMetric({
 
       <p
         className={`mt-1 text-2xl font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-white"
+          highlighted ? "text-red-400" : "text-white"
         }`}
       >
         {value}
@@ -1160,22 +876,14 @@ function HeroMetric({
   );
 }
 
-function StripStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StripStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 px-4 py-4">
       <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-slate-600">
         {label}
       </p>
 
-      <p className="mt-1 truncate text-sm font-black text-slate-200">
-        {value}
-      </p>
+      <p className="mt-1 truncate text-sm font-black text-slate-200">{value}</p>
     </div>
   );
 }
@@ -1190,20 +898,10 @@ function SectionHeader({
   noBorder?: boolean;
 }) {
   return (
-    <div
-      className={
-        noBorder
-          ? ""
-          : "border-b border-white/[0.07] pb-3"
-      }
-    >
-      <p className="atlas-section-label">
-        {eyebrow}
-      </p>
+    <div className={noBorder ? "" : "border-b border-white/[0.07] pb-3"}>
+      <p className="atlas-section-label">{eyebrow}</p>
 
-      <h2 className="mt-1 text-xl font-black">
-        {title}
-      </h2>
+      <h2 className="mt-1 text-xl font-black">{title}</h2>
     </div>
   );
 }
@@ -1231,9 +929,7 @@ function SpecCard({
 
       <p
         className={`mt-2 text-sm font-black leading-6 ${
-          highlighted
-            ? "text-cyan-400"
-            : "text-slate-200"
+          highlighted ? "text-cyan-400" : "text-slate-200"
         }`}
       >
         {value}
@@ -1303,9 +999,7 @@ function PresetStat({
 
       <p
         className={`mt-1 text-xs font-black ${
-          highlighted
-            ? "text-red-400"
-            : "text-slate-300"
+          highlighted ? "text-red-400" : "text-slate-300"
         }`}
       >
         {value}
@@ -1314,11 +1008,7 @@ function PresetStat({
   );
 }
 
-function EmptyState({
-  text,
-}: {
-  text: string;
-}) {
+function EmptyState({ text }: { text: string }) {
   return (
     <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-sm text-slate-500">
       {text}
@@ -1326,11 +1016,7 @@ function EmptyState({
   );
 }
 
-function TableHeading({
-  label,
-}: {
-  label: string;
-}) {
+function TableHeading({ label }: { label: string }) {
   return (
     <th className="whitespace-nowrap px-4 py-3 text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600">
       {label}

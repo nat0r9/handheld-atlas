@@ -1,3 +1,5 @@
+import { QuickFinder, SavedGames } from "../components/PersonalAtlas";
+import { getBenchmarkIndex } from "../lib/catalog/benchmark-index";
 import Image from "next/image";
 import Link from "next/link";
 import CommunityTopGamesPanel, {
@@ -45,12 +47,7 @@ interface HandheldItem {
 interface PresetItem {
   id: string;
   name: string;
-  preset_type:
-    | "Performance"
-    | "Balanced"
-    | "Battery"
-    | "Docked"
-    | "Custom";
+  preset_type: "Performance" | "Balanced" | "Battery" | "Docked" | "Custom";
   resolution: string | null;
   tdp: string | null;
   fps_average: number | null;
@@ -114,9 +111,7 @@ interface PortalStat {
 
 function formatCompactNumber(value: number) {
   if (value >= 1000) {
-    return `${(value / 1000).toFixed(
-      value >= 10000 ? 0 : 1,
-    )}k+`;
+    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k+`;
   }
 
   return `${value}+`;
@@ -140,9 +135,7 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-function getPresetStyle(
-  type: PresetItem["preset_type"],
-) {
+function getPresetStyle(type: PresetItem["preset_type"]) {
   switch (type) {
     case "Performance":
       return "border-red-500/30 bg-red-500/10 text-red-400";
@@ -181,26 +174,20 @@ function getAtlasScoreClass(score: number | null) {
   return "border-red-500/30 bg-red-500/15 text-red-300";
 }
 
-
 export default async function HomePage() {
   const supabase = await createClient();
 
   const now = new Date();
 
   const monthStart = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      1,
-    ),
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   );
 
-  const monthLabel =
-    new Intl.DateTimeFormat("en", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(monthStart);
+  const monthLabel = new Intl.DateTimeFormat("en", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(monthStart);
 
   const [
     featuredNewsResult,
@@ -215,17 +202,20 @@ export default async function HomePage() {
     presetsCountResult,
     benchmarksCountResult,
     monthlyRatingsResult,
+    benchmarkIndex,
   ] = await Promise.all([
     supabase
       .from("news")
-      .select(`
+      .select(
+        `
         id,
         title,
         slug,
         category,
         excerpt,
         cover_image_url
-      `)
+      `,
+      )
       .eq("status", "published")
       .eq("is_featured", true)
       .order("published_at", {
@@ -237,7 +227,8 @@ export default async function HomePage() {
 
     supabase
       .from("games")
-      .select(`
+      .select(
+        `
         id,
         name,
         slug,
@@ -247,7 +238,8 @@ export default async function HomePage() {
         best_handheld,
         recommended_tdp,
         cover_image_url
-      `)
+      `,
+      )
       .eq("status", "published")
       .order("metacritic_critic_score", {
         ascending: false,
@@ -257,7 +249,8 @@ export default async function HomePage() {
 
     supabase
       .from("handhelds")
-      .select(`
+      .select(
+        `
         id,
         name,
         slug,
@@ -265,7 +258,8 @@ export default async function HomePage() {
         processor,
         battery,
         image_url
-      `)
+      `,
+      )
       .eq("status", "published")
       .order("created_at", {
         ascending: false,
@@ -273,7 +267,8 @@ export default async function HomePage() {
 
     supabase
       .from("presets")
-      .select(`
+      .select(
+        `
         id,
         name,
         preset_type,
@@ -289,7 +284,8 @@ export default async function HomePage() {
           name,
           slug
         )
-      `)
+      `,
+      )
       .eq("status", "published")
       .order("published_at", {
         ascending: false,
@@ -299,7 +295,8 @@ export default async function HomePage() {
 
     supabase
       .from("benchmarks")
-      .select(`
+      .select(
+        `
         id,
         average_fps,
         one_percent_low,
@@ -315,7 +312,8 @@ export default async function HomePage() {
           name,
           preset_type
         )
-      `)
+      `,
+      )
       .eq("status", "published")
       .order("published_at", {
         ascending: false,
@@ -325,14 +323,16 @@ export default async function HomePage() {
 
     supabase
       .from("guides")
-      .select(`
+      .select(
+        `
         id,
         title,
         slug,
         category,
         cover_image_url,
         published_at
-      `)
+      `,
+      )
       .eq("status", "published")
       .order("published_at", {
         ascending: false,
@@ -342,14 +342,16 @@ export default async function HomePage() {
 
     supabase
       .from("news")
-      .select(`
+      .select(
+        `
         id,
         title,
         slug,
         category,
         cover_image_url,
         published_at
-      `)
+      `,
+      )
       .eq("status", "published")
       .order("published_at", {
         ascending: false,
@@ -394,17 +396,14 @@ export default async function HomePage() {
       p_limit: COMMUNITY_TOP_GAME_LIMIT,
       p_min_votes: COMMUNITY_MIN_VOTES_PER_GAME,
     }),
+    getBenchmarkIndex(),
   ]);
 
-  const featuredNews =
-    featuredNewsResult.data as FeaturedNews | null;
+  const featuredNews = featuredNewsResult.data as FeaturedNews | null;
 
-  const games =
-    (gamesResult.data ?? []) as GameItem[];
+  const games = (gamesResult.data ?? []) as GameItem[];
 
-  const communityCandidates = parseMonthlyTopGames(
-    monthlyRatingsResult.data,
-  );
+  const communityCandidates = parseMonthlyTopGames(monthlyRatingsResult.data);
 
   const useCommunityRanking =
     communityCandidates.length >= COMMUNITY_MIN_QUALIFIED_GAMES;
@@ -437,23 +436,16 @@ export default async function HomePage() {
         confidenceLabel: "PC Metacritic",
       }));
 
-  const handhelds =
-    (handheldsResult.data ??
-      []) as HandheldItem[];
+  const handhelds = (handheldsResult.data ?? []) as HandheldItem[];
 
-  const presets =
-    (presetsResult.data ??
-      []) as unknown as PresetItem[];
+  const presets = (presetsResult.data ?? []) as unknown as PresetItem[];
 
-  const benchmarks =
-    (benchmarksResult.data ??
-      []) as unknown as BenchmarkItem[];
+  const benchmarks = (benchmarksResult.data ??
+    []) as unknown as BenchmarkItem[];
 
-  const guides =
-    (guidesResult.data ?? []) as GuideItem[];
+  const guides = (guidesResult.data ?? []) as GuideItem[];
 
-  const newsItems =
-    (newsResult.data ?? []) as NewsItem[];
+  const newsItems = (newsResult.data ?? []) as NewsItem[];
 
   const editorialItems = [
     ...newsItems.map((item) => ({
@@ -530,24 +522,18 @@ export default async function HomePage() {
 
         <div className="atlas-shell relative grid min-h-0 items-center gap-8 pb-10 pt-12 sm:min-h-[38rem] sm:gap-10 sm:py-14 lg:grid-cols-[1.02fr_0.98fr]">
           <div className="max-w-3xl">
-            <p className="atlas-section-label">
-              Your performance hub
-            </p>
+            <p className="atlas-section-label">Your performance hub</p>
 
             <h1 className="mt-4 text-[2.7rem] font-black leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-6xl lg:text-7xl">
               Master every game.
               <span className="block">
-                On every{" "}
-                <span className="atlas-text-red">
-                  handheld.
-                </span>
+                On every <span className="atlas-text-red">handheld.</span>
               </span>
             </h1>
 
             <p className="mt-5 text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-              Real settings. Real performance. A living
-              handheld gaming database built for players
-              who want answers without the usual filler.
+              Real settings. Real performance. A living handheld gaming database
+              built for players who want answers without the usual filler.
             </p>
 
             <form
@@ -555,10 +541,7 @@ export default async function HomePage() {
               method="get"
               className="mt-7 flex max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-black/30 shadow-2xl backdrop-blur sm:mt-8"
             >
-              <label
-                htmlFor="homepage-search"
-                className="sr-only"
-              >
+              <label htmlFor="homepage-search" className="sr-only">
                 Search HandheldAtlas
               </label>
 
@@ -580,37 +563,26 @@ export default async function HomePage() {
             </form>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/games"
-                className="atlas-button-primary"
-              >
+              <Link href="/games" className="atlas-button-primary">
                 Explore games
               </Link>
 
-              <Link
-                href="/compare"
-                className="atlas-button-secondary"
-              >
+              <Link href="/compare" className="atlas-button-secondary">
                 Compare devices
               </Link>
             </div>
           </div>
 
-          <div className="relative min-h-[31rem] min-w-0 sm:min-h-[34rem] lg:min-h-[29rem]">
-            <div className="absolute inset-6 rounded-full bg-purple-500/15 blur-[90px]" />
-
-            <div className="relative h-full min-h-[31rem] sm:min-h-[34rem] lg:min-h-[29rem]">
-              <CommunityTopGamesPanel
-                items={topGameItems}
-                mode={
-                  useCommunityRanking
-                    ? "community"
-                    : "atlas"
-                }
-                monthLabel={monthLabel}
-              />
-            </div>
-          </div>
+          <QuickFinder
+            handhelds={handhelds}
+            games={Array.from(
+              new Map(
+                benchmarkIndex.flatMap((b) =>
+                  b.games ? [[b.games.slug, b.games] as const] : [],
+                ),
+              ).values(),
+            ).sort((a, b) => a.name.localeCompare(b.name))}
+          />
         </div>
 
         <div className="atlas-shell relative min-w-0 max-w-full overflow-x-clip pb-8">
@@ -635,10 +607,10 @@ export default async function HomePage() {
       </section>
 
       <div className="atlas-shell min-w-0 max-w-full overflow-x-clip pt-8">
+        <SavedGames />
         {databaseError && (
           <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-            Some live data could not be loaded:{" "}
-            {databaseError}
+            Some live data could not be loaded: {databaseError}
           </div>
         )}
 
@@ -692,18 +664,20 @@ export default async function HomePage() {
                       </div>
 
                       <div className="absolute inset-x-0 bottom-0 p-4">
-                        <h3 className="text-lg font-black">
-                          {game.name}
-                        </h3>
+                        <h3 className="text-lg font-black">{game.name}</h3>
                       </div>
                     </div>
 
                     <div className="p-4 text-xs">
                       <span className="text-slate-500">
-                        Avg FPS:{" "}
-                        <strong className="text-slate-300">
-                          —
-                        </strong>
+                        <strong className="text-cyan-300">
+                          {
+                            benchmarkIndex.filter((b) => b.game_id === game.id)
+                              .length
+                          }{" "}
+                          benchmarks
+                        </strong>{" "}
+                        · View game
                       </span>
                     </div>
                   </article>
@@ -729,20 +703,14 @@ export default async function HomePage() {
                 {presets.map((preset) => (
                   <Link
                     key={preset.id}
-                    href="/presets"
+                    href={`/presets/${preset.id}`}
                     className="group grid grid-cols-[3.4rem_1fr] gap-3 rounded-xl border border-white/[0.07] bg-black/20 p-2.5 transition hover:border-red-500/35 hover:bg-white/[0.025]"
                   >
                     <div className="relative overflow-hidden rounded-lg bg-slate-900">
-                      {preset.games
-                        ?.cover_image_url ? (
+                      {preset.games?.cover_image_url ? (
                         <Image
-                          src={
-                            preset.games
-                              .cover_image_url
-                          }
-                          alt={
-                            preset.games.name
-                          }
+                          src={preset.games.cover_image_url}
+                          alt={preset.games.name}
                           fill
                           sizes="54px"
                           className="object-cover"
@@ -754,11 +722,8 @@ export default async function HomePage() {
 
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black transition group-hover:text-red-400">
-                        {preset.games?.name ??
-                          "Unknown game"}{" "}
-                        ·{" "}
-                        {preset.handhelds?.name ??
-                          "Unknown device"}
+                        {preset.games?.name ?? "Unknown game"} ·{" "}
+                        {preset.handhelds?.name ?? "Unknown device"}
                       </p>
 
                       <div className="mt-1 flex flex-wrap gap-1.5">
@@ -771,17 +736,13 @@ export default async function HomePage() {
                         </span>
 
                         <span className="rounded border border-white/10 px-1.5 py-0.5 text-[0.58rem] font-black uppercase text-slate-400">
-                          {preset.resolution ??
-                            "Resolution n/a"}
+                          {preset.resolution ?? "Resolution n/a"}
                         </span>
                       </div>
 
                       <p className="mt-1.5 text-[0.68rem] text-slate-500">
-                        {preset.tdp ??
-                          "TDP n/a"}{" "}
-                        ·{" "}
-                        {preset.fps_average !==
-                        null
+                        {preset.tdp ?? "TDP n/a"} ·{" "}
+                        {preset.fps_average !== null
                           ? `${preset.fps_average} FPS`
                           : "FPS n/a"}
                       </p>
@@ -801,21 +762,15 @@ export default async function HomePage() {
             />
 
             <HandheldSpotlight
-              handhelds={handhelds.map(
-                (handheld) => ({
-                  id: handheld.id,
-                  name: handheld.name,
-                  slug: handheld.slug,
-                  manufacturer:
-                    handheld.manufacturer,
-                  processor:
-                    handheld.processor,
-                  battery:
-                    handheld.battery,
-                  imageUrl:
-                    handheld.image_url,
-                }),
-              )}
+              handhelds={handhelds.map((handheld) => ({
+                id: handheld.id,
+                name: handheld.name,
+                slug: handheld.slug,
+                manufacturer: handheld.manufacturer,
+                processor: handheld.processor,
+                battery: handheld.battery,
+                imageUrl: handheld.image_url,
+              }))}
             />
           </div>
 
@@ -861,7 +816,8 @@ export default async function HomePage() {
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className="atlas-chip">
-                          {benchmark.presets?.preset_type ?? "Custom"}
+                          {benchmark.presets?.preset_type ??
+                            "See test settings"}
                         </span>
 
                         {benchmark.one_percent_low !== null && (
@@ -900,7 +856,7 @@ export default async function HomePage() {
                       </span>
 
                       <span className="truncate text-slate-500">
-                        {benchmark.presets?.preset_type ?? "Custom"}
+                        {benchmark.presets?.preset_type ?? "See test settings"}
                       </span>
 
                       <strong
@@ -932,11 +888,7 @@ export default async function HomePage() {
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {editorialItems.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className="group"
-                >
+                <Link key={item.id} href={item.href} className="group">
                   <article className="atlas-card atlas-card-hover atlas-card-cyan h-full">
                     <div className="relative aspect-[16/9] overflow-hidden">
                       {item.imageUrl ? (
@@ -964,9 +916,7 @@ export default async function HomePage() {
                       </h3>
 
                       <p className="mt-4 text-[0.68rem] text-slate-600">
-                        {formatDate(
-                          item.publishedAt,
-                        )}
+                        {formatDate(item.publishedAt)}
                       </p>
                     </div>
                   </article>
@@ -974,6 +924,13 @@ export default async function HomePage() {
               ))}
             </div>
           )}
+        </section>
+        <section className="mt-5 max-w-3xl">
+          <CommunityTopGamesPanel
+            items={topGameItems}
+            mode={useCommunityRanking ? "community" : "atlas"}
+            monthLabel={monthLabel}
+          />
         </section>
       </div>
     </main>
@@ -1015,11 +972,7 @@ function SectionHeader({
   );
 }
 
-function EmptyState({
-  text,
-}: {
-  text: string;
-}) {
+function EmptyState({ text }: { text: string }) {
   return (
     <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-black/20 p-7 text-center text-sm text-slate-500">
       {text}

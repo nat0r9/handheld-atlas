@@ -741,3 +741,9 @@ hr {
     transition-duration: 0.01ms !important;
   }
 }
+/* Readable public catalogue labels and visible keyboard focus. */
+.atlas-page label, .atlas-page .atlas-section-label { font-size: max(0.75rem, 1em); }
+.atlas-page .text-slate-600 { color: #94a3b8; }
+.atlas-page .text-slate-500 { color: #a7b0c0; }
+.atlas-page [class*="text-[0."] { font-size: 0.75rem; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid #18d7ff; outline-offset: 4px; }

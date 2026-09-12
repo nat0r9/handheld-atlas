@@ -1,3 +1,6 @@
+import { getBenchmarkIndex } from "../../lib/catalog/benchmark-index";
+import { catalogUrl } from "../../lib/catalog/query";
+import { evidenceLabel } from "../../lib/benchmarks";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "../../lib/supabase/server";
@@ -32,12 +35,7 @@ interface HandheldResult {
 interface PresetResult {
   id: string;
   name: string;
-  preset_type:
-    | "Performance"
-    | "Balanced"
-    | "Battery"
-    | "Docked"
-    | "Custom";
+  preset_type: "Performance" | "Balanced" | "Battery" | "Docked" | "Custom";
   resolution: string | null;
   tdp: string | null;
   fps_average: number | null;
@@ -93,9 +91,7 @@ function escapeSearchValue(value: string) {
     .replaceAll(",", " ");
 }
 
-function getPresetStyle(
-  type: PresetResult["preset_type"],
-) {
+function getPresetStyle(type: PresetResult["preset_type"]) {
   switch (type) {
     case "Performance":
       return "border-orange-500/30 bg-orange-500/15 text-orange-400";
@@ -114,9 +110,7 @@ function getPresetStyle(
   }
 }
 
-function getDifficultyStyle(
-  difficulty: string | null,
-) {
+function getDifficultyStyle(difficulty: string | null) {
   switch (difficulty?.toLowerCase()) {
     case "beginner":
       return "border-green-500/30 bg-green-500/15 text-green-400";
@@ -150,14 +144,11 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-export default async function SearchPage({
-  searchParams,
-}: SearchPageProps) {
+export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q = "" } = await searchParams;
 
   const searchQuery = q.trim();
-  const normalizedQuery =
-    escapeSearchValue(searchQuery);
+  const normalizedQuery = escapeSearchValue(searchQuery);
 
   if (!searchQuery) {
     return (
@@ -175,8 +166,8 @@ export default async function SearchPage({
             </h2>
 
             <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
-              Search games, handhelds, performance
-              presets, graphics settings, guides and news from one place.
+              Search games, handhelds, performance presets, benchmarks, graphics
+              settings, guides and news from one place.
             </p>
           </section>
         </div>
@@ -193,10 +184,12 @@ export default async function SearchPage({
     guidesResult,
     newsResult,
     settingsImpactResult,
+    benchmarkIndex,
   ] = await Promise.all([
     supabase
       .from("games")
-      .select(`
+      .select(
+        `
         id,
         name,
         slug,
@@ -204,7 +197,8 @@ export default async function SearchPage({
         developer,
         metacritic_critic_score,
         cover_image_url
-      `)
+      `,
+      )
       .eq("status", "published")
       .or(
         `name.ilike.%${normalizedQuery}%,genre.ilike.%${normalizedQuery}%,developer.ilike.%${normalizedQuery}%`,
@@ -216,7 +210,8 @@ export default async function SearchPage({
 
     supabase
       .from("handhelds")
-      .select(`
+      .select(
+        `
         id,
         name,
         slug,
@@ -225,7 +220,8 @@ export default async function SearchPage({
         processor,
         image_url,
         tagline
-      `)
+      `,
+      )
       .eq("status", "published")
       .or(
         `name.ilike.%${normalizedQuery}%,manufacturer.ilike.%${normalizedQuery}%,processor.ilike.%${normalizedQuery}%,tagline.ilike.%${normalizedQuery}%`,
@@ -237,7 +233,8 @@ export default async function SearchPage({
 
     supabase
       .from("presets")
-      .select(`
+      .select(
+        `
         id,
         name,
         preset_type,
@@ -253,7 +250,8 @@ export default async function SearchPage({
           name,
           slug
         )
-      `)
+      `,
+      )
       .eq("status", "published")
       .or(
         `name.ilike.%${normalizedQuery}%,resolution.ilike.%${normalizedQuery}%,tdp.ilike.%${normalizedQuery}%,summary.ilike.%${normalizedQuery}%`,
@@ -266,7 +264,8 @@ export default async function SearchPage({
 
     supabase
       .from("guides")
-      .select(`
+      .select(
+        `
         id,
         title,
         slug,
@@ -275,7 +274,8 @@ export default async function SearchPage({
         difficulty,
         reading_time,
         cover_image_url
-      `)
+      `,
+      )
       .eq("status", "published")
       .or(
         `title.ilike.%${normalizedQuery}%,category.ilike.%${normalizedQuery}%,excerpt.ilike.%${normalizedQuery}%,difficulty.ilike.%${normalizedQuery}%`,
@@ -288,7 +288,8 @@ export default async function SearchPage({
 
     supabase
       .from("news")
-      .select(`
+      .select(
+        `
         id,
         title,
         slug,
@@ -296,7 +297,8 @@ export default async function SearchPage({
         excerpt,
         cover_image_url,
         published_at
-      `)
+      `,
+      )
       .eq("status", "published")
       .or(
         `title.ilike.%${normalizedQuery}%,category.ilike.%${normalizedQuery}%,excerpt.ilike.%${normalizedQuery}%`,
@@ -309,7 +311,8 @@ export default async function SearchPage({
 
     supabase
       .from("setting_impact_entries")
-      .select(`
+      .select(
+        `
         id,
         name,
         slug,
@@ -318,34 +321,40 @@ export default async function SearchPage({
         performance_impact,
         visual_impact,
         vram_impact
-      `)
+      `,
+      )
       .eq("status", "published")
       .or(
         `name.ilike.%${normalizedQuery}%,category.ilike.%${normalizedQuery}%,summary.ilike.%${normalizedQuery}%`,
       )
       .order("name", { ascending: true })
       .limit(12),
+    getBenchmarkIndex(),
   ]);
 
-  const games =
-    (gamesResult.data ?? []) as GameResult[];
+  const benchmarkMatches = benchmarkIndex.filter((b) =>
+    searchQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .every((word) =>
+        [b.games?.name, b.handhelds?.name, b.presets?.name]
+          .join(" ")
+          .toLowerCase()
+          .includes(word),
+      ),
+  );
+  const games = (gamesResult.data ?? []) as GameResult[];
 
-  const handhelds =
-    (handheldsResult.data ??
-      []) as HandheldResult[];
+  const handhelds = (handheldsResult.data ?? []) as HandheldResult[];
 
-  const presets =
-    (presetsResult.data ??
-      []) as unknown as PresetResult[];
+  const presets = (presetsResult.data ?? []) as unknown as PresetResult[];
 
-  const guides =
-    (guidesResult.data ?? []) as GuideResult[];
+  const guides = (guidesResult.data ?? []) as GuideResult[];
 
-  const newsItems =
-    (newsResult.data ?? []) as NewsResult[];
+  const newsItems = (newsResult.data ?? []) as NewsResult[];
 
-  const settingsImpact =
-    (settingsImpactResult.data ?? []) as SettingImpactResult[];
+  const settingsImpact = (settingsImpactResult.data ??
+    []) as SettingImpactResult[];
 
   const totalResults =
     games.length +
@@ -353,7 +362,8 @@ export default async function SearchPage({
     presets.length +
     guides.length +
     newsItems.length +
-    settingsImpact.length;
+    settingsImpact.length +
+    benchmarkMatches.length;
 
   const databaseError =
     gamesResult.error?.message ??
@@ -375,47 +385,27 @@ export default async function SearchPage({
               Some search results could not be loaded.
             </p>
 
-            <p className="mt-2 break-words text-sm">
-              {databaseError}
-            </p>
+            <p className="mt-2 break-words text-sm">{databaseError}</p>
           </div>
         )}
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          <SearchStat
-            label="All results"
-            value={totalResults}
-            highlighted
-          />
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
+          <SearchStat label="Matches found" value={totalResults} highlighted />
 
-          <SearchStat
-            label="Games"
-            value={games.length}
-          />
+          <SearchStat label="Games" value={games.length} />
 
-          <SearchStat
-            label="Handhelds"
-            value={handhelds.length}
-          />
+          <SearchStat label="Handhelds" value={handhelds.length} />
 
-          <SearchStat
-            label="Presets"
-            value={presets.length}
-          />
+          <SearchStat label="Presets" value={presets.length} />
 
-          <SearchStat
-            label="Settings"
-            value={settingsImpact.length}
-          />
+          <SearchStat label="Benchmarks" value={benchmarkMatches.length} />
+          <SearchStat label="Settings" value={settingsImpact.length} />
 
           <div className="col-span-2 md:col-span-1">
-          <SearchStat
-            label="Editorial"
-            value={
-              guides.length +
-              newsItems.length
-            }
-          />
+            <SearchStat
+              label="Editorial"
+              value={guides.length + newsItems.length}
+            />
           </div>
         </section>
 
@@ -430,17 +420,58 @@ export default async function SearchPage({
             </h2>
 
             <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
-              Try a game title, handheld model, graphics setting, preset name or a broader keyword.
+              Try a game title, handheld model, graphics setting, preset name or
+              a broader keyword.
             </p>
           </section>
         ) : (
-          <div className="mt-14 space-y-16">
+          <div className="mt-10 space-y-10">
+            {benchmarkMatches.length > 0 && (
+              <section>
+                <SectionHeading
+                  title="Benchmarks"
+                  count={benchmarkMatches.length}
+                  href={catalogUrl("/benchmarks", { q: searchQuery })}
+                />
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  {benchmarkMatches.slice(0, 6).map((b) => (
+                    <Link
+                      key={b.id}
+                      href={`/benchmarks/${b.id}`}
+                      className="atlas-card block p-5"
+                    >
+                      <p className="text-sm font-bold text-cyan-300">
+                        {b.games?.name}
+                      </p>
+                      <h3 className="mt-2 text-xl">{b.handhelds?.name}</h3>
+                      <p className="mt-3 text-sm text-slate-300">
+                        {b.resolution ?? "Resolution not reported"} ·{" "}
+                        {b.tdp ?? "Power not reported"}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-400">
+                        {evidenceLabel(b.evidence_tier)} · Open settings and
+                        evidence →
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+                {benchmarkMatches.length > 6 && (
+                  <Link
+                    className="atlas-button-secondary mt-4"
+                    href={catalogUrl("/benchmarks", { q: searchQuery })}
+                  >
+                    View all {benchmarkMatches.length} matching benchmarks
+                  </Link>
+                )}
+              </section>
+            )}
+
             {games.length > 0 && (
               <section>
                 <SectionHeading
                   title="Games"
                   count={games.length}
-                  href="/games"
+                  href={catalogUrl("/games", { q: searchQuery })}
                 />
 
                 <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -471,8 +502,7 @@ export default async function SearchPage({
                               {game.genre}
                             </span>
 
-                            {game.metacritic_critic_score !==
-                              null && (
+                            {game.metacritic_critic_score !== null && (
                               <span className="rounded-full border border-cyan-500/40 bg-cyan-500/20 px-3 py-1 text-xs font-black text-cyan-300 backdrop-blur">
                                 {game.metacritic_critic_score}
                                 /100
@@ -485,8 +515,7 @@ export default async function SearchPage({
                           </h3>
 
                           <p className="mt-2 text-sm text-slate-400">
-                            {game.developer ??
-                              "Developer not set"}
+                            {game.developer ?? "Developer not set"}
                           </p>
                         </div>
                       </article>
@@ -574,8 +603,7 @@ export default async function SearchPage({
                       </span>
 
                       <p className="mt-5 text-sm font-black uppercase tracking-[0.15em] text-cyan-400">
-                        {preset.games?.name ??
-                          "Unknown game"}
+                        {preset.games?.name ?? "Unknown game"}
                       </p>
 
                       <h3 className="mt-2 break-words text-xl font-black transition group-hover:text-cyan-400 sm:text-2xl">
@@ -583,32 +611,21 @@ export default async function SearchPage({
                       </h3>
 
                       <p className="mt-2 text-sm text-slate-500">
-                        {preset.handhelds?.name ??
-                          "Unknown handheld"}
+                        {preset.handhelds?.name ?? "Unknown handheld"}
                       </p>
 
                       <div className="mt-6 grid grid-cols-3 gap-3">
                         <MiniStat
                           label="Resolution"
-                          value={
-                            preset.resolution ??
-                            "Not set"
-                          }
+                          value={preset.resolution ?? "Not set"}
                         />
 
-                        <MiniStat
-                          label="TDP"
-                          value={
-                            preset.tdp ??
-                            "Not set"
-                          }
-                        />
+                        <MiniStat label="TDP" value={preset.tdp ?? "Not set"} />
 
                         <MiniStat
                           label="Average"
                           value={
-                            preset.fps_average !==
-                            null
+                            preset.fps_average !== null
                               ? `${preset.fps_average} FPS`
                               : "Not set"
                           }
@@ -646,9 +663,19 @@ export default async function SearchPage({
                         {setting.summary}
                       </p>
                       <div className="mt-5 grid grid-cols-3 gap-2">
-                        <MiniStat label="FPS" value={`${setting.performance_impact}/5`} highlighted />
-                        <MiniStat label="Visual" value={`${setting.visual_impact}/5`} />
-                        <MiniStat label="VRAM" value={`${setting.vram_impact}/5`} />
+                        <MiniStat
+                          label="FPS"
+                          value={`${setting.performance_impact}/5`}
+                          highlighted
+                        />
+                        <MiniStat
+                          label="Visual"
+                          value={`${setting.visual_impact}/5`}
+                        />
+                        <MiniStat
+                          label="VRAM"
+                          value={`${setting.vram_impact}/5`}
+                        />
                       </div>
                     </Link>
                   ))}
@@ -697,8 +724,7 @@ export default async function SearchPage({
                                 guide.difficulty,
                               )}`}
                             >
-                              {guide.difficulty ??
-                                "Guide"}
+                              {guide.difficulty ?? "Guide"}
                             </span>
                           </div>
 
@@ -711,8 +737,7 @@ export default async function SearchPage({
                           </p>
 
                           <p className="mt-auto border-t border-slate-800 pt-5 text-sm text-slate-500">
-                            {guide.reading_time !==
-                            null
+                            {guide.reading_time !== null
                               ? `${guide.reading_time} min read`
                               : "Reading time not set"}
                           </p>
@@ -768,9 +793,7 @@ export default async function SearchPage({
                           </p>
 
                           <p className="mt-auto border-t border-slate-800 pt-5 text-sm text-slate-500">
-                            {formatDate(
-                              item.published_at,
-                            )}
+                            {formatDate(item.published_at)}
                           </p>
                         </div>
                       </article>
@@ -786,11 +809,7 @@ export default async function SearchPage({
   );
 }
 
-function SearchHero({
-  query,
-}: {
-  query: string;
-}) {
+function SearchHero({ query }: { query: string }) {
   return (
     <section className="relative min-w-0 overflow-hidden">
       <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-red-500/10 blur-[100px]" />
@@ -798,33 +817,23 @@ function SearchHero({
 
       <div className="relative grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-8">
         <div className="min-w-0">
-          <p className="atlas-section-label">
-            Global Atlas search
-          </p>
+          <p className="atlas-section-label">Global Atlas search</p>
 
           <h1 className="mt-3 text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-4 sm:text-6xl">
             Search everything.
             <span className="block">
-              Find it{" "}
-              <span className="atlas-text-red">
-                fast.
-              </span>
+              Find it <span className="atlas-text-red">fast.</span>
             </span>
           </h1>
 
           <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
-            Search games, handhelds, presets, graphics settings,
-            guides and news without crawling
-            through five separate menus like
-            some poor bastard trapped in UI hell.
+            Search games, handhelds, presets, graphics settings, guides and news
+            without crawling through five separate menus like some poor bastard
+            trapped in UI hell.
           </p>
         </div>
 
-        <form
-          action="/search"
-          method="get"
-          className="atlas-panel min-w-0 p-4"
-        >
+        <form action="/search" method="get" className="atlas-panel min-w-0 p-4">
           <label
             htmlFor="global-search"
             className="mb-2 block text-[0.56rem] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[0.58rem] sm:tracking-[0.15em]"
@@ -853,10 +862,7 @@ function SearchHero({
 
           {query && (
             <p className="mt-3 text-xs text-slate-600">
-              Results for{" "}
-              <strong className="text-slate-300">
-                “{query}”
-              </strong>
+              Results for <strong className="text-slate-300">“{query}”</strong>
             </p>
           )}
         </form>
@@ -888,9 +894,7 @@ function SearchStat({
 
       <p
         className={`mt-2 text-2xl font-black sm:text-3xl ${
-          highlighted
-            ? "text-red-400"
-            : "text-white"
+          highlighted ? "text-red-400" : "text-white"
         }`}
       >
         {value}
@@ -911,21 +915,16 @@ function SectionHeading({
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.07] pb-3">
       <div>
-        <p className="atlas-section-label">
-          Search results
-        </p>
+        <p className="atlas-section-label">Search results</p>
 
-        <h2 className="mt-1 text-xl font-black">
-          {title}
-        </h2>
+        <h2 className="mt-1 text-xl font-black">{title}</h2>
       </div>
 
       <Link
         href={href}
         className="text-[0.68rem] font-black text-cyan-400 transition hover:text-white sm:text-xs"
       >
-        {count}{" "}
-        {count === 1 ? "result" : "results"} →
+        {count} {count === 1 ? "result" : "results"} →
       </Link>
     </div>
   );
@@ -954,9 +953,7 @@ function MiniStat({
 
       <p
         className={`mt-1 break-words text-[0.68rem] font-black sm:text-xs ${
-          highlighted
-            ? "text-red-400"
-            : "text-slate-300"
+          highlighted ? "text-red-400" : "text-slate-300"
         }`}
       >
         {value}

@@ -1,3 +1,12 @@
+import { getBenchmarkIndex } from "../../lib/catalog/benchmark-index";
+import { assertRead, readAll } from "../../lib/catalog/read";
+import {
+  genres,
+  PAGE_SIZE,
+  pageNumber,
+  param,
+  type SearchParams,
+} from "../../lib/catalog/query";
 import GamesCatalog from "../../components/GamesCatalog";
 import {
   parseGameRatingSummaries,
@@ -30,6 +39,8 @@ export interface PublicGame {
   communityRating: number | null;
   ratingCount: number;
   topPreset: PublicGameTopPreset | null;
+  benchmarkCount: number;
+  presetCount: number;
 }
 
 interface DatabaseGame {
@@ -57,6 +68,7 @@ interface DatabasePresetForGameCard {
   published_at: string | null;
   handhelds: {
     name: string;
+    slug: string;
   } | null;
   preset_votes: Array<{
     user_id: string;
@@ -81,122 +93,169 @@ function getPresetRank(preset: DatabasePresetForGameCard) {
   );
 }
 
-export default async function GamesPage() {
-  const supabase = await createClient();
-
-  const [gamesResult, ratingSummaryResult, presetsResult] = await Promise.all([
-    supabase
-      .from("games")
-      .select(`
-        id,
-        name,
-        slug,
-        genre,
-        developer,
-        release_year,
-        metacritic_critic_score,
-        best_handheld,
-        recommended_tdp,
-        notes,
-        cover_image_url
-      `)
-      .eq("status", "published")
-      .order("metacritic_critic_score", {
-        ascending: false,
-        nullsFirst: false,
-      }),
-    supabase.rpc("get_game_rating_summaries"),
-    supabase
+export default async function GamesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const values = Object.fromEntries(
+    ["q", "genre", "handheld", "coverage", "sort"].map((k) => [
+      k,
+      param(params, k),
+    ]),
+  );
+  const db = await createClient();
+  const [index, benchmarks, presetsResult, ratings] = await Promise.all([
+    readAll<DatabaseGame>(
+      (from, to) =>
+        db
+          .from("games")
+          .select("id,name,slug,genre,release_year,metacritic_critic_score")
+          .eq("status", "published")
+          .order("id")
+          .range(from, to),
+      "game index",
+    ),
+    getBenchmarkIndex(),
+    db
       .from("presets")
-      .select(`
-        id,
-        game_id,
-        name,
-        preset_type,
-        fps_average,
-        atlas_verified,
-        community_rating,
-        published_at,
-        handhelds (
-          name
-        ),
-        preset_votes (
-          user_id
-        ),
-        preset_confirmations (
-          user_id
-        )
-      `)
+      .select(
+        "id,game_id,name,preset_type,fps_average,atlas_verified,community_rating,published_at,handhelds(name,slug),preset_votes(user_id),preset_confirmations(user_id)",
+      )
       .eq("status", "published"),
+    db.rpc("get_game_rating_summaries"),
   ]);
-
-  const ratingSummaries = parseGameRatingSummaries(
-    ratingSummaryResult.data,
+  assertRead(presetsResult.error, "preset coverage");
+  assertRead(ratings.error, "game ratings");
+  const presets = (presetsResult.data ??
+    []) as unknown as DatabasePresetForGameCard[];
+  const ratingMap = new Map(
+    parseGameRatingSummaries(ratings.data).map((r) => [r.gameId, r]),
   );
-  const ratingSummaryMap = new Map<string, GameRatingSummary>(
-    ratingSummaries.map((summary) => [summary.gameId, summary]),
-  );
-
-  const topPresetMap = new Map<string, PublicGameTopPreset>();
-  const topPresetRankMap = new Map<string, number>();
-  const databasePresets =
-    (presetsResult.data ?? []) as unknown as DatabasePresetForGameCard[];
-
-  for (const preset of databasePresets) {
-    if (!preset.game_id) {
-      continue;
-    }
-
-    const rank = getPresetRank(preset);
-    const currentRank =
-      topPresetRankMap.get(preset.game_id) ?? Number.NEGATIVE_INFINITY;
-
-    if (rank <= currentRank) {
-      continue;
-    }
-
-    topPresetRankMap.set(preset.game_id, rank);
-    topPresetMap.set(preset.game_id, {
-      id: preset.id,
-      name: preset.name,
-      type: preset.preset_type,
-      handheldName: preset.handhelds?.name ?? null,
-      averageFps: preset.fps_average,
-      atlasVerified: preset.atlas_verified ?? false,
-      confirmationCount: preset.preset_confirmations?.length ?? 0,
+  const benchmarkCounts = new Map<string, number>();
+  const presetCounts = new Map<string, number>();
+  for (const b of benchmarks)
+    if (!values.handheld || b.handhelds?.slug === values.handheld)
+      benchmarkCounts.set(b.game_id, (benchmarkCounts.get(b.game_id) ?? 0) + 1);
+  for (const p of presets)
+    if (!values.handheld || p.handhelds?.slug === values.handheld)
+      presetCounts.set(p.game_id, (presetCounts.get(p.game_id) ?? 0) + 1);
+  const matching = index
+    .filter((g) => {
+      const bc = benchmarkCounts.get(g.id) ?? 0,
+        pc = presetCounts.get(g.id) ?? 0;
+      return (
+        (!values.q ||
+          values.q
+            .toLowerCase()
+            .split(/\s+/)
+            .every((word) => g.name.toLowerCase().includes(word))) &&
+        (!values.genre || genres(g.genre).includes(values.genre)) &&
+        (!values.handheld || bc + pc > 0) &&
+        (!values.coverage ||
+          (values.coverage === "benchmarks"
+            ? bc > 0
+            : values.coverage === "presets"
+              ? pc > 0
+              : bc + pc > 0))
+      );
+    })
+    .sort((a, b) => {
+      if (values.sort === "name") return a.name.localeCompare(b.name);
+      if (values.sort === "newest")
+        return (
+          (b.release_year ?? 0) - (a.release_year ?? 0) ||
+          a.name.localeCompare(b.name)
+        );
+      if (values.sort === "community")
+        return (
+          (ratingMap.get(b.id)?.averageRating ?? -1) -
+            (ratingMap.get(a.id)?.averageRating ?? -1) ||
+          a.name.localeCompare(b.name)
+        );
+      return (
+        (b.metacritic_critic_score ?? -1) - (a.metacritic_critic_score ?? -1) ||
+        a.name.localeCompare(b.name)
+      );
     });
-  }
-
-  const games: PublicGame[] = (
-    (gamesResult.data ?? []) as DatabaseGame[]
-  ).map((game) => {
-    const ratingSummary = ratingSummaryMap.get(game.id);
-
-    return {
-      id: game.id,
-      name: game.name,
-      slug: game.slug,
-      genre: game.genre,
-      developer: game.developer,
-      releaseYear: game.release_year,
-      atlasScore: game.metacritic_critic_score,
-      bestHandheld: game.best_handheld,
-      recommendedTdp: game.recommended_tdp,
-      notes: game.notes,
-      coverImageUrl: game.cover_image_url,
-      communityRating: ratingSummary?.averageRating ?? null,
-      ratingCount: ratingSummary?.ratingCount ?? 0,
-      topPreset: topPresetMap.get(game.id) ?? null,
-    };
+  const page = pageNumber(param(params, "page"), matching.length),
+    ids = matching
+      .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+      .map((g) => g.id);
+  const result = ids.length
+    ? await db
+        .from("games")
+        .select(
+          "id,name,slug,genre,developer,release_year,metacritic_critic_score,best_handheld,recommended_tdp,notes,cover_image_url",
+        )
+        .eq("status", "published")
+        .in("id", ids)
+    : { data: [], error: null };
+  assertRead(result.error, "games");
+  const rows = new Map(
+    ((result.data ?? []) as DatabaseGame[]).map((g) => [g.id, g]),
+  );
+  const games: PublicGame[] = ids.flatMap((id) => {
+    const g = rows.get(id);
+    if (!g) return [];
+    const p = presets
+      .filter(
+        (p) =>
+          p.game_id === id &&
+          (!values.handheld || p.handhelds?.slug === values.handheld),
+      )
+      .sort((a, b) => getPresetRank(b) - getPresetRank(a))[0];
+    return [
+      {
+        id: g.id,
+        name: g.name,
+        slug: g.slug,
+        genre: g.genre,
+        developer: g.developer,
+        releaseYear: g.release_year,
+        atlasScore: g.metacritic_critic_score,
+        bestHandheld: g.best_handheld,
+        recommendedTdp: g.recommended_tdp,
+        notes: g.notes,
+        coverImageUrl: g.cover_image_url,
+        communityRating: ratingMap.get(id)?.averageRating ?? null,
+        ratingCount: ratingMap.get(id)?.ratingCount ?? 0,
+        benchmarkCount: benchmarkCounts.get(id) ?? 0,
+        presetCount: presetCounts.get(id) ?? 0,
+        topPreset: p
+          ? {
+              id: p.id,
+              name: p.name,
+              type: p.preset_type,
+              handheldName: p.handhelds?.name ?? null,
+              averageFps: p.fps_average,
+              atlasVerified: p.atlas_verified,
+              confirmationCount: p.preset_confirmations?.length ?? 0,
+            }
+          : null,
+      },
+    ];
   });
-
-  const databaseError =
-    gamesResult.error?.message ??
-    ratingSummaryResult.error?.message ??
-    presetsResult.error?.message ??
-    null;
-
+  const handheldOptions = Array.from(
+    new Map(
+      [...benchmarks, ...presets].flatMap((b) =>
+        b.handhelds ? [[b.handhelds.slug, b.handhelds.name] as const] : [],
+      ),
+    ).entries(),
+  )
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([value, label]) => ({ value, label }));
   return (
-    <GamesCatalog games={games} databaseError={databaseError} />
+    <GamesCatalog
+      games={games}
+      page={page}
+      total={matching.length}
+      values={values}
+      genreOptions={Array.from(
+        new Set(index.flatMap((g) => genres(g.genre))),
+      ).sort()}
+      handheldOptions={handheldOptions}
+    />
   );
 }

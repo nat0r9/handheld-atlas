@@ -8,18 +8,15 @@ interface GlobalErrorPageProps {
     digest?: string;
   };
 
-  reset: () => void;
+  unstable_retry: () => void;
 }
 
 export default function GlobalErrorPage({
   error,
-  reset,
+  unstable_retry,
 }: GlobalErrorPageProps) {
   useEffect(() => {
-    console.error(
-      "HandheldAtlas application error:",
-      error,
-    );
+    console.error("HandheldAtlas application error:", error);
   }, [error]);
 
   return (
@@ -36,23 +33,19 @@ export default function GlobalErrorPage({
             </p>
 
             <h1 className="mt-5 text-5xl font-black leading-tight md:text-7xl">
-              Something broke.
-              <span className="block text-red-400">
-                The Atlas survived.
-              </span>
+              This page could not load.
+              <span className="block text-red-400">Please try again.</span>
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-400">
-              The page could not be loaded correctly.
-              This may be a temporary database or network
-              problem rather than the beginning of the
-              digital apocalypse.
+              The page could not be loaded correctly. This may be a temporary
+              database or network problem. Your saved content is unaffected.
             </p>
 
             <div className="mt-9 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={reset}
+                onClick={unstable_retry}
                 className="rounded-xl bg-red-500 px-6 py-4 font-black text-white transition hover:bg-red-400"
               >
                 Try again
@@ -117,13 +110,9 @@ function InfoCard({
 }) {
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="font-black text-slate-200">
-        {title}
-      </p>
+      <p className="font-black text-slate-200">{title}</p>
 
-      <p className="mt-2 text-sm leading-6 text-slate-500">
-        {description}
-      </p>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
     </article>
   );
 }

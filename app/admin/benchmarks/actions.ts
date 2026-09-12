@@ -106,7 +106,7 @@ function validatePublishedEvidence(formData: FormData, status: ContentStatus, er
   if (tier === "atlas_verified") {
     const duration = optionalNumber(formData, "captureDurationSeconds");
     const runs = optionalNumber(formData, "runCount");
-    if (optionalText(formData, "captureTool")?.toLowerCase() !== "capframex") missing.push("CapFrameX capture tool");
+    if (!["capframex", "mangohud"].includes(optionalText(formData, "captureTool")?.toLowerCase() ?? "")) missing.push("CapFrameX or MangoHud capture tool");
     if (duration === null || duration < 60 || duration > 90) missing.push("60–90 second capture");
     if (runs === null || runs < 3) missing.push("at least three runs");
     if (optionalNumber(formData, "pointOnePercentLow") === null) missing.push("0.1% low");

@@ -1,3 +1,13 @@
+import { withBenchmarkContributors } from "../../../lib/benchmark-contributors";
+import { SaveGameButton } from "../../../components/PersonalAtlas";
+import DataNotice from "../../../components/DataNotice";
+import { cache } from "react";
+import BenchmarkCard from "../../../components/BenchmarkCard";
+import {
+  BENCHMARK_SELECT,
+  type BenchmarkRecord,
+} from "../../../lib/benchmarks";
+import { catalogUrl } from "../../../lib/catalog/query";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -55,12 +65,7 @@ interface DatabaseSettingGroup {
 interface DatabasePreset {
   id: string;
   name: string;
-  preset_type:
-    | "Performance"
-    | "Balanced"
-    | "Battery"
-    | "Docked"
-    | "Custom";
+  preset_type: "Performance" | "Balanced" | "Battery" | "Docked" | "Custom";
   resolution: string | null;
   tdp: string | null;
   fps_average: number | null;
@@ -87,28 +92,9 @@ interface DatabasePreset {
   }>;
 }
 
-interface DatabaseBenchmark {
-  id: string;
-  resolution: string | null;
-  tdp: string | null;
-  average_fps: number | null;
-  one_percent_low: number | null;
-  battery_life: string | null;
-  test_notes: string | null;
+type DatabaseBenchmark = BenchmarkRecord;
 
-  handhelds: {
-    name: string;
-    slug: string;
-    manufacturer: string;
-  } | null;
-
-  presets: {
-    name: string;
-    preset_type: string;
-  } | null;
-}
-
-async function getGame(slug: string) {
+const getGame = cache(async function getGame(slug: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -122,18 +108,19 @@ async function getGame(slug: string) {
 
   if (error) {
     console.error("Could not load game:", error.message);
-    return null;
+    throw new Error("Could not load the game. Please try again.");
   }
 
   return data as DatabaseGame | null;
-}
+});
 
 async function getGamePresets(gameId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("presets")
-    .select(`
+    .select(
+      `
       id,
       name,
       preset_type,
@@ -170,7 +157,8 @@ async function getGamePresets(gameId: string) {
       preset_confirmations (
         user_id
       )
-    `)
+    `,
+    )
     .eq("game_id", gameId)
     .eq("status", "published")
     .order("published_at", {
@@ -180,7 +168,9 @@ async function getGamePresets(gameId: string) {
 
   if (error) {
     console.error("Could not load game presets:", error.message);
-    return [];
+    throw new Error(
+      "Performance data is temporarily unavailable. Please try again.",
+    );
   }
 
   return (data ?? []) as unknown as DatabasePreset[];
@@ -191,42 +181,27 @@ async function getGameBenchmarks(gameId: string) {
 
   const { data, error } = await supabase
     .from("benchmarks")
-    .select(`
-      id,
-      resolution,
-      tdp,
-      average_fps,
-      one_percent_low,
-      battery_life,
-      test_notes,
-      handhelds (
-        name,
-        slug,
-        manufacturer
-      ),
-      presets (
-        name,
-        preset_type
-      )
-    `)
+    .select(BENCHMARK_SELECT)
     .eq("game_id", gameId)
     .eq("status", "published")
-    .order("average_fps", {
+    .order("published_at", {
       ascending: false,
       nullsFirst: false,
     });
 
   if (error) {
     console.error("Could not load game benchmarks:", error.message);
-    return [];
+    throw new Error(
+      "Performance data is temporarily unavailable. Please try again.",
+    );
   }
 
-  return (data ?? []) as unknown as DatabaseBenchmark[];
+  return withBenchmarkContributors(
+    (data ?? []) as unknown as DatabaseBenchmark[],
+  );
 }
 
-async function getGameRatings(
-  gameId: string,
-) {
+async function getGameRatings(gameId: string) {
   const supabase = await createClient();
 
   const {
@@ -278,6 +253,7 @@ async function getGameRatings(
   const userRating = userRatingResult.data?.rating ?? null;
 
   return {
+    unavailable: Boolean(summaryResult.error || userRatingResult.error),
     averageRating:
       averageRating !== null && Number.isFinite(averageRating)
         ? averageRating
@@ -285,10 +261,7 @@ async function getGameRatings(
     ratingCount: Number.isFinite(ratingCount)
       ? Math.max(0, Math.trunc(ratingCount))
       : 0,
-    userRating:
-      userRating !== null
-        ? Number(userRating)
-        : null,
+    userRating: userRating !== null ? Number(userRating) : null,
     isAuthenticated: user !== null,
   };
 }
@@ -337,7 +310,7 @@ export async function generateMetadata({
 function getPerformanceStatus(presetCount: number, benchmarkCount: number) {
   if (benchmarkCount > 0) {
     return {
-      label: "Verified performance data",
+      label: "Benchmark results available",
       style: "border-green-500/30 bg-green-500/10 text-green-400",
     };
   }
@@ -382,33 +355,16 @@ function getPerformanceOverview({
   gameName,
   presetCount,
   benchmarkCount,
-  averageTestedFps,
-  highestTestedFps,
 }: {
   gameName: string;
   presetCount: number;
   benchmarkCount: number;
-  averageTestedFps: number | null;
-  highestTestedFps: number | null;
 }) {
-  if (benchmarkCount > 0 && averageTestedFps !== null) {
-    const highestText =
-      highestTestedFps !== null
-        ? ` The highest published result currently reaches ${highestTestedFps} FPS.`
-        : "";
-
-    return `${gameName} currently has ${benchmarkCount} published benchmark${
-      benchmarkCount === 1 ? "" : "s"
-    } in the Atlas database, with an average tested result of ${averageTestedFps} FPS.${highestText} Use the benchmark table below to compare handhelds, power targets, resolutions and tested presets.`;
-  }
-
-  if (presetCount > 0) {
-    return `${gameName} has ${presetCount} published preset${
-      presetCount === 1 ? "" : "s"
-    } available, but no benchmark results have been published yet. Treat the presets as setup guidance until measured FPS, 1% lows, TDP and test-area notes are added.`;
-  }
-
-  return `No handheld-specific performance overview is available yet for ${gameName}. Once presets or benchmarks are added, this section will summarize expected FPS, 1% lows, tested devices, power targets and known performance issues.`;
+  if (benchmarkCount)
+    return `${gameName} has ${benchmarkCount} published benchmarks. Compare the graphics profile, resolution, power mode and source for each result. Results from different test conditions are not a single performance rating for the game.`;
+  if (presetCount)
+    return `${gameName} has ${presetCount} published presets. Open a preset to check its settings and supporting evidence.`;
+  return `No handheld-specific measurements are available yet for ${gameName}. Check back for documented presets and benchmarks.`;
 }
 
 export default async function GamePage({ params }: GamePageProps) {
@@ -419,11 +375,7 @@ export default async function GamePage({ params }: GamePageProps) {
     notFound();
   }
 
-  const [
-    gamePresets,
-    gameBenchmarks,
-    gameRatings,
-  ] = await Promise.all([
+  const [gamePresets, gameBenchmarks, gameRatings] = await Promise.all([
     getGamePresets(game.id),
     getGameBenchmarks(game.id),
     getGameRatings(game.id),
@@ -444,9 +396,7 @@ export default async function GamePage({ params }: GamePageProps) {
       game.notes ??
       `${game.name} handheld presets, recommended settings and performance information.`,
     genre: game.genre,
-    image: game.cover_image_url
-      ? absoluteUrl(game.cover_image_url)
-      : undefined,
+    image: game.cover_image_url ? absoluteUrl(game.cover_image_url) : undefined,
     datePublished: game.release_date ?? game.release_year?.toString(),
     author: game.developer
       ? {
@@ -463,9 +413,7 @@ export default async function GamePage({ params }: GamePageProps) {
           "@id": `${siteConfig.url}/#organization`,
         },
     gamePlatform:
-      game.platforms.length > 0
-        ? game.platforms
-        : ["PC", "Handheld gaming PC"],
+      game.platforms.length > 0 ? game.platforms : ["PC", "Handheld gaming PC"],
     aggregateRating:
       gameRatings.averageRating !== null && gameRatings.ratingCount > 0
         ? {
@@ -496,521 +444,434 @@ export default async function GamePage({ params }: GamePageProps) {
     ],
   };
 
-  const validBenchmarkFps = gameBenchmarks
-    .map((benchmark) => benchmark.average_fps)
-    .filter((value): value is number => typeof value === "number");
-
-  const highestTestedFps =
-    validBenchmarkFps.length > 0 ? Math.max(...validBenchmarkFps) : null;
-
-  const averageTestedFps =
-    validBenchmarkFps.length > 0
-      ? Math.round(
-          validBenchmarkFps.reduce((total, value) => total + value, 0) /
-            validBenchmarkFps.length,
-        )
-      : null;
-
+  const testedDevices = new Set(
+    gameBenchmarks.map((b) => b.handhelds?.slug).filter(Boolean),
+  ).size;
   const performanceOverview = getPerformanceOverview({
     gameName: game.name,
     presetCount: gamePresets.length,
     benchmarkCount: gameBenchmarks.length,
-    averageTestedFps,
-    highestTestedFps,
   });
 
   return (
     <>
       <JsonLd data={[gameJsonLd, breadcrumbJsonLd]} />
       <main className="atlas-page min-w-0 overflow-x-hidden pb-14 text-white">
-      <section className="relative overflow-hidden border-b border-white/[0.06]">
-        {game.cover_image_url ? (
-          <Image
-            src={game.cover_image_url}
-            alt={game.name}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center opacity-45"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(124,58,237,0.25),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.2),transparent_25%),linear-gradient(135deg,#05070d,#090d16_55%,#14090f)]" />
-        )}
+        <section className="relative overflow-hidden border-b border-white/[0.06]">
+          {game.cover_image_url ? (
+            <Image
+              src={game.cover_image_url}
+              alt={game.name}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-center opacity-45"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(124,58,237,0.25),transparent_28%),radial-gradient(circle_at_88%_20%,rgba(239,35,60,0.2),transparent_25%),linear-gradient(135deg,#05070d,#090d16_55%,#14090f)]" />
+          )}
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/95 to-[#05070d]/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/25" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#05070d] via-[#05070d]/95 to-[#05070d]/25" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-black/25" />
 
-        <div className="atlas-shell relative grid min-h-[34rem] items-end gap-7 py-9 sm:min-h-[38rem] sm:gap-10 sm:py-12 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="min-w-0">
-            <Link
-              href="/games"
-              className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
-            >
-              ← Back to games
-            </Link>
-
-            <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
-              <span
-                className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] backdrop-blur ${performanceStatus.style}`}
+          <div className="atlas-shell relative grid min-h-[34rem] items-end gap-7 py-9 sm:min-h-[38rem] sm:gap-10 sm:py-12 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="min-w-0">
+              <Link
+                href="/games"
+                className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400 transition hover:text-white"
               >
-                {performanceStatus.label}
-              </span>
+                ← Back to games
+              </Link>
 
-              <span className="atlas-chip">{game.genre}</span>
-
-              {(game.release_date || game.release_year) && (
-                <span className="atlas-chip">
-                  {game.release_date ?? game.release_year}
+              <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6">
+                <span
+                  className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] backdrop-blur ${performanceStatus.style}`}
+                >
+                  {performanceStatus.label}
                 </span>
-              )}
-            </div>
 
-            <h1 className="mt-4 max-w-4xl break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-5 sm:text-6xl lg:text-7xl">
-              {game.name}
-            </h1>
+                <span className="atlas-chip">{game.genre}</span>
 
-            <p className="mt-3 text-base font-bold text-slate-300 sm:mt-4 sm:text-lg">
-              {game.developer ?? "Unknown developer"}
-            </p>
+                {(game.release_date || game.release_year) && (
+                  <span className="atlas-chip">
+                    {game.release_date ?? game.release_year}
+                  </span>
+                )}
+              </div>
 
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:mt-5 sm:text-base sm:leading-8">
-              {game.notes ??
-                "Detailed handheld performance notes and recommended settings will be added soon."}
-            </p>
+              <h1 className="mt-4 max-w-4xl break-words text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-5 sm:text-6xl lg:text-7xl">
+                {game.name}
+              </h1>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
-              <Link
-                href="/presets"
-                className="atlas-button-primary w-full sm:w-auto"
-              >
-                Browse presets
-              </Link>
-
-              <Link
-                href="/benchmarks"
-                className="atlas-button-secondary w-full sm:w-auto"
-              >
-                View benchmarks
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-            <AtlasScore
-              score={game.metacritic_critic_score}
-              variant="large"
-              className="h-full"
-            />
-<HeroMetric
-              label="Highest tested"
-              value={highestTestedFps !== null ? `${highestTestedFps}` : "—"}
-              suffix={highestTestedFps !== null ? "FPS" : undefined}
-            />
-          </div>
-        </div>
-
-        <div className="atlas-shell relative pb-6 sm:pb-8">
-          <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-4">
-            <StripStat
-              label="Published presets"
-              value={gamePresets.length.toString()}
-            />
-            <StripStat
-              label="Published benchmarks"
-              value={gameBenchmarks.length.toString()}
-            />
-            <StripStat
-              label="Average tested FPS"
-              value={
-                averageTestedFps !== null
-                  ? `${averageTestedFps} FPS`
-                  : "No data"
-              }
-            />
-            <StripStat label="Performance status" value={performanceStatus.label} />
-          </div>
-        </div>
-      </section>
-
-      <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
-        <section className="grid min-w-0 gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-          <article className="atlas-panel min-w-0 p-4 sm:p-5">
-            <SectionHeading
-              eyebrow="Atlas notes"
-              title="Performance overview"
-            />
-
-            <p className="mt-5 text-base leading-8 text-slate-400">
-              {performanceOverview}
-            </p>
-
-            <div className="mt-5 border-t border-white/[0.07] pt-5">
-              <p className="atlas-section-label">
-                Community rating
+              <p className="mt-3 text-base font-bold text-slate-300 sm:mt-4 sm:text-lg">
+                {game.developer ?? "Unknown developer"}
               </p>
 
-              <h3 className="mt-2 text-xl font-black">
-                Rate this game
-              </h3>
-
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Community ratings measure player opinion separately from the PC Metacritic score displayed as Atlas Score, with one live vote per account.
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:mt-5 sm:text-base sm:leading-8">
+                {game.notes ??
+                  "Detailed handheld performance notes and recommended settings will be added soon."}
               </p>
 
-              <div className="mt-4">
-                <GameRatingControl
-                  gameId={game.id}
-                  initialAverageRating={
-                    gameRatings.averageRating
-                  }
-                  initialRatingCount={
-                    gameRatings.ratingCount
-                  }
-                  initialUserRating={
-                    gameRatings.userRating
-                  }
-                  isAuthenticated={
-                    gameRatings.isAuthenticated
-                  }
-                />
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
+                <Link
+                  href={catalogUrl("/presets", { game: game.slug })}
+                  className="atlas-button-primary w-full sm:w-auto"
+                >
+                  Browse presets
+                </Link>
+
+                <Link
+                  href={catalogUrl("/benchmarks", { game: game.slug })}
+                  className="atlas-button-secondary w-full sm:w-auto"
+                >
+                  View benchmarks
+                </Link>
+                <SaveGameButton name={game.name} slug={game.slug} />
               </div>
             </div>
-          </article>
 
-          <article className="atlas-panel min-w-0 p-4 sm:p-5">
-            <SectionHeading eyebrow="Quick facts" title="Game profile" />
-
-            <dl className="mt-5">
-              <OverviewRow
-                label="Developer"
-                value={game.developer ?? "Not set"}
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+              <AtlasScore
+                score={game.metacritic_critic_score}
+                variant="large"
+                className="h-full"
               />
-              <OverviewRow
-                label="Publisher"
-                value={game.publisher ?? "Not set"}
+              <HeroMetric
+                label="Benchmark results"
+                value={gameBenchmarks.length.toString()}
               />
-              <OverviewRow label="Genre" value={game.genre} />
-              <OverviewRow
-                label="Release date"
-                value={
-                  game.release_date ??
-                  game.release_year?.toString() ??
-                  "Not set"
-                }
-              />
-              <OverviewRow
-                label="Platforms"
-                value={
-                  game.platforms.length > 0
-                    ? game.platforms.join(", ")
-                    : "Not set"
-                }
-              />
-              <OverviewRow
-                label="Steam App ID"
-                value={game.steam_app_id?.toString() ?? "Not set"}
-              />
-              {game.metacritic_user_score !== null && (
-                <OverviewRow
-                  label="Metacritic users"
-                  value={`${game.metacritic_user_score}/10`}
-                />
-              )}
-              <OverviewRow
-                label="Score source"
-                value={
-                  game.metacritic_critic_score !== null
-                    ? "Metacritic PC critics"
-                    : "Not available"
-                }
-                href={
-                  game.metacritic_critic_score !== null
-                    ? game.metacritic_url ?? undefined
-                    : undefined
-                }
-                isLast
-              />
-</dl>
-          </article>
-        </section>
-
-        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionHeading
-              eyebrow="Recommended settings"
-              title="Presets"
-              noBorder
-            />
-
-            <Link
-              href="/presets"
-              className="text-xs font-black text-cyan-400 transition hover:text-white"
-            >
-              View all presets →
-            </Link>
-          </div>
-
-          {gamePresets.length === 0 ? (
-            <EmptyState text="No published presets are available for this game." />
-          ) : (
-            <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
-              {gamePresets.map((preset) => {
-                const settingsCount = (preset.preset_setting_groups ?? []).reduce(
-                  (total, group) =>
-                    total + (group.preset_setting_items ?? []).length,
-                  0,
-                );
-                const profileGuide = getPresetProfileGuide(preset.preset_type);
-                const trustReport = calculatePresetTrust({
-                  averageFps: preset.fps_average,
-                  onePercentLow: preset.one_percent_low,
-                  resolution: preset.resolution,
-                  tdp: preset.tdp,
-                  upscaler: preset.upscaler,
-                  batteryLife: preset.battery_life,
-                  summary: preset.summary,
-                  communityRating: preset.community_rating,
-                  upvoteCount: preset.preset_votes?.length ?? 0,
-                  confirmationCount:
-                    preset.preset_confirmations?.length ?? 0,
-                  atlasVerified:
-                    preset.atlas_verified ?? false,
-                  groups: (preset.preset_setting_groups ?? []).map(
-                    (group) => ({
-                      items: group.preset_setting_items ?? [],
-                    }),
-                  ),
-                });
-                const evidenceBadges = [
-                  preset.atlas_verified ? "Atlas Verified" : null,
-                  preset.evidence_exception_approved
-                    ? "Evidence exception"
-                    : null,
-                  `Confidence ${trustReport.score}/100`,
-                  preset.fps_average !== null && preset.one_percent_low !== null
-                    ? "Measured FPS"
-                    : null,
-                  preset.resolution && preset.tdp ? "Exact target" : null,
-                  settingsCount > 0 ? `${settingsCount} settings` : null,
-                  preset.community_rating !== null ? "Community rated" : null,
-                ].filter((value): value is string => Boolean(value));
-
-                return (
-                  <article
-                    key={preset.id}
-                    className="atlas-card atlas-card-hover flex min-w-0 flex-col overflow-hidden"
-                  >
-                    <div className="min-w-0 flex-1 p-4 sm:p-5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] ${getPresetStyle(
-                            preset.preset_type,
-                          )}`}
-                        >
-                          {preset.preset_type}
-                        </span>
-
-                        <PresetTrustBadge
-                          score={trustReport.score}
-                          label={trustReport.label}
-                          tone={trustReport.tone}
-                          compact
-                        />
-
-                        <span className="text-[0.58rem] font-black uppercase tracking-[0.12em] text-cyan-400">
-                          {preset.handhelds?.name ?? "Unknown handheld"}
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/presets/${preset.id}`}
-                        className="group mt-3 block w-fit max-w-full"
-                      >
-                        <h3 className="break-words text-xl font-black transition group-hover:text-red-400 sm:text-2xl">
-                          {preset.name}
-                        </h3>
-                      </Link>
-
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
-                        {preset.summary ??
-                          "Detailed recommended settings for this game."}
-                      </p>
-
-                      <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 p-4">
-                        <p className="text-[0.52rem] font-black uppercase tracking-[0.13em] text-slate-600">
-                          Best for
-                        </p>
-                        <p className="mt-2 text-xs font-bold leading-5 text-slate-300">
-                          {profileGuide.bestFor}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <PresetStat
-                          label="Resolution"
-                          value={preset.resolution ?? "Not set"}
-                        />
-                        <PresetStat label="TDP" value={preset.tdp ?? "Not set"} />
-                        <PresetStat
-                          label="Average"
-                          value={
-                            preset.fps_average !== null
-                              ? `${preset.fps_average} FPS`
-                              : "Not reported"
-                          }
-                          highlighted
-                        />
-                        <PresetStat
-                          label="1% Low"
-                          value={
-                            preset.one_percent_low !== null
-                              ? `${preset.one_percent_low} FPS`
-                              : "Not reported"
-                          }
-                        />
-                      </div>
-
-                      {evidenceBadges.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {evidenceBadges.map((badge) => (
-                            <span
-                              key={badge}
-                              className="rounded-full border border-white/[0.08] bg-black/25 px-2.5 py-1 text-[0.52rem] font-black uppercase tracking-[0.09em] text-slate-500"
-                            >
-                              {badge}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2 border-t border-white/[0.06] bg-black/20 p-4 sm:grid-cols-2">
-                      <Link
-                        href={`/presets/${preset.id}`}
-                        className="atlas-button-primary text-center"
-                      >
-                        View full preset
-                      </Link>
-
-                      {preset.handhelds ? (
-                        <Link
-                          href={`/handhelds/${preset.handhelds.slug}`}
-                          className="atlas-button-secondary text-center"
-                        >
-                          Open handheld
-                        </Link>
-                      ) : (
-                        <span className="atlas-button-secondary cursor-not-allowed text-center opacity-40">
-                          Handheld unavailable
-                        </span>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
             </div>
-          )}
-        </section>
-
-        <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionHeading
-              eyebrow="Performance data"
-              title="Benchmark wall"
-              noBorder
-            />
-
-            <Link
-              href="/benchmarks"
-              className="text-xs font-black text-cyan-400 transition hover:text-white"
-            >
-              View all benchmarks →
-            </Link>
           </div>
 
-          {gameBenchmarks.length === 0 ? (
-            <EmptyState text="No published benchmark results are available for this game." />
-          ) : (
-            <div className="mt-5 max-w-full overflow-hidden rounded-xl border border-white/[0.07]">
-              <div className="max-w-full overflow-x-auto">
-                <table className="min-w-[48rem] text-left md:min-w-full">
-                  <thead className="bg-black/30">
-                    <tr>
-                      <TableHeading label="Handheld" />
-                      <TableHeading label="Preset" />
-                      <TableHeading label="Resolution" />
-                      <TableHeading label="TDP" />
-                      <TableHeading label="Average" />
-                      <TableHeading label="1% Low" />
-                      <TableHeading label="Battery" />
-                    </tr>
-                  </thead>
+          <div className="atlas-shell relative pb-6 sm:pb-8">
+            <div className="atlas-stat-strip grid grid-cols-2 md:grid-cols-4">
+              <StripStat
+                label="Published presets"
+                value={gamePresets.length.toString()}
+              />
+              <StripStat
+                label="Published benchmarks"
+                value={gameBenchmarks.length.toString()}
+              />
+              <StripStat
+                label="Tested devices"
+                value={testedDevices.toString()}
+              />
+              <StripStat
+                label="Performance status"
+                value={performanceStatus.label}
+              />
+            </div>
+          </div>
+        </section>
 
-                  <tbody>
-                    {gameBenchmarks.map((benchmark) => (
-                      <tr
-                        key={benchmark.id}
-                        className="border-t border-white/[0.06] transition hover:bg-white/[0.025]"
-                      >
-                        <td className="px-4 py-4">
-                          {benchmark.handhelds ? (
-                            <Link
-                              href={`/handhelds/${benchmark.handhelds.slug}`}
-                              className="font-black text-slate-200 transition hover:text-cyan-400"
-                            >
-                              {benchmark.handhelds.name}
-                            </Link>
-                          ) : (
-                            <span className="text-slate-500">
-                              Unknown handheld
-                            </span>
-                          )}
-                        </td>
+        <div className="atlas-shell min-w-0 pt-5 sm:pt-6">
+          <section className="grid min-w-0 gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+            <article className="atlas-panel min-w-0 p-4 sm:p-5">
+              <SectionHeading
+                eyebrow="Atlas notes"
+                title="Performance overview"
+              />
 
-                        <td className="px-4 py-4 text-sm text-slate-400">
-                          {benchmark.presets
-                            ? `${benchmark.presets.preset_type} · ${benchmark.presets.name}`
-                            : "Custom"}
-                        </td>
+              <p className="mt-5 text-base leading-8 text-slate-400">
+                {performanceOverview}
+              </p>
 
-                        <td className="px-4 py-4 text-sm text-slate-400">
-                          {benchmark.resolution ?? "Not set"}
-                        </td>
+              <div className="mt-5 border-t border-white/[0.07] pt-5">
+                <p className="atlas-section-label">Community rating</p>
 
-                        <td className="px-4 py-4 text-sm text-slate-400">
-                          {benchmark.tdp ?? "Not set"}
-                        </td>
+                <h3 className="mt-2 text-xl font-black">Rate this game</h3>
 
-                        <td className="px-4 py-4">
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Community ratings measure player opinion separately from the
+                  PC Metacritic score displayed as Atlas Score, with one live
+                  vote per account.
+                </p>
+
+                <div className="mt-4">
+                  {gameRatings.unavailable ? (
+                    <DataNotice label="Community ratings are temporarily unavailable." />
+                  ) : (
+                    <GameRatingControl
+                      gameId={game.id}
+                      initialAverageRating={gameRatings.averageRating}
+                      initialRatingCount={gameRatings.ratingCount}
+                      initialUserRating={gameRatings.userRating}
+                      isAuthenticated={gameRatings.isAuthenticated}
+                    />
+                  )}
+                </div>
+              </div>
+            </article>
+
+            <article className="atlas-panel min-w-0 p-4 sm:p-5">
+              <SectionHeading eyebrow="Quick facts" title="Game profile" />
+
+              <dl className="mt-5">
+                <OverviewRow
+                  label="Developer"
+                  value={game.developer ?? "Not set"}
+                />
+                <OverviewRow
+                  label="Publisher"
+                  value={game.publisher ?? "Not set"}
+                />
+                <OverviewRow label="Genre" value={game.genre} />
+                <OverviewRow
+                  label="Release date"
+                  value={
+                    game.release_date ??
+                    game.release_year?.toString() ??
+                    "Not set"
+                  }
+                />
+                <OverviewRow
+                  label="Platforms"
+                  value={
+                    game.platforms.length > 0
+                      ? game.platforms.join(", ")
+                      : "Not set"
+                  }
+                />
+                <OverviewRow
+                  label="Steam App ID"
+                  value={game.steam_app_id?.toString() ?? "Not set"}
+                />
+                {game.metacritic_user_score !== null && (
+                  <OverviewRow
+                    label="Metacritic users"
+                    value={`${game.metacritic_user_score}/10`}
+                  />
+                )}
+                <OverviewRow
+                  label="Score source"
+                  value={
+                    game.metacritic_critic_score !== null
+                      ? "Metacritic PC critics"
+                      : "Not available"
+                  }
+                  href={
+                    game.metacritic_critic_score !== null
+                      ? (game.metacritic_url ?? undefined)
+                      : undefined
+                  }
+                  isLast
+                />
+              </dl>
+            </article>
+          </section>
+
+          <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <SectionHeading
+                eyebrow="Recommended settings"
+                title="Presets"
+                noBorder
+              />
+
+              <Link
+                href={catalogUrl("/presets", { game: game.slug })}
+                className="text-xs font-black text-cyan-400 transition hover:text-white"
+              >
+                View all presets →
+              </Link>
+            </div>
+
+            {gamePresets.length === 0 ? (
+              <EmptyState text="No published presets are available for this game." />
+            ) : (
+              <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
+                {gamePresets.map((preset) => {
+                  const settingsCount = (
+                    preset.preset_setting_groups ?? []
+                  ).reduce(
+                    (total, group) =>
+                      total + (group.preset_setting_items ?? []).length,
+                    0,
+                  );
+                  const profileGuide = getPresetProfileGuide(
+                    preset.preset_type,
+                  );
+                  const trustReport = calculatePresetTrust({
+                    averageFps: preset.fps_average,
+                    onePercentLow: preset.one_percent_low,
+                    resolution: preset.resolution,
+                    tdp: preset.tdp,
+                    upscaler: preset.upscaler,
+                    batteryLife: preset.battery_life,
+                    summary: preset.summary,
+                    communityRating: preset.community_rating,
+                    upvoteCount: preset.preset_votes?.length ?? 0,
+                    confirmationCount: preset.preset_confirmations?.length ?? 0,
+                    atlasVerified: preset.atlas_verified ?? false,
+                    groups: (preset.preset_setting_groups ?? []).map(
+                      (group) => ({
+                        items: group.preset_setting_items ?? [],
+                      }),
+                    ),
+                  });
+                  const evidenceBadges = [
+                    preset.atlas_verified ? "Atlas Verified" : null,
+                    preset.evidence_exception_approved
+                      ? "Evidence exception"
+                      : null,
+                    `Confidence ${trustReport.score}/100`,
+                    preset.fps_average !== null &&
+                    preset.one_percent_low !== null
+                      ? "Measured FPS"
+                      : null,
+                    preset.resolution && preset.tdp ? "Exact target" : null,
+                    settingsCount > 0 ? `${settingsCount} settings` : null,
+                    preset.community_rating !== null ? "Community rated" : null,
+                  ].filter((value): value is string => Boolean(value));
+
+                  return (
+                    <article
+                      key={preset.id}
+                      className="atlas-card atlas-card-hover flex min-w-0 flex-col overflow-hidden"
+                    >
+                      <div className="min-w-0 flex-1 p-4 sm:p-5">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span
-                            className={`font-black ${getFpsStyle(
-                              benchmark.average_fps,
+                            className={`rounded-full border px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-[0.12em] ${getPresetStyle(
+                              preset.preset_type,
                             )}`}
                           >
-                            {benchmark.average_fps !== null
-                              ? `${benchmark.average_fps} FPS`
-                              : "—"}
+                            {preset.preset_type}
                           </span>
-                        </td>
 
-                        <td className="px-4 py-4 font-black text-slate-300">
-                          {benchmark.one_percent_low !== null
-                            ? `${benchmark.one_percent_low} FPS`
-                            : "—"}
-                        </td>
+                          <PresetTrustBadge
+                            score={trustReport.score}
+                            label={trustReport.label}
+                            tone={trustReport.tone}
+                            compact
+                          />
 
-                        <td className="px-4 py-4 text-sm text-slate-400">
-                          {benchmark.battery_life ?? "Not set"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <span className="text-[0.58rem] font-black uppercase tracking-[0.12em] text-cyan-400">
+                            {preset.handhelds?.name ?? "Unknown handheld"}
+                          </span>
+                        </div>
+
+                        <Link
+                          href={`/presets/${preset.id}`}
+                          className="group mt-3 block w-fit max-w-full"
+                        >
+                          <h3 className="break-words text-xl font-black transition group-hover:text-red-400 sm:text-2xl">
+                            {preset.name}
+                          </h3>
+                        </Link>
+
+                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                          {preset.summary ??
+                            "Detailed recommended settings for this game."}
+                        </p>
+
+                        <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+                          <p className="text-[0.52rem] font-black uppercase tracking-[0.13em] text-slate-600">
+                            Best for
+                          </p>
+                          <p className="mt-2 text-xs font-bold leading-5 text-slate-300">
+                            {profileGuide.bestFor}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <PresetStat
+                            label="Resolution"
+                            value={preset.resolution ?? "Not set"}
+                          />
+                          <PresetStat
+                            label="TDP"
+                            value={preset.tdp ?? "Not set"}
+                          />
+                          <PresetStat
+                            label="Average"
+                            value={
+                              preset.fps_average !== null
+                                ? `${preset.fps_average} FPS`
+                                : "Not reported"
+                            }
+                            highlighted
+                          />
+                          <PresetStat
+                            label="1% Low"
+                            value={
+                              preset.one_percent_low !== null
+                                ? `${preset.one_percent_low} FPS`
+                                : "Not reported"
+                            }
+                          />
+                        </div>
+
+                        {evidenceBadges.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {evidenceBadges.map((badge) => (
+                              <span
+                                key={badge}
+                                className="rounded-full border border-white/[0.08] bg-black/25 px-2.5 py-1 text-[0.52rem] font-black uppercase tracking-[0.09em] text-slate-500"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid gap-2 border-t border-white/[0.06] bg-black/20 p-4 sm:grid-cols-2">
+                        <Link
+                          href={`/presets/${preset.id}`}
+                          className="atlas-button-primary text-center"
+                        >
+                          View full preset
+                        </Link>
+
+                        {preset.handhelds ? (
+                          <Link
+                            href={`/handhelds/${preset.handhelds.slug}`}
+                            className="atlas-button-secondary text-center"
+                          >
+                            Open handheld
+                          </Link>
+                        ) : (
+                          <span className="atlas-button-secondary cursor-not-allowed text-center opacity-40">
+                            Handheld unavailable
+                          </span>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
+            )}
+          </section>
+
+          <section className="atlas-panel mt-5 min-w-0 p-4 sm:p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <SectionHeading
+                eyebrow="Performance data"
+                title="Benchmark wall"
+                noBorder
+              />
+
+              <Link
+                href={catalogUrl("/benchmarks", { game: game.slug })}
+                className="text-xs font-black text-cyan-400 transition hover:text-white"
+              >
+                View all benchmarks →
+              </Link>
             </div>
-          )}
-        </section>
-      </div>
+
+            {gameBenchmarks.length === 0 ? (
+              <EmptyState text="No published benchmark results yet." />
+            ) : (
+              <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
+                {gameBenchmarks.slice(0, 6).map((benchmark) => (
+                  <BenchmarkCard key={benchmark.id} benchmark={benchmark} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </main>
     </>
   );
@@ -1065,9 +926,7 @@ function StripStat({ label, value }: { label: string; value: string }) {
         {label}
       </p>
 
-      <p className="mt-1 truncate text-sm font-black text-slate-200">
-        {value}
-      </p>
+      <p className="mt-1 truncate text-sm font-black text-slate-200">{value}</p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useUrlValue } from "../lib/use-url-value";
 
 import Link from "next/link";
 import { Fragment, useCallback, useMemo, useState } from "react";
@@ -8,9 +9,7 @@ import type { PublicContributor } from "../lib/contributors";
 import PresetTrustBadge from "./PresetTrustBadge";
 import PresetVoteButton from "./PresetVoteButton";
 import { getPresetProfileGuide } from "../lib/preset-guidance";
-import {
-  calculatePresetTrust,
-} from "../lib/preset-trust";
+import { calculatePresetTrust } from "../lib/preset-trust";
 
 export type PublicPresetType =
   | "Performance"
@@ -163,9 +162,7 @@ function renderTextWithLinks(text: string) {
     const trailingMatch = part.match(/^(.*?)([),.;!?]*)$/);
     const cleanUrl = trailingMatch?.[1] ?? part;
     const trailingText = trailingMatch?.[2] ?? "";
-    const href = cleanUrl.startsWith("www.")
-      ? `https://${cleanUrl}`
-      : cleanUrl;
+    const href = cleanUrl.startsWith("www.") ? `https://${cleanUrl}` : cleanUrl;
 
     return (
       <Fragment key={index}>
@@ -187,11 +184,22 @@ export default function PresetsCatalog({
   presets,
   databaseError,
 }: PresetsCatalogProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [presetFilter, setPresetFilter] = useState<PresetFilter>("All");
-  const [gameFilter, setGameFilter] = useState("All");
-  const [handheldFilter, setHandheldFilter] = useState("All");
-  const [sortOption, setSortOption] = useState<SortOption>("Newest");
+  const [searchQuery, setSearchQuery] = useUrlValue<string>("q", "");
+  const [presetFilter, setPresetFilter] = useUrlValue<PresetFilter>(
+    "type",
+    "All",
+  );
+  const [gameValue, setGameFilter] = useUrlValue<string>("game", "All");
+  const gameFilter =
+    presets.find((p) => p.game?.slug === gameValue)?.game?.name ?? gameValue;
+  const [handheldValue, setHandheldFilter] = useUrlValue<string>(
+    "handheld",
+    "All",
+  );
+  const handheldFilter =
+    presets.find((p) => p.handheld?.slug === handheldValue)?.handheld?.name ??
+    handheldValue;
+  const [sortOption, setSortOption] = useUrlValue<SortOption>("sort", "Newest");
   const [voteOverrides, setVoteOverrides] = useState<
     Record<string, VoteOverride>
   >({});
@@ -255,21 +263,13 @@ export default function PresetsCatalog({
         upscaler: preset.upscaler,
         batteryLife: preset.batteryLife,
         summary: preset.summary,
-        communityRating:
-          preset.communityRating,
-        upvoteCount:
-          getVoteState(preset).count,
-        confirmationCount:
-          getConfirmationState(preset)
-            .count,
-        atlasVerified:
-          preset.atlasVerified,
+        communityRating: preset.communityRating,
+        upvoteCount: getVoteState(preset).count,
+        confirmationCount: getConfirmationState(preset).count,
+        atlasVerified: preset.atlasVerified,
         groups: preset.groups,
       }),
-    [
-      getConfirmationState,
-      getVoteState,
-    ],
+    [getConfirmationState, getVoteState],
   );
 
   const gameOptions = useMemo(
@@ -342,18 +342,14 @@ export default function PresetsCatalog({
           searchableText.includes(normalizedQuery)) &&
         (presetFilter === "All" || preset.type === presetFilter) &&
         (gameFilter === "All" || preset.game?.name === gameFilter) &&
-        (handheldFilter === "All" ||
-          preset.handheld?.name === handheldFilter)
+        (handheldFilter === "All" || preset.handheld?.name === handheldFilter)
       );
     });
 
     return [...matchingPresets].sort((first, second) => {
       switch (sortOption) {
         case "Highest confidence":
-          return (
-            getTrustState(second).score -
-            getTrustState(first).score
-          );
+          return getTrustState(second).score - getTrustState(first).score;
         case "Most upvoted":
           return getVoteState(second).count - getVoteState(first).count;
         case "Most confirmed":
@@ -362,10 +358,7 @@ export default function PresetsCatalog({
             getConfirmationState(first).count
           );
         case "Rating":
-          return (
-            (second.communityRating ?? -1) -
-            (first.communityRating ?? -1)
-          );
+          return (second.communityRating ?? -1) - (first.communityRating ?? -1);
         case "FPS":
           return (second.averageFps ?? -1) - (first.averageFps ?? -1);
         case "Name":
@@ -400,9 +393,7 @@ export default function PresetsCatalog({
     presets.length > 0
       ? Math.round(
           presets.reduce(
-            (total, preset) =>
-              total +
-              getTrustState(preset).score,
+            (total, preset) => total + getTrustState(preset).score,
             0,
           ) / presets.length,
         )
@@ -554,9 +545,12 @@ export default function PresetsCatalog({
 
         <section className="mt-4 flex flex-col gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.045] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-black text-white">Just want settings that work?</p>
+            <p className="text-sm font-black text-white">
+              Just want settings that work?
+            </p>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Pick a matching preset below and copy it. The explanations stay optional until you need them.
+              Pick a matching preset below and copy it. The explanations stay
+              optional until you need them.
             </p>
           </div>
           <Link
@@ -571,12 +565,15 @@ export default function PresetsCatalog({
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.07] pb-3">
             <div>
               <p className="atlas-section-label">Choose your target</p>
-              <h2 className="mt-1 text-xl font-black">What each profile is built for</h2>
+              <h2 className="mt-1 text-xl font-black">
+                What each profile is built for
+              </h2>
             </div>
 
             <p className="max-w-xl text-right text-xs leading-5 text-slate-600">
-              There is no magical universal preset. Pick the goal that matches how
-              you actually play, then use the measured data to judge the trade-off.
+              There is no magical universal preset. Pick the goal that matches
+              how you actually play, then use the measured data to judge the
+              trade-off.
             </p>
           </div>
 
@@ -727,7 +724,11 @@ export default function PresetsCatalog({
                           </p>
 
                           <div className="mt-3">
-                            <ContributorAttribution profile={preset.contributor} label="Submitted by" compact />
+                            <ContributorAttribution
+                              profile={preset.contributor}
+                              label="Submitted by"
+                              compact
+                            />
                           </div>
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -766,7 +767,9 @@ export default function PresetsCatalog({
                             </p>
                             <p className="mt-1 text-2xl font-black text-white">
                               {trustState.score}
-                              <span className="text-sm text-slate-600">/100</span>
+                              <span className="text-sm text-slate-600">
+                                /100
+                              </span>
                             </p>
                             <p className="mt-1 text-[0.62rem] font-bold text-slate-500">
                               {trustState.label}
@@ -901,13 +904,7 @@ function HeroStat({
   );
 }
 
-function FilterLabel({
-  htmlFor,
-  label,
-}: {
-  htmlFor: string;
-  label: string;
-}) {
+function FilterLabel({ htmlFor, label }: { htmlFor: string; label: string }) {
   return (
     <label
       htmlFor={htmlFor}
@@ -925,12 +922,7 @@ interface FilterSelectProps {
   onChange: (value: string) => void;
 }
 
-function FilterSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: FilterSelectProps) {
+function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
   const id = `preset-filter-${label.toLowerCase().replaceAll(" ", "-")}`;
 
   return (
