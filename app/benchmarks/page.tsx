@@ -15,6 +15,7 @@ import {
   param,
   powerSupply,
   powerWatts,
+  resolutionLabel,
   type SearchParams,
 } from "../../lib/catalog/query";
 import { assertRead } from "../../lib/catalog/read";
@@ -39,6 +40,7 @@ export default async function BenchmarksPage({
       "sort",
     ].map((k) => [k, param(params, k)]),
   );
+  values.resolution = resolutionLabel(values.resolution);
   const index = await getBenchmarkIndex();
   const matching = index
     .filter((b) => {
@@ -55,7 +57,8 @@ export default async function BenchmarksPage({
         (!values.handheld || b.handhelds?.slug === values.handheld) &&
         (!values.watts || powerWatts(b.tdp) === values.watts) &&
         (!values.supply || powerSupply(b.tdp) === values.supply) &&
-        (!values.resolution || b.resolution === values.resolution) &&
+        (!values.resolution ||
+          resolutionLabel(b.resolution) === values.resolution) &&
         (!values.evidence || b.evidence_tier === values.evidence) &&
         (!values.fps ||
           (b.average_fps !== null && b.average_fps >= Number(values.fps)))
@@ -167,19 +170,19 @@ export default async function BenchmarksPage({
               label="Resolution"
               name="resolution"
               value={values.resolution}
-              options={distinct(index.map((b) => b.resolution)).map(
-                (value) => ({ value, label: value }),
-              )}
+              options={distinct(
+                index.map((b) => resolutionLabel(b.resolution)),
+              ).map((value) => ({ value, label: value }))}
             />
           </div>
           <details
             className="mt-4"
             open={Boolean(
               values.watts ||
-                values.supply ||
-                values.evidence ||
-                values.fps ||
-                values.sort,
+              values.supply ||
+              values.evidence ||
+              values.fps ||
+              values.sort,
             )}
           >
             <summary className="cursor-pointer py-2 text-sm font-bold text-slate-300">

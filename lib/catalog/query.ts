@@ -39,3 +39,8 @@ export function powerSupply(value: string | null) {
   if (/battery/i.test(value ?? "")) return "battery";
   return "unknown";
 }
+export function resolutionLabel(value: string | null) {
+  const trimmed = value?.trim() ?? "";
+  const match = trimmed.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+  return match ? `${match[1]} × ${match[2]}` : trimmed;
+}

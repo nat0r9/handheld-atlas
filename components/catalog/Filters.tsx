@@ -40,7 +40,9 @@ export function Select({
         defaultValue={value}
         className="w-full min-w-0 rounded-lg px-3 py-3 text-sm"
       >
-        <option value="">All</option>
+        <option value="">
+          {name === "sort" ? `${options[0]?.label} (default)` : "All"}
+        </option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

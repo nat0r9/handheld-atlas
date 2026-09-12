@@ -12,11 +12,7 @@ import { getPresetProfileGuide } from "../lib/preset-guidance";
 import { calculatePresetTrust } from "../lib/preset-trust";
 
 export type PublicPresetType =
-  | "Performance"
-  | "Balanced"
-  | "Battery"
-  | "Docked"
-  | "Custom";
+  "Performance" | "Balanced" | "Battery" | "Docked" | "Custom";
 
 export interface PublicPresetSettingItem {
   id: string;
@@ -934,6 +930,11 @@ function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
         onChange={(event) => onChange(event.target.value)}
         className="w-full min-w-0 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-3 text-sm"
       >
+        {!options.includes(value) && (
+          <option value={value}>
+            Selected {label.toLowerCase()} (no presets)
+          </option>
+        )}
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
