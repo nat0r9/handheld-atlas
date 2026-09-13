@@ -250,8 +250,8 @@ export default async function BenchmarksPage({
             {matching.length} {matching.length === 1 ? "result" : "results"}
           </h2>
           <p className="text-sm text-slate-400">
-            {new Set(matching.map((b) => b.game_id)).size} games ·{" "}
-            {new Set(matching.map((b) => b.handheld_id)).size} devices in this
+            {distinct(matching.map((b) => b.games?.slug ?? null)).length} games ·{" "}
+            {distinct(matching.map((b) => b.handhelds?.slug ?? null)).length} devices in this
             selection
           </p>
         </div>
