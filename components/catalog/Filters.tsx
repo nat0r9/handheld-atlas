@@ -43,6 +43,9 @@ export function Select({
         <option value="">
           {name === "sort" ? `${options[0]?.label} (default)` : "All"}
         </option>
+        {value && !options.some((option) => option.value === value) && (
+          <option value={value}>{value.replaceAll("-", " ")}</option>
+        )}
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
