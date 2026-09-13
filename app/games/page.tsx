@@ -124,7 +124,7 @@ export default async function GamesPage({
         "id,game_id,name,preset_type,fps_average,atlas_verified,community_rating,published_at,handhelds(name,slug),preset_votes(user_id),preset_confirmations(user_id)",
       )
       .eq("status", "published"),
-    db.rpc("get_game_rating_summaries"),
+    db.rpc("get_game_rating_summaries", {}, { get: true }),
   ]);
   assertRead(presetsResult.error, "preset coverage");
   assertRead(ratings.error, "game ratings");

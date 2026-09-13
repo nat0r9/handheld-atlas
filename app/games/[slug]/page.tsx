@@ -211,7 +211,7 @@ async function getGameRatings(gameId: string) {
   const [summaryResult, userRatingResult] = await Promise.all([
     supabase.rpc("get_game_rating_summary", {
       p_game_id: gameId,
-    }),
+    }, { get: true }),
     user
       ? supabase
           .from("game_ratings")

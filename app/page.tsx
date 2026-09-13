@@ -395,7 +395,7 @@ export default async function HomePage() {
       p_month_start: monthStart.toISOString().slice(0, 10),
       p_limit: COMMUNITY_TOP_GAME_LIMIT,
       p_min_votes: COMMUNITY_MIN_VOTES_PER_GAME,
-    }),
+    }, { get: true }),
     getBenchmarkIndex(),
   ]);
 

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createReadFetch } from "./read-fetch";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -24,6 +25,7 @@ export async function createClient() {
     supabaseUrl,
     supabasePublishableKey,
     {
+      global: { fetch: createReadFetch(new URL(supabaseUrl).origin) },
       cookies: {
         getAll() {
           return cookieStore.getAll();
