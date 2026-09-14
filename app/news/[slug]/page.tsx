@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { cache } from "react";
+import { assertRead } from "../../../lib/catalog/read";
 import Image from "next/image";
 import Link from "next/link";
 import JsonLd from "../../../components/JsonLd";
@@ -34,7 +36,7 @@ interface RelatedContent {
   slug: string;
 }
 
-async function getNewsItem(slug: string) {
+const getNewsItem = cache(async (slug: string) => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -59,17 +61,10 @@ async function getNewsItem(slug: string) {
     .eq("status", "published")
     .maybeSingle();
 
-  if (error) {
-    console.error(
-      "Could not load news article:",
-      error.message,
-    );
-
-    return null;
-  }
+  assertRead(error, "news article");
 
   return data as DatabaseNewsItem | null;
-}
+});
 
 async function getRelatedContent(
   newsItem: DatabaseNewsItem,

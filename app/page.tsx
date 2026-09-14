@@ -578,10 +578,15 @@ export default async function HomePage() {
             games={Array.from(
               new Map(
                 benchmarkIndex.flatMap((b) =>
-                  b.games ? [[b.games.slug, b.games] as const] : [],
+                  b.games && b.handhelds ? [[b.games.slug, b.games] as const] : [],
                 ),
               ).values(),
-            ).sort((a, b) => a.name.localeCompare(b.name))}
+            ).map((game) => ({
+              ...game,
+              handheldSlugs: Array.from(new Set(benchmarkIndex.flatMap((b) =>
+                b.games?.slug === game.slug && b.handhelds ? [b.handhelds.slug] : [],
+              ))),
+            })).sort((a, b) => a.name.localeCompare(b.name))}
           />
         </div>
 
@@ -788,9 +793,10 @@ export default async function HomePage() {
               <>
                 <div className="mt-4 space-y-2 md:hidden">
                   {benchmarks.map((benchmark) => (
-                    <article
+                    <Link
                       key={benchmark.id}
-                      className="rounded-xl border border-white/[0.07] bg-black/20 p-3"
+                      href={`/benchmarks/${benchmark.id}`}
+                      className="block rounded-xl border border-white/[0.07] bg-black/20 p-3 transition hover:border-cyan-400/40"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -826,7 +832,8 @@ export default async function HomePage() {
                           </span>
                         )}
                       </div>
-                    </article>
+                      <p className="mt-3 text-sm font-bold text-cyan-300">Settings & evidence →</p>
+                    </Link>
                   ))}
                 </div>
 
@@ -839,9 +846,11 @@ export default async function HomePage() {
                   </div>
 
                   {benchmarks.map((benchmark, index) => (
-                    <div
+                    <Link
                       key={benchmark.id}
-                      className={`grid grid-cols-[1.3fr_1fr_1fr_auto] items-center gap-3 px-3 py-3 text-[0.68rem] ${
+                      href={`/benchmarks/${benchmark.id}`}
+                      aria-label={`${benchmark.games?.name ?? "Game"} — ${benchmark.handhelds?.name ?? "handheld"}: open benchmark settings and evidence`}
+                      className={`grid grid-cols-[1.3fr_1fr_1fr_auto] items-center gap-3 px-3 py-3 text-[0.68rem] transition hover:bg-white/5 ${
                         index === benchmarks.length - 1
                           ? ""
                           : "border-b border-white/[0.06]"
@@ -868,7 +877,7 @@ export default async function HomePage() {
                       >
                         {benchmark.average_fps ?? "—"}
                       </strong>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { assertRead } from "../../../lib/catalog/read";
 import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
@@ -114,7 +115,7 @@ export async function generateMetadata({
 }: PresetPageProps): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("presets")
     .select(`
       name,
@@ -127,6 +128,7 @@ export async function generateMetadata({
     .eq("status", "published")
     .maybeSingle();
 
+  assertRead(error, "preset metadata");
   if (!data) {
     return {
       title: "Preset Not Found",
@@ -347,7 +349,8 @@ export default async function PresetDetailPage({
       .order("name"),
   ]);
 
-  if (presetResult.error || !presetResult.data) {
+  assertRead(presetResult.error, "preset");
+  if (!presetResult.data) {
     notFound();
   }
 

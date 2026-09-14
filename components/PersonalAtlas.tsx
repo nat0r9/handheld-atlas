@@ -116,7 +116,7 @@ export function QuickFinder({
   games,
   handhelds,
 }: {
-  games: { name: string; slug: string }[];
+  games: { name: string; slug: string; handheldSlugs: string[] }[];
   handhelds: { name: string; slug: string }[];
 }) {
   const preferred = useSyncExternalStore(
@@ -125,8 +125,12 @@ export function QuickFinder({
     () => "",
   );
   const [selection, setSelection] = useState<string | null>(null);
+  const [game, setGame] = useState("");
   const value =
     selection ?? (handhelds.some((h) => h.slug === preferred) ? preferred : "");
+  const availableGames = value
+    ? games.filter((g) => g.handheldSlugs.includes(value)) : games;
+  const selectedGame = availableGames.some((g) => g.slug === game) ? game : "";
   return (
     <section className="atlas-panel p-5 sm:p-7">
       <p className="atlas-section-label">Start with your handheld</p>
@@ -145,14 +149,15 @@ export function QuickFinder({
             value={value}
             onChange={(e) => {
               setSelection(e.target.value);
+              setGame("");
               write("atlas-handheld-v1", e.target.value);
             }}
             className="w-full rounded-lg px-3 py-3 text-sm"
           >
             <option value="">Any handheld</option>
-            {handhelds.map((h) => (
+            {[...handhelds].sort((a, b) => a.name.localeCompare(b.name)).map((h) => (
               <option key={h.slug} value={h.slug}>
-                {h.name}
+                {h.name} ({games.filter((g) => g.handheldSlugs.includes(h.slug)).length} games)
               </option>
             ))}
           </select>
@@ -164,25 +169,38 @@ export function QuickFinder({
           <select
             id="finder-game"
             name="game"
+            value={selectedGame}
+            onChange={(e) => setGame(e.target.value)}
+            disabled={!availableGames.length}
             className="w-full rounded-lg px-3 py-3 text-sm"
           >
-            <option value="">All measured games</option>
-            {games.map((g) => (
+            <option value="">{availableGames.length ? "All measured games" : "No benchmarks yet"}</option>
+            {availableGames.map((g) => (
               <option key={g.slug} value={g.slug}>
                 {g.name}
               </option>
             ))}
           </select>
         </div>
-        <button type="submit" className="atlas-button-primary w-full">
+        <p role="status" className="text-sm text-slate-300">
+          {availableGames.length
+            ? `${availableGames.length} games with benchmark data${value ? " for this handheld" : ""}.`
+            : "No benchmark data for this handheld yet. You can still explore its hardware profile."}
+        </p>
+        <button type="submit" disabled={!availableGames.length} className="atlas-button-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
           Find benchmarks →
         </button>
       </form>
+      {value && !availableGames.length && (
+        <Link className="atlas-button-secondary mt-3 w-full" href={`/handhelds/${value}`}>
+          Explore this handheld →
+        </Link>
+      )}
       <p className="mt-4 text-sm leading-6 text-slate-400">
         Read the settings and evidence for each result. Coverage varies by
         device.
       </p>
-      {value && (
+      {value && availableGames.length > 0 && (
         <Link
           className="mt-3 inline-block py-2 text-sm font-bold text-cyan-300"
           href={catalogUrl("/games", { handheld: value, coverage: "any" })}
