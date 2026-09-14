@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { catalogUrl } from "../lib/catalog/query";
 const eventName = "atlas-preferences";
+const gameCountLabel = (count: number) => `${count} ${count === 1 ? "game" : "games"}`;
 function subscribe(notify: () => void) {
   window.addEventListener("storage", notify);
   window.addEventListener(eventName, notify);
@@ -157,7 +158,7 @@ export function QuickFinder({
             <option value="">Any handheld</option>
             {[...handhelds].sort((a, b) => a.name.localeCompare(b.name)).map((h) => (
               <option key={h.slug} value={h.slug}>
-                {h.name} ({games.filter((g) => g.handheldSlugs.includes(h.slug)).length} games)
+                {h.name} ({gameCountLabel(games.filter((g) => g.handheldSlugs.includes(h.slug)).length)})
               </option>
             ))}
           </select>
@@ -184,7 +185,7 @@ export function QuickFinder({
         </div>
         <p role="status" className="text-sm text-slate-300">
           {availableGames.length
-            ? `${availableGames.length} games with benchmark data${value ? " for this handheld" : ""}.`
+            ? `${gameCountLabel(availableGames.length)} with benchmark data${value ? " for this handheld" : ""}.`
             : "No benchmark data for this handheld yet. You can still explore its hardware profile."}
         </p>
         <button type="submit" disabled={!availableGames.length} className="atlas-button-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
