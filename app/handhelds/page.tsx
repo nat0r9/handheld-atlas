@@ -1,5 +1,7 @@
+import { assertRead } from "../../lib/catalog/read";
+export const revalidate = 600;
 import HandheldsCatalog from "../../components/HandheldsCatalog";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
 
 export interface PublicHandheld {
   id: string;
@@ -33,6 +35,7 @@ export default async function HandheldsPage() {
       ascending: true,
     });
 
+  assertRead(error, "handhelds");
   const handhelds: PublicHandheld[] = (data ?? []).map(
     (handheld) => ({
       id: handheld.id,
@@ -57,7 +60,7 @@ export default async function HandheldsPage() {
   return (
     <HandheldsCatalog
       handhelds={handhelds}
-      databaseError={error?.message ?? null}
+      databaseError={null}
     />
   );
 }

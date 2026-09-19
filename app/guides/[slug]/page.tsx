@@ -1,3 +1,6 @@
+import { cache } from "react";
+import { assertRead } from "../../../lib/catalog/read";
+import { createClient as createPublicClient } from "../../../lib/supabase/public";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,9 +30,6 @@ interface DatabaseGuide {
   related_handheld_slug: string | null;
   published_at: string | null;
   updated_at: string | null;
-  guide_votes: Array<{
-    user_id: string;
-  }>;
 }
 
 interface RelatedContent {
@@ -37,8 +37,8 @@ interface RelatedContent {
   slug: string;
 }
 
-async function getGuide(slug: string) {
-  const supabase = await createClient();
+const getGuide = cache(async (slug: string) => {
+  const supabase = createPublicClient();
 
   const { data, error } = await supabase
     .from("guides")
@@ -55,31 +55,20 @@ async function getGuide(slug: string) {
       related_game_slug,
       related_handheld_slug,
       published_at,
-      updated_at,
-      guide_votes (
-        user_id
-      )
+      updated_at
     `)
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
 
-  if (error) {
-    console.error(
-      "Could not load guide:",
-      error.message,
-    );
-
-    return null;
-  }
-
+  assertRead(error, "guide");
   return data as DatabaseGuide | null;
-}
+});
 
 async function getRelatedContent(
   guide: DatabaseGuide,
 ) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const [
     relatedGameResult,
@@ -330,14 +319,14 @@ export default async function GuidePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const upvoteCount =
-    guide.guide_votes?.length ??
-    0;
+  const votesResult = await supabase.from("guide_votes").select("user_id").eq("guide_id", guide.id);
+  assertRead(votesResult.error, "guide votes");
+  const votes = votesResult.data ?? [];
+  const upvoteCount = votes.length;
 
   const hasUpvoted =
     user !== null &&
-    (guide.guide_votes ??
-      []).some(
+    votes.some(
       (vote) =>
         vote.user_id === user.id,
     );

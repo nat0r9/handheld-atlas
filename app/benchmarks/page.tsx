@@ -19,7 +19,7 @@ import {
   type SearchParams,
 } from "../../lib/catalog/query";
 import { assertRead } from "../../lib/catalog/read";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
 
 export default async function BenchmarksPage({
   searchParams,

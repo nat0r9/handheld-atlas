@@ -1,3 +1,5 @@
+import { assertRead } from "../lib/catalog/read";
+export const revalidate = 600;
 import { QuickFinder, SavedGames } from "../components/PersonalAtlas";
 import { getBenchmarkIndex } from "../lib/catalog/benchmark-index";
 import Image from "next/image";
@@ -13,7 +15,7 @@ import {
   getRatingConfidenceLabel,
   parseMonthlyTopGames,
 } from "../lib/game-ratings";
-import { createClient } from "../lib/supabase/server";
+import { createClient } from "../lib/supabase/public";
 
 interface FeaturedNews {
   id: string;
@@ -398,6 +400,8 @@ export default async function HomePage() {
     }, { get: true }),
     getBenchmarkIndex(),
   ]);
+
+  for (const result of [featuredNewsResult, gamesResult, handheldsResult, presetsResult, benchmarksResult, guidesResult, newsResult, gamesCountResult, handheldsCountResult, presetsCountResult, benchmarksCountResult, monthlyRatingsResult]) assertRead(result.error, "homepage content");
 
   const featuredNews = featuredNewsResult.data as FeaturedNews | null;
 

@@ -234,7 +234,7 @@ export default function Header() {
 
       <nav className="mx-auto w-full max-w-[96rem] px-3 sm:px-4 lg:px-6">
         <div className="flex min-h-[4.5rem] w-full items-center justify-between gap-2">
-          <Link
+          <Link prefetch={false}
             href="/"
             onClick={closeMenu}
             className="group flex min-w-0 flex-1 items-center gap-2 sm:gap-3"
@@ -265,7 +265,7 @@ export default function Header() {
                 isActiveRoute(item.href);
 
               return (
-                <Link
+                <Link prefetch={false}
                   key={item.href}
                   href={item.href}
                   className={`relative rounded-lg px-3 py-2 text-xs font-black uppercase tracking-[0.06em] transition ${
@@ -285,7 +285,7 @@ export default function Header() {
           </div>
 
           <div className="hidden shrink-0 items-center gap-2 xl:flex">
-            <Link
+            <Link prefetch={false}
               href="/search"
               aria-label="Search HandheldAtlas"
               className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${
@@ -301,7 +301,7 @@ export default function Header() {
               <div className="h-10 w-28 animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.03]" />
             ) : currentUser ? (
               <>
-                <Link
+                <Link prefetch={false}
                   href="/profile"
                   className="group flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 transition hover:border-cyan-500/40 hover:bg-cyan-500/[0.06]"
                 >
@@ -314,7 +314,7 @@ export default function Header() {
                   </span>
                 </Link>
 
-                <Link
+                <Link prefetch={false}
                   href="/my-submissions"
                   className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
                 >
@@ -331,14 +331,14 @@ export default function Header() {
               </>
             ) : (
               <>
-                <Link
+                <Link prefetch={false}
                   href="/login"
                   className="rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs font-black text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-400"
                 >
                   Login
                 </Link>
 
-                <Link
+                <Link prefetch={false}
                   href="/register"
                   className="atlas-button-primary py-2.5"
                 >
@@ -349,7 +349,7 @@ export default function Header() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2 xl:hidden">
-            <Link
+            <Link prefetch={false}
               href="/search"
               onClick={closeMenu}
               aria-label="Search HandheldAtlas"
@@ -363,7 +363,7 @@ export default function Header() {
             </Link>
 
             {currentUser && !isAuthLoading && (
-              <Link
+              <Link prefetch={false}
                 href="/profile"
                 onClick={closeMenu}
                 aria-label="Open profile"
@@ -447,7 +447,7 @@ export default function Header() {
                       );
 
                     return (
-                      <Link
+                      <Link prefetch={false}
                         key={item.href}
                         href={item.href}
                         onClick={closeMenu}
@@ -476,7 +476,7 @@ export default function Header() {
                 )}
               </div>
 
-              <Link
+              <Link prefetch={false}
                 href="/search"
                 onClick={closeMenu}
                 className={`mt-3 flex items-center justify-between rounded-lg border px-4 py-3 text-xs font-black uppercase tracking-[0.08em] transition ${
@@ -516,7 +516,7 @@ export default function Header() {
                       </div>
 
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        <Link
+                        <Link prefetch={false}
                           href="/profile"
                           onClick={closeMenu}
                           className="atlas-button-secondary w-full"
@@ -524,7 +524,7 @@ export default function Header() {
                           My profile
                         </Link>
 
-                        <Link
+                        <Link prefetch={false}
                           href="/my-submissions"
                           onClick={closeMenu}
                           className="atlas-button-secondary w-full"
@@ -543,7 +543,7 @@ export default function Header() {
                     </>
                   ) : (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <Link
+                      <Link prefetch={false}
                         href="/login"
                         onClick={closeMenu}
                         className="atlas-button-secondary w-full"
@@ -551,7 +551,7 @@ export default function Header() {
                         Login
                       </Link>
 
-                      <Link
+                      <Link prefetch={false}
                         href="/register"
                         onClick={closeMenu}
                         className="atlas-button-primary w-full"
@@ -564,7 +564,7 @@ export default function Header() {
               )}
 
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <Link
+                <Link prefetch={false}
                   href="/presets"
                   onClick={closeMenu}
                   className="atlas-button-primary w-full"
@@ -572,7 +572,7 @@ export default function Header() {
                   Find settings
                 </Link>
 
-                <Link
+                <Link prefetch={false}
                   href="/compare"
                   onClick={closeMenu}
                   className="atlas-button-secondary w-full"

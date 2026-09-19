@@ -12,7 +12,7 @@ import {
   parseGameRatingSummaries,
   type GameRatingSummary,
 } from "../../lib/game-ratings";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
 
 export interface PublicGameTopPreset {
   id: string;

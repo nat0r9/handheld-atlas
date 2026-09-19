@@ -1,4 +1,4 @@
-import { createClient } from "../supabase/server";
+import { createClient } from "../supabase/public";
 import { readAll } from "./read";
 export interface BenchmarkIndex {
   id: string;

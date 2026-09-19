@@ -21,14 +21,14 @@ export default function BenchmarkCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-cyan-300">
             {b.games ? (
-              <Link href={`/games/${b.games.slug}`}>{b.games.name}</Link>
+              <Link prefetch={false} href={`/games/${b.games.slug}`}>{b.games.name}</Link>
             ) : (
               "Game not reported"
             )}
           </p>
           <h3 className="mt-1 text-xl font-black">
             {b.handhelds ? (
-              <Link href={`/handhelds/${b.handhelds.slug}`}>
+              <Link prefetch={false} href={`/handhelds/${b.handhelds.slug}`}>
                 {b.handhelds.name}
               </Link>
             ) : (
@@ -134,7 +134,7 @@ export default function BenchmarkCard({
             </a>
           )}
           {b.presets && (
-            <Link
+            <Link prefetch={false}
               href={`/presets/${b.presets.id}`}
               className="atlas-button-secondary"
             >
@@ -144,7 +144,7 @@ export default function BenchmarkCard({
         </div>
       </details>
       {!expanded && (
-        <Link
+        <Link prefetch={false}
           href={`/benchmarks/${b.id}`}
           className="mt-3 inline-block py-2 text-sm font-bold text-slate-300 hover:text-cyan-300"
         >

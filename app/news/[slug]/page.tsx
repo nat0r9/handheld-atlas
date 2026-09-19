@@ -1,3 +1,6 @@
+// Render article paths on demand; do not rebuild the entire archive.
+export function generateStaticParams() { return []; }
+export const revalidate = 600;
 import type { Metadata } from "next";
 import { cache } from "react";
 import { assertRead } from "../../../lib/catalog/read";
@@ -5,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import JsonLd from "../../../components/JsonLd";
 import { notFound } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
 import { absoluteUrl, siteConfig } from "../../../lib/site";
 
 interface NewsDetailPageProps {
@@ -106,6 +109,8 @@ async function getRelatedContent(
         }),
   ]);
 
+  assertRead(relatedGameResult.error, "related game");
+  assertRead(relatedHandheldResult.error, "related handheld");
   return {
     relatedGame:
       relatedGameResult.data as RelatedContent | null,

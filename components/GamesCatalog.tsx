@@ -89,7 +89,7 @@ export default function GamesCatalog({
             <button type="submit" className="atlas-button-primary">
               Show games
             </button>
-            <Link className="atlas-button-secondary" href="/games">
+            <Link prefetch={false} className="atlas-button-secondary" href="/games">
               Reset filters
             </Link>
           </div>
@@ -108,7 +108,7 @@ export default function GamesCatalog({
               Try a different title or remove a filter. A game without
               measurements may still be in the full catalogue.
             </p>
-            <Link href="/games" className="atlas-button-primary mt-5">
+            <Link prefetch={false} href="/games" className="atlas-button-primary mt-5">
               Browse all games
             </Link>
           </section>
@@ -126,7 +126,7 @@ function GameCard({ game }: { game: PublicGame }) {
   const showImage = Boolean(game.coverImageUrl) && !imageFailed;
 
   return (
-    <Link href={`/games/${game.slug}`} className="group min-w-0">
+    <Link prefetch={false} href={`/games/${game.slug}`} className="group min-w-0">
       <article className="atlas-card atlas-card-hover flex h-full min-w-0 flex-col">
         <div className="relative aspect-[16/10] overflow-hidden">
           {showImage ? (

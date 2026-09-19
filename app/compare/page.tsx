@@ -1,7 +1,7 @@
 import CompareHandhelds, {
   type CompareHandheld,
 } from "../../components/CompareHandhelds";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
 
 interface DatabaseHandheld {
   id: string;

@@ -19,7 +19,7 @@ export default function Pagination({
       className="mt-6 flex flex-wrap items-center justify-between gap-3"
     >
       {page > 1 ? (
-        <Link
+        <Link prefetch={false}
           scroll={true}
           className="atlas-button-secondary"
           href={catalogUrl(path, { ...values, page: page - 1 })}
@@ -33,7 +33,7 @@ export default function Pagination({
         Page {page} of {pages} · {total} results
       </p>
       {page < pages ? (
-        <Link
+        <Link prefetch={false}
           scroll={true}
           className="atlas-button-primary"
           href={catalogUrl(path, { ...values, page: page + 1 })}

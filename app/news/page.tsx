@@ -1,7 +1,9 @@
+import { assertRead } from "../../lib/catalog/read";
+export const revalidate = 600;
 import NewsCatalog, {
   type PublicNewsItem,
 } from "../../components/NewsCatalog";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
 
 interface DatabaseNewsItem {
   id: string;
@@ -43,6 +45,7 @@ export default async function NewsPage() {
       nullsFirst: false,
     });
 
+  assertRead(error, "news");
   const databaseNews =
     (data ?? []) as DatabaseNewsItem[];
 
@@ -78,7 +81,7 @@ export default async function NewsPage() {
       relatedGameSlugs.length > 0
         ? supabase
             .from("games")
-            .select("name, slug")
+            .select("name, slug").eq("status", "published")
             .in("slug", relatedGameSlugs)
         : Promise.resolve({
             data: [],
@@ -88,7 +91,7 @@ export default async function NewsPage() {
       relatedHandheldSlugs.length > 0
         ? supabase
             .from("handhelds")
-            .select("name, slug")
+            .select("name, slug").eq("status", "published")
             .in(
               "slug",
               relatedHandheldSlugs,
@@ -99,6 +102,8 @@ export default async function NewsPage() {
           }),
     ]);
 
+  assertRead(gamesResult.error, "related games");
+  assertRead(handheldsResult.error, "related handhelds");
   const gameNames = new Map(
     (gamesResult.data ?? []).map((game) => [
       game.slug,
@@ -155,11 +160,7 @@ export default async function NewsPage() {
           : null,
     }));
 
-  const databaseError =
-    error?.message ??
-    gamesResult.error?.message ??
-    handheldsResult.error?.message ??
-    null;
+  const databaseError = null;
 
   return (
     <NewsCatalog

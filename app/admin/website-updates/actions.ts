@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "../../../lib/cache/revalidate";
 import { redirect } from "next/navigation";
 import { CONTENT_EDITOR_ROLES } from "../../../lib/auth/roles";
 import { requireRole } from "../../../lib/auth/require-role";

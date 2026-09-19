@@ -113,7 +113,7 @@ export default function Footer() {
 
       <div className="atlas-shell relative py-10 sm:py-12">
         <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
-          <Link
+          <Link prefetch={false}
             href="/"
             aria-label="HandheldAtlas homepage"
             className="group inline-flex items-center gap-3"
@@ -195,7 +195,7 @@ export default function Footer() {
                     </span>
                   )}
 
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="transition hover:text-white"
                   >
@@ -225,7 +225,7 @@ export default function Footer() {
                     </span>
                   )}
 
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="transition hover:text-cyan-300"
                   >
