@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { catalogUrl } from "../lib/catalog/query";
+import type { RecentBenchmarkGame } from "../lib/catalog/recent";
 const eventName = "atlas-preferences";
 const gameCountLabel = (count: number) => `${count} ${count === 1 ? "game" : "games"}`;
 function subscribe(notify: () => void) {
@@ -126,6 +127,7 @@ export function QuickFinder({
     () => "",
   );
   const [selection, setSelection] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const [game, setGame] = useState("");
   const value =
     selection ?? (handhelds.some((h) => h.slug === preferred) ? preferred : "");
@@ -133,7 +135,7 @@ export function QuickFinder({
     ? games.filter((g) => g.handheldSlugs.includes(value)) : games;
   const selectedGame = availableGames.some((g) => g.slug === game) ? game : "";
   return (
-    <section className="atlas-panel p-5 sm:p-7">
+    <section id="my-handheld" className="atlas-panel scroll-mt-24 p-5 sm:p-7">
       <p className="atlas-section-label">Start with your handheld</p>
       <h2 className="mt-3 text-2xl sm:text-3xl">Find your next settings.</h2>
       <form action="/benchmarks" method="get" className="mt-5 space-y-4">
@@ -149,9 +151,10 @@ export function QuickFinder({
             name="handheld"
             value={value}
             onChange={(e) => {
-              setSelection(e.target.value);
+              const saved = write("atlas-handheld-v1", e.target.value);
+              setSelection(saved ? null : e.target.value);
+              setSaveError(!saved);
               setGame("");
-              write("atlas-handheld-v1", e.target.value);
             }}
             className="w-full rounded-lg px-3 py-3 text-sm"
           >
@@ -162,6 +165,11 @@ export function QuickFinder({
               </option>
             ))}
           </select>
+          <p role="status" className="mt-2 text-xs leading-5 text-slate-400">
+            {saveError
+              ? "Your browser could not remember this choice. The finder still works for this visit."
+              : "Your choice is remembered in this browser. Choose Any handheld to clear it."}
+          </p>
         </div>
         <div>
           <label htmlFor="finder-game" className="mb-2 block text-sm font-bold">
@@ -209,6 +217,51 @@ export function QuickFinder({
           All games with data for my handheld →
         </Link>
       )}
+    </section>
+  );
+}
+
+export function LatestForHandheld({ handhelds, recent }: {
+  handhelds: { name: string; slug: string }[];
+  recent: RecentBenchmarkGame[];
+}) {
+  const preferred = useSyncExternalStore(subscribe,
+    () => read("atlas-handheld-v1", ""), () => "");
+  const handheld = handhelds.find((h) => h.slug === preferred);
+  if (!handheld) return null;
+  const additions = recent.filter((g) => g.handheldSlug === handheld.slug);
+  return (
+    <section aria-labelledby="latest-for-device" className="atlas-panel mb-6 p-5 sm:p-7">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="atlas-section-label">Your handheld</p>
+          <h2 id="latest-for-device" className="mt-2 break-words text-2xl font-bold">Latest for {handheld.name}</h2>
+        </div>
+        <a href="#my-handheld" className="py-2 text-sm font-bold text-cyan-300">Change handheld ↑</a>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-400">
+        Latest benchmark additions, grouped by game. Dates show when results were added to Atlas, not when they were tested.
+      </p>
+      {additions.length ? (
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {additions.map((game) => (
+            <Link key={game.gameSlug} prefetch={false}
+              href={catalogUrl("/benchmarks", { handheld: handheld.slug, game: game.gameSlug })}
+              className="atlas-card min-w-0 p-4 transition hover:border-cyan-400/40">
+              <p className="text-xs text-slate-400">Latest addition · <time dateTime={game.addedAt}>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(game.addedAt))}</time></p>
+              <h3 className="mt-2 break-words text-lg font-bold text-white">{game.gameName}</h3>
+              <p className="mt-2 text-sm text-slate-300">{game.resultCount} {game.resultCount === 1 ? "result" : "results"} for this handheld</p>
+              <p className="mt-4 text-sm font-bold text-cyan-300">See settings & evidence →</p>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-5 text-sm text-slate-300">No dated benchmark additions for this handheld yet. Explore its profile for available information.</p>
+      )}
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link prefetch={false} className="atlas-button-secondary" href={catalogUrl("/benchmarks", { handheld: handheld.slug })}>All benchmarks →</Link>
+        <Link prefetch={false} className="atlas-button-secondary" href={`/handhelds/${handheld.slug}`}>Handheld profile →</Link>
+      </div>
     </section>
   );
 }

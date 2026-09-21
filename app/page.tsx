@@ -1,6 +1,7 @@
 import { assertRead } from "../lib/catalog/read";
 export const revalidate = 600;
-import { QuickFinder, SavedGames } from "../components/PersonalAtlas";
+import { QuickFinder, SavedGames, LatestForHandheld } from "../components/PersonalAtlas";
+import { recentBenchmarkGames } from "../lib/catalog/recent";
 import { getBenchmarkIndex } from "../lib/catalog/benchmark-index";
 import Image from "next/image";
 import Link from "next/link";
@@ -616,6 +617,10 @@ export default async function HomePage() {
       </section>
 
       <div className="atlas-shell min-w-0 max-w-full overflow-x-clip pt-8">
+        <LatestForHandheld
+          handhelds={handhelds.map(({ name, slug }) => ({ name, slug }))}
+          recent={recentBenchmarkGames(benchmarkIndex, handhelds.map((h) => h.slug))}
+        />
         <SavedGames />
         {databaseError && (
           <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
