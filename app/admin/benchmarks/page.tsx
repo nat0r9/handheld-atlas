@@ -1,4 +1,8 @@
 import Link from "next/link";
+import Pagination from "../../../components/catalog/Pagination";
+import { PAGE_SIZE, pageNumber, param, type SearchParams } from "../../../lib/catalog/query";
+import { readAll } from "../../../lib/catalog/read";
+import { benchmarkReviewIssues, filterBenchmarkReview } from "../../../lib/catalog/benchmark-review";
 import BenchmarkAdminForm from "../../../components/admin/BenchmarkAdminForm";
 import { BENCHMARK_EDITOR_ROLES } from "../../../lib/auth/roles";
 import { requireRole } from "../../../lib/auth/require-role";
@@ -9,10 +13,7 @@ import {
 } from "./actions";
 
 interface AdminBenchmarksPageProps {
-  searchParams: Promise<{
-    error?: string;
-    success?: string;
-  }>;
+  searchParams: Promise<SearchParams>;
 }
 
 interface SelectOption {
@@ -45,6 +46,8 @@ interface DatabaseBenchmark {
   one_percent_low: number | null;
   battery_life: string | null;
   test_notes: string | null;
+  source_url: string | null;
+  evidence_tier: string | null;
   status: "draft" | "published" | "archived";
   created_at: string;
   games: {
@@ -77,7 +80,15 @@ function getStatusStyle(status: DatabaseBenchmark["status"]) {
 export default async function AdminBenchmarksPage({
   searchParams,
 }: AdminBenchmarksPageProps) {
-  const { error, success } = await searchParams;
+  const params = await searchParams;
+  const error = param(params, "error");
+  const success = param(params, "success");
+  const filters = {
+    q: param(params, "q").slice(0, 200),
+    status: ["draft", "published", "archived"].includes(param(params, "status")) ? param(params, "status") : "",
+    handheld: param(params, "handheld"),
+    review: ["core", "source", "evidence"].includes(param(params, "review")) ? param(params, "review") : "",
+  };
 
   const { supabase, user, role } = await requireRole(
     BENCHMARK_EDITOR_ROLES,
@@ -86,7 +97,7 @@ export default async function AdminBenchmarksPage({
 
   const isBenchmarkTester = role === "benchmark_tester";
 
-  const [gamesResult, handheldsResult, presetsResult, benchmarksResult] =
+  const [gamesResult, handheldsResult, presetsResult, benchmarks] =
     await Promise.all([
       supabase.from("games").select("id, name").order("name", {
         ascending: true,
@@ -117,7 +128,7 @@ export default async function AdminBenchmarksPage({
           ascending: true,
         }),
 
-      (() => {
+      readAll<DatabaseBenchmark>((from, to) => {
         let query = supabase
           .from("benchmarks")
           .select(
@@ -132,6 +143,8 @@ export default async function AdminBenchmarksPage({
         one_percent_low,
         battery_life,
         test_notes,
+        source_url,
+        evidence_tier,
         status,
         created_at,
         games (
@@ -150,14 +163,14 @@ export default async function AdminBenchmarksPage({
           )
           .order("created_at", {
             ascending: false,
-          });
+          }).order("id");
 
         if (isBenchmarkTester) {
           query = query.eq("created_by", user.id);
         }
 
-        return query;
-      })(),
+        return query.range(from, to);
+      }, "admin benchmarks"),
     ]);
 
   const games = (gamesResult.data ?? []) as SelectOption[];
@@ -166,14 +179,14 @@ export default async function AdminBenchmarksPage({
 
   const presets = (presetsResult.data ?? []) as unknown as PresetOption[];
 
-  const benchmarks = (benchmarksResult.data ??
-    []) as unknown as DatabaseBenchmark[];
+  const filtered = filterBenchmarkReview(benchmarks, filters);
+  const page = pageNumber(param(params, "page"), filtered.length);
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const databaseError =
     gamesResult.error?.message ??
     handheldsResult.error?.message ??
     presetsResult.error?.message ??
-    benchmarksResult.error?.message ??
     null;
 
   return (
@@ -181,7 +194,7 @@ export default async function AdminBenchmarksPage({
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <Link
+            <Link prefetch={false}
               href="/admin"
               className="text-sm font-bold text-cyan-400 transition hover:text-cyan-300"
             >
@@ -202,7 +215,7 @@ export default async function AdminBenchmarksPage({
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-              Database total
+              {isBenchmarkTester ? "Your benchmarks" : "Database total"}
             </p>
 
             <p className="mt-2 text-3xl font-black">{benchmarks.length}</p>
@@ -236,7 +249,8 @@ export default async function AdminBenchmarksPage({
           </div>
         )}
 
-        <section className="mt-10 rounded-[2rem] border border-slate-800 bg-slate-900 p-6 md:p-8">
+        <details className="mt-10 rounded-[2rem] border border-slate-800 bg-slate-900 p-6 md:p-8">
+          <summary className="cursor-pointer text-xl font-bold text-cyan-300">Add a new benchmark</summary>
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
             New Benchmark
           </p>
@@ -253,7 +267,7 @@ export default async function AdminBenchmarksPage({
               isBenchmarkTester={isBenchmarkTester}
             />
           </div>
-        </section>
+        </details>
 
         <section className="mt-12">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -266,24 +280,51 @@ export default async function AdminBenchmarksPage({
             </div>
 
             <p className="text-sm text-slate-500">
-              {benchmarks.length}{" "}
-              {benchmarks.length === 1 ? "benchmark" : "benchmarks"}
+              {filtered.length} matching · {benchmarks.length} accessible
             </p>
           </div>
 
-          {benchmarks.length === 0 ? (
+          <form action="/admin/benchmarks" method="get" className="mt-6 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-sm font-bold">Search game, device or ID
+              <input type="search" name="q" defaultValue={filters.q} maxLength={200} className="mt-2 w-full rounded-lg px-3 py-3" />
+            </label>
+            <label className="text-sm font-bold">Status
+              <select name="status" defaultValue={filters.status} className="mt-2 w-full rounded-lg px-3 py-3">
+                <option value="">All statuses</option><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option>
+              </select>
+            </label>
+            <label className="text-sm font-bold">Handheld
+              <select name="handheld" defaultValue={filters.handheld} className="mt-2 w-full rounded-lg px-3 py-3">
+                <option value="">All handhelds</option>
+                {handhelds.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-bold">Needs attention
+              <select name="review" defaultValue={filters.review} className="mt-2 w-full rounded-lg px-3 py-3">
+                <option value="">All records</option><option value="core">Missing core details</option><option value="source">External result without source link</option><option value="evidence">Evidence awaiting review</option>
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-4">
+              <button className="atlas-button-primary" type="submit">Filter benchmarks</button>
+              <Link prefetch={false} className="atlas-button-secondary" href="/admin/benchmarks">Reset filters</Link>
+            </div>
+            <p className="text-xs leading-5 text-slate-400 sm:col-span-2 lg:col-span-4">Review flags help locate incomplete records; they do not replace publication checks. Missing lows or battery measurements alone are not flagged.</p>
+          </form>
+          <Pagination path="/admin/benchmarks" values={filters} page={page} total={filtered.length} />
+
+          {filtered.length === 0 ? (
             <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-8">
               <h3 className="text-xl font-black">
-                No benchmarks in Supabase yet
+                {benchmarks.length ? "No matching benchmarks" : "No benchmarks yet"}
               </h3>
 
               <p className="mt-2 text-slate-400">
-                Add the first benchmark using the form above.
+                {benchmarks.length ? "Try another filter or reset your selection." : "Expand the form above to add your first result."}
               </p>
             </div>
           ) : (
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
-              {benchmarks.map((benchmark) => (
+              {visible.map((benchmark) => (
                 <article
                   key={benchmark.id}
                   className="rounded-3xl border border-slate-800 bg-slate-900 p-6"
@@ -316,6 +357,7 @@ export default async function AdminBenchmarksPage({
                     </span>
                   </div>
 
+                  {benchmarkReviewIssues(benchmark).length > 0 && <p className="mt-4 text-sm text-amber-300">{benchmarkReviewIssues(benchmark).join(" · ")}</p>}
                   <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
                     <BenchmarkStat
                       label="Resolution"
@@ -358,19 +400,17 @@ export default async function AdminBenchmarksPage({
                   </div>
 
                   {benchmark.test_notes && (
-                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-5">
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                        Test notes
-                      </p>
+                    <details className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-5">
+                      <summary className="cursor-pointer text-sm font-bold text-slate-300">Test notes</summary>
 
                       <p className="mt-3 leading-7 text-slate-400">
                         {benchmark.test_notes}
                       </p>
-                    </div>
+                    </details>
                   )}
 
                   <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-5">
-                    <Link
+                    <Link prefetch={false}
                       href={`/admin/benchmarks/${benchmark.id}/edit`}
                       className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950"
                     >
@@ -378,7 +418,7 @@ export default async function AdminBenchmarksPage({
                     </Link>
 
                     {benchmark.games?.slug && (
-                      <Link
+                      <Link prefetch={false}
                         href={`/games/${benchmark.games.slug}`}
                         target="_blank"
                         className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400 transition hover:bg-green-500 hover:text-white"
@@ -388,7 +428,7 @@ export default async function AdminBenchmarksPage({
                     )}
 
                     {benchmark.handhelds?.slug && (
-                      <Link
+                      <Link prefetch={false}
                         href={`/handhelds/${benchmark.handhelds.slug}`}
                         target="_blank"
                         className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-400 transition hover:bg-purple-500 hover:text-white"
@@ -431,6 +471,7 @@ export default async function AdminBenchmarksPage({
               ))}
             </div>
           )}
+          <Pagination path="/admin/benchmarks" values={filters} page={page} total={filtered.length} />
         </section>
       </div>
     </main>
