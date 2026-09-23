@@ -256,11 +256,21 @@ export default async function BenchmarksPage({
           </p>
         </div>
         {records.length ? (
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            {records.map((b) => (
-              <BenchmarkCard key={b.id} benchmark={b} />
-            ))}
-          </div>
+          <>
+            <div className="mb-4">
+              <Pagination
+                path="/benchmarks"
+                values={values}
+                page={page}
+                total={matching.length}
+              />
+            </div>
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              {records.map((b) => (
+                <BenchmarkCard key={b.id} benchmark={b} />
+              ))}
+            </div>
+          </>
         ) : (
           <section className="atlas-panel p-8">
             <h2 className="text-2xl">No matching benchmarks yet</h2>
