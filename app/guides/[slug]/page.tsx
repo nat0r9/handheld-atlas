@@ -320,7 +320,8 @@ export default async function GuidePage({
   } = await supabase.auth.getUser();
 
   const votesResult = await supabase.from("guide_votes").select("user_id").eq("guide_id", guide.id);
-  assertRead(votesResult.error, "guide votes");
+  // Voting is optional: a failed read must not hide the published article.
+  if (votesResult.error) console.warn("Guide voting temporarily unavailable:", votesResult.error.message);
   const votes = votesResult.data ?? [];
   const upvoteCount = votes.length;
 
@@ -510,6 +511,11 @@ export default async function GuidePage({
           </div>
 
           <div className="mt-4 flex justify-end">
+            {votesResult.error ? (
+              <p className="text-sm text-slate-400" role="status">
+                Voting is temporarily unavailable. Reload to try again.
+              </p>
+            ) : (
             <GuideVoteButton
               guideId={guide.id}
               initialCount={
@@ -519,6 +525,7 @@ export default async function GuidePage({
                 hasUpvoted
               }
             />
+            )}
           </div>
         </div>
       </section>
