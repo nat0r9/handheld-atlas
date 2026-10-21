@@ -1,4 +1,4 @@
-// Bound read-only Data API requests, including response bodies and one gateway
+// Bound read-only Data API requests, including response bodies and one gateway/transport
 // retry. Auth, writes and other origins retain their normal fetch behavior.
 export function createReadFetch(
   origin: string,
@@ -21,24 +21,46 @@ export function createReadFetch(
     ), timeoutMs);
     const options = { ...init, signal };
     try {
-      signal.throwIfAborted();
-      let response = await baseFetch(input, options);
-      signal.throwIfAborted();
-      if ([502, 503, 504].includes(response.status)) {
-        await response.body?.cancel();
-        await new Promise((resolve) => setTimeout(resolve, 200));
+      for (let attempt = 0; ; attempt++) {
         signal.throwIfAborted();
-        response = await baseFetch(input, options);
+        try {
+          const response = await baseFetch(input, options);
+          signal.throwIfAborted();
+          if (attempt === 0 && [502, 503, 504].includes(response.status)) {
+            await response.body?.cancel();
+          } else {
+            // Transport failures can also happen after headers arrive.
+            const body = method === "HEAD" || [204, 205, 304].includes(response.status)
+              ? null : await response.arrayBuffer();
+            signal.throwIfAborted();
+            return new Response(body, {
+              status: response.status, statusText: response.statusText, headers: response.headers,
+            });
+          }
+        } catch (error) {
+          signal.throwIfAborted();
+          if (!isTransientTransportError(error)) throw error;
+          if (attempt > 0) {
+            // PostgREST retries thrown network errors itself. Mark this exhausted
+            // budget as aborted so it cannot start another pair of attempts.
+            const exhausted = new Error("Database read retry budget exhausted", { cause: error });
+            exhausted.name = "AbortError";
+            throw exhausted;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      // Keep the deadline alive until JSON bytes arrive, not just headers.
-      const body = method === "HEAD" || [204, 205, 304].includes(response.status)
-        ? null : await response.arrayBuffer();
-      signal.throwIfAborted();
-      return new Response(body, {
-        status: response.status, statusText: response.statusText, headers: response.headers,
-      });
     } finally {
       clearTimeout(timer);
     }
   };
+}
+
+function isTransientTransportError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { name?: string; code?: string; cause?: { code?: string } };
+  if (failure.name === "AbortError") return false;
+  const code = failure.cause?.code ?? failure.code;
+  return ["UND_ERR_SOCKET", "ETIMEDOUT", "ECONNRESET", "EPIPE",
+    "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"].includes(code ?? "");
 }

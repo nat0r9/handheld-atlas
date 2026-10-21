@@ -45,3 +45,48 @@ test('head counts and successful responses preserve headers and payloads',async(
  const response=await read(origin+'/rest/v1/benchmarks',{method:'HEAD'});
  assert.equal(response.headers.get('content-range'),'0-0/199');assert.equal(await response.text(),'');
 });
+
+const transportError = (code) => new TypeError('fetch failed', {cause: Object.assign(new Error('connection interrupted'), {code})});
+test('socket and timeout failures recover, including interrupted response bodies', async()=>{
+ for (const code of ['UND_ERR_SOCKET','ETIMEDOUT','ECONNRESET']) {
+  for (const bodyFailure of [false,true]) {
+   const calls=[];
+   const read=createReadFetch(origin,async(_url,options)=>{
+    calls.push(options);
+    if(calls.length===1) {
+     if(!bodyFailure) throw transportError(code);
+     return new Response(new ReadableStream({start(controller){controller.error(transportError(code));}}));
+    }
+    return new Response('[{"id":1}]');
+   });
+   assert.equal(await (await read(origin+'/rest/v1/games')).text(),'[{"id":1}]');
+   assert.equal(calls.length,2);assert.equal(calls[0].signal,calls[1].signal);
+  }
+ }
+});
+test('persistent transport failures cannot multiply retries through the SDK',async()=>{
+ const {createClient}=await import('@supabase/supabase-js');let calls=0;
+ const read=createReadFetch(origin,async()=>{calls++;throw transportError('UND_ERR_SOCKET');});
+ const db=createClient(origin,'test-only',{global:{fetch:read},auth:{persistSession:false,autoRefreshToken:false}});
+ const result=await db.from('games').select('id');
+ assert.equal(calls,2);assert.equal(result.status,0);assert.match(result.error.message,/retry budget exhausted/);
+ assert.match(result.error.details,/fetch failed/);
+});
+test('transport retry still respects the original deadline and caller cancellation',async()=>{
+ for(const cancel of [false,true]) {
+  let calls=0;const controller=new AbortController();
+  const read=createReadFetch(origin,async()=>{calls++;if(cancel)controller.abort();throw transportError('ETIMEDOUT');},25);
+  await assert.rejects(()=>read(origin+'/rest/v1/games',{signal:controller.signal}),{name:'AbortError'});
+  assert.equal(calls,1);
+ }
+});
+test('writes and non-transport exceptions are never retried by the wrapper',async()=>{
+ for(const method of ['POST','PATCH','DELETE']) {
+  let calls=0;const error=transportError('UND_ERR_SOCKET');
+  const read=createReadFetch(origin,async()=>{calls++;throw error;});
+  await assert.rejects(()=>read(origin+'/rest/v1/games',{method}),e=>e===error);assert.equal(calls,1);
+ }
+ let calls=0;const error=new TypeError('invalid request');
+ const read=createReadFetch(origin,async()=>{calls++;throw error;});
+ await assert.rejects(()=>read(origin+'/rest/v1/games'),e=>e===error);assert.equal(calls,1);
+});
