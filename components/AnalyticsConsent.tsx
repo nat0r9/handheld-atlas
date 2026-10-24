@@ -32,8 +32,10 @@ function ensureGtag(): void {
   window.dataLayer = window.dataLayer ?? [];
 
   if (typeof window.gtag !== "function") {
-    window.gtag = (...args: unknown[]) => {
-      window.dataLayer.push(args);
+    window.gtag = function () {
+      // Google's command queue requires an Arguments object, not an Array.
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer.push(arguments);
     };
   }
 }
