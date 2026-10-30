@@ -19,27 +19,34 @@ export function createReadFetch(
     const timer = setTimeout(() => deadline.abort(
       new DOMException("Database read exceeded its time limit", "AbortError"),
     ), timeoutMs);
-    const options = { ...init, signal };
     try {
       for (let attempt = 0; ; attempt++) {
         signal.throwIfAborted();
+        // Reserve time for recovery: a stalled first connection must not consume
+        // the entire read budget. Each attempt needs a fresh signal after abort.
+        const attemptDeadline = new AbortController();
+        const attemptSignal = AbortSignal.any([signal, attemptDeadline.signal]);
+        const attemptTimer = attempt === 0 ? setTimeout(() => attemptDeadline.abort(
+          new DOMException("Database read attempt timed out", "TimeoutError"),
+        ), Math.min(5_000, timeoutMs / 2)) : undefined;
+        const options = { ...init, signal: attemptSignal };
         try {
           const response = await baseFetch(input, options);
-          signal.throwIfAborted();
+          attemptSignal.throwIfAborted();
           if (attempt === 0 && [502, 503, 504].includes(response.status)) {
             await response.body?.cancel();
           } else {
             // Transport failures can also happen after headers arrive.
             const body = method === "HEAD" || [204, 205, 304].includes(response.status)
               ? null : await response.arrayBuffer();
-            signal.throwIfAborted();
+            attemptSignal.throwIfAborted();
             return new Response(body, {
               status: response.status, statusText: response.statusText, headers: response.headers,
             });
           }
         } catch (error) {
           signal.throwIfAborted();
-          if (!isTransientTransportError(error)) throw error;
+          if (!attemptDeadline.signal.aborted && !isTransientTransportError(error)) throw error;
           if (attempt > 0) {
             // PostgREST retries thrown network errors itself. Mark this exhausted
             // budget as aborted so it cannot start another pair of attempts.
@@ -47,6 +54,8 @@ export function createReadFetch(
             exhausted.name = "AbortError";
             throw exhausted;
           }
+        } finally {
+          clearTimeout(attemptTimer);
         }
         await new Promise((resolve) => setTimeout(resolve, 200));
       }

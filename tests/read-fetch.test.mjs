@@ -6,7 +6,7 @@ test('one gateway failure recovers without changing headers or request options',
  const calls=[];const options={method:'GET',headers:{Authorization:'test-only'}};
  const read=createReadFetch(origin,async(...args)=>{calls.push(args);return new Response(calls.length===1?'Gateway Timeout':'[]',{status:calls.length===1?504:200});});
  const response=await read(origin+'/rest/v1/games',options);
- assert.equal(await response.text(),'[]');assert.equal(calls.length,2);assert.equal(calls[1][1].headers,options.headers);assert.equal(calls[1][1].method,options.method);assert.equal(calls[0][1].signal,calls[1][1].signal);
+ assert.equal(await response.text(),'[]');assert.equal(calls.length,2);assert.equal(calls[1][1].headers,options.headers);assert.equal(calls[1][1].method,options.method);assert.notEqual(calls[0][1].signal,calls[1][1].signal);
 });
 test('persistent failure stops after two attempts and preserves the error',async()=>{
  let calls=0;const read=createReadFetch(origin,async()=>{calls++;return new Response('Unavailable',{status:503});});
@@ -60,7 +60,7 @@ test('socket and timeout failures recover, including interrupted response bodies
     return new Response('[{"id":1}]');
    });
    assert.equal(await (await read(origin+'/rest/v1/games')).text(),'[{"id":1}]');
-   assert.equal(calls.length,2);assert.equal(calls[0].signal,calls[1].signal);
+   assert.equal(calls.length,2);assert.notEqual(calls[0].signal,calls[1].signal);
   }
  }
 });
@@ -89,4 +89,21 @@ test('writes and non-transport exceptions are never retried by the wrapper',asyn
  let calls=0;const error=new TypeError('invalid request');
  const read=createReadFetch(origin,async()=>{calls++;throw error;});
  await assert.rejects(()=>read(origin+'/rest/v1/games'),e=>e===error);assert.equal(calls,1);
+});
+
+// Reproduce the production failure mode: the first socket never responds.
+test('a stalled first attempt leaves time for a successful fresh connection',async()=>{
+ for (const stalledBody of [false,true]) {
+  const signals=[];
+  const read=createReadFetch(origin,async(_url,{signal})=>{
+   signals.push(signal);
+   if(signals.length===2)return new Response('[{"id":1}]');
+   if(stalledBody)return new Response(new ReadableStream({start(controller){
+    signal.addEventListener('abort',()=>controller.error(signal.reason),{once:true});
+   }}));
+   return new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+  },1000);
+  assert.equal(await (await read(origin+'/rest/v1/games')).text(),'[{"id":1}]');
+  assert.equal(signals.length,2);assert.equal(signals[0].aborted,true);assert.equal(signals[1].aborted,false);
+ }
 });
