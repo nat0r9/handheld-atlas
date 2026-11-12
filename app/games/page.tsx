@@ -133,24 +133,27 @@ export default async function GamesPage({
   const ratingMap = new Map(
     parseGameRatingSummaries(ratings.data).map((r) => [r.gameId, r]),
   );
+  const words = values.q.toLowerCase().split(/\s+/);
+  const bestPreset = new Map<string, DatabasePresetForGameCard>();
   const benchmarkCounts = new Map<string, number>();
   const presetCounts = new Map<string, number>();
   for (const b of benchmarks)
     if (!values.handheld || b.handhelds?.slug === values.handheld)
       benchmarkCounts.set(b.game_id, (benchmarkCounts.get(b.game_id) ?? 0) + 1);
   for (const p of presets)
-    if (!values.handheld || p.handhelds?.slug === values.handheld)
+    if (!values.handheld || p.handhelds?.slug === values.handheld) {
       presetCounts.set(p.game_id, (presetCounts.get(p.game_id) ?? 0) + 1);
+      const current = bestPreset.get(p.game_id);
+      if (!current || getPresetRank(p) > getPresetRank(current))
+        bestPreset.set(p.game_id, p);
+    }
   const matching = index
     .filter((g) => {
       const bc = benchmarkCounts.get(g.id) ?? 0,
         pc = presetCounts.get(g.id) ?? 0;
       return (
         (!values.q ||
-          values.q
-            .toLowerCase()
-            .split(/\s+/)
-            .every((word) => g.name.toLowerCase().includes(word))) &&
+          words.every((word) => g.name.toLowerCase().includes(word))) &&
         (!values.genre || genres(g.genre).includes(values.genre)) &&
         (!values.handheld || bc + pc > 0) &&
         (!values.coverage ||
@@ -199,13 +202,7 @@ export default async function GamesPage({
   const games: PublicGame[] = ids.flatMap((id) => {
     const g = rows.get(id);
     if (!g) return [];
-    const p = presets
-      .filter(
-        (p) =>
-          p.game_id === id &&
-          (!values.handheld || p.handhelds?.slug === values.handheld),
-      )
-      .sort((a, b) => getPresetRank(b) - getPresetRank(a))[0];
+    const p = bestPreset.get(id);
     return [
       {
         id: g.id,

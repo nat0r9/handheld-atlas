@@ -315,7 +315,7 @@ export default function CommunityTopGamesPanel({
               className="w-[8.5rem] shrink-0"
             />
 
-            <Link
+            <Link prefetch={false}
               href={`/games/${activeItem.slug}`}
               className="atlas-button-primary"
             >
