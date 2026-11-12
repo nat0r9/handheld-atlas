@@ -239,7 +239,7 @@ export default function HandheldSpotlight({
             </p>
           )}
 
-          <Link
+          <Link prefetch={false}
             href={`/handhelds/${activeItem.slug}`}
             className="atlas-button-secondary mt-4"
           >

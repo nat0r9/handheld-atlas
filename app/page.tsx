@@ -200,10 +200,6 @@ export default async function HomePage() {
     benchmarksResult,
     guidesResult,
     newsResult,
-    gamesCountResult,
-    handheldsCountResult,
-    presetsCountResult,
-    benchmarksCountResult,
     monthlyRatingsResult,
     benchmarkIndex,
   ] = await Promise.all([
@@ -242,6 +238,7 @@ export default async function HomePage() {
         recommended_tdp,
         cover_image_url
       `,
+        { count: "exact" },
       )
       .eq("status", "published")
       .order("metacritic_critic_score", {
@@ -262,6 +259,7 @@ export default async function HomePage() {
         battery,
         image_url
       `,
+        { count: "exact" },
       )
       .eq("status", "published")
       .order("created_at", {
@@ -288,6 +286,7 @@ export default async function HomePage() {
           slug
         )
       `,
+        { count: "exact" },
       )
       .eq("status", "published")
       .order("published_at", {
@@ -316,6 +315,7 @@ export default async function HomePage() {
           preset_type
         )
       `,
+        { count: "exact" },
       )
       .eq("status", "published")
       .order("published_at", {
@@ -362,38 +362,6 @@ export default async function HomePage() {
       })
       .limit(2),
 
-    supabase
-      .from("games")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "published"),
-
-    supabase
-      .from("handhelds")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "published"),
-
-    supabase
-      .from("presets")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "published"),
-
-    supabase
-      .from("benchmarks")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "published"),
-
     supabase.rpc("get_monthly_top_games", {
       p_month_start: monthStart.toISOString().slice(0, 10),
       p_limit: COMMUNITY_TOP_GAME_LIMIT,
@@ -402,7 +370,7 @@ export default async function HomePage() {
     getBenchmarkIndex(),
   ]);
 
-  for (const result of [featuredNewsResult, gamesResult, handheldsResult, presetsResult, benchmarksResult, guidesResult, newsResult, gamesCountResult, handheldsCountResult, presetsCountResult, benchmarksCountResult, monthlyRatingsResult]) assertRead(result.error, "homepage content");
+  for (const result of [featuredNewsResult, gamesResult, handheldsResult, presetsResult, benchmarksResult, guidesResult, newsResult, monthlyRatingsResult]) assertRead(result.error, "homepage content");
 
   const featuredNews = featuredNewsResult.data as FeaturedNews | null;
 
@@ -475,22 +443,22 @@ export default async function HomePage() {
   const portalStats: PortalStat[] = [
     {
       label: "Games",
-      value: gamesCountResult.count ?? 0,
+      value: gamesResult.count ?? 0,
       href: "/games",
     },
     {
       label: "Handhelds",
-      value: handheldsCountResult.count ?? 0,
+      value: handheldsResult.count ?? 0,
       href: "/handhelds",
     },
     {
       label: "Presets",
-      value: presetsCountResult.count ?? 0,
+      value: presetsResult.count ?? 0,
       href: "/presets",
     },
     {
       label: "Benchmarks",
-      value: benchmarksCountResult.count ?? 0,
+      value: benchmarksResult.count ?? 0,
       href: "/benchmarks",
     },
   ];
@@ -568,11 +536,11 @@ export default async function HomePage() {
             </form>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/games" className="atlas-button-primary">
+              <Link prefetch={false} href="/games" className="atlas-button-primary">
                 Explore games
               </Link>
 
-              <Link href="/compare" className="atlas-button-secondary">
+              <Link prefetch={false} href="/compare" className="atlas-button-secondary">
                 Compare devices
               </Link>
             </div>
@@ -598,7 +566,7 @@ export default async function HomePage() {
         <div className="atlas-shell relative min-w-0 max-w-full overflow-x-clip pb-8">
           <div className="atlas-stat-strip grid grid-cols-2 lg:grid-cols-4">
             {portalStats.map((stat) => (
-              <Link
+              <Link prefetch={false}
                 key={stat.label}
                 href={stat.href}
                 className="group px-5 py-5 text-center transition hover:bg-white/[0.025]"
@@ -640,7 +608,7 @@ export default async function HomePage() {
           ) : (
             <div className="mt-4 flex w-full min-w-0 max-w-full snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-5">
               {games.map((game) => (
-                <Link
+                <Link prefetch={false}
                   key={game.id}
                   href={`/games/${game.slug}`}
                   className="group min-w-[17rem] snap-start sm:min-w-0"
@@ -715,7 +683,7 @@ export default async function HomePage() {
             ) : (
               <div className="mt-4 space-y-2">
                 {presets.map((preset) => (
-                  <Link
+                  <Link prefetch={false}
                     key={preset.id}
                     href={`/presets/${preset.id}`}
                     className="group grid grid-cols-[3.4rem_1fr] gap-3 rounded-xl border border-white/[0.07] bg-black/20 p-2.5 transition hover:border-red-500/35 hover:bg-white/[0.025]"
@@ -802,7 +770,7 @@ export default async function HomePage() {
               <>
                 <div className="mt-4 space-y-2 md:hidden">
                   {benchmarks.map((benchmark) => (
-                    <Link
+                    <Link prefetch={false}
                       key={benchmark.id}
                       href={`/benchmarks/${benchmark.id}`}
                       className="block rounded-xl border border-white/[0.07] bg-black/20 p-3 transition hover:border-cyan-400/40"
@@ -855,7 +823,7 @@ export default async function HomePage() {
                   </div>
 
                   {benchmarks.map((benchmark, index) => (
-                    <Link
+                    <Link prefetch={false}
                       key={benchmark.id}
                       href={`/benchmarks/${benchmark.id}`}
                       aria-label={`${benchmark.games?.name ?? "Game"} — ${benchmark.handhelds?.name ?? "handheld"}: open benchmark settings and evidence`}
@@ -906,7 +874,7 @@ export default async function HomePage() {
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {editorialItems.map((item) => (
-                <Link key={item.id} href={item.href} className="group">
+                <Link prefetch={false} key={item.id} href={item.href} className="group">
                   <article className="atlas-card atlas-card-hover atlas-card-cyan h-full">
                     <div className="relative aspect-[16/9] overflow-hidden">
                       {item.imageUrl ? (
@@ -980,7 +948,7 @@ function SectionHeader({
         {title}
       </h2>
 
-      <Link
+      <Link prefetch={false}
         href={href}
         className="shrink-0 text-right text-[0.62rem] font-black text-cyan-400 transition hover:text-white sm:text-[0.65rem]"
       >

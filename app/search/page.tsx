@@ -435,7 +435,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 />
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   {benchmarkMatches.slice(0, 6).map((b) => (
-                    <Link
+                    <Link prefetch={false}
                       key={b.id}
                       href={`/benchmarks/${b.id}`}
                       className="atlas-card block p-5"
@@ -456,7 +456,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   ))}
                 </div>
                 {benchmarkMatches.length > 6 && (
-                  <Link
+                  <Link prefetch={false}
                     className="atlas-button-secondary mt-4"
                     href={catalogUrl("/benchmarks", { q: searchQuery })}
                   >
@@ -476,7 +476,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
                 <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {games.map((game) => (
-                    <Link
+                    <Link prefetch={false}
                       key={game.id}
                       href={`/games/${game.slug}`}
                       className="group min-w-0"
@@ -535,7 +535,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
                 <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {handhelds.map((handheld) => (
-                    <Link
+                    <Link prefetch={false}
                       key={handheld.id}
                       href={`/handhelds/${handheld.slug}`}
                       className="group min-w-0"
@@ -589,7 +589,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
                 <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {presets.map((preset) => (
-                    <Link
+                    <Link prefetch={false}
                       key={preset.id}
                       href={`/presets/${preset.id}`}
                       className="group rounded-3xl border border-slate-800 bg-slate-900 p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-500"
@@ -648,7 +648,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
                 <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {settingsImpact.map((setting) => (
-                    <Link
+                    <Link prefetch={false}
                       key={setting.id}
                       href={`/settings-impact/${setting.slug}`}
                       className="group rounded-3xl border border-slate-800 bg-slate-900 p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-500"
@@ -693,7 +693,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
                 <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {guides.map((guide) => (
-                    <Link
+                    <Link prefetch={false}
                       key={guide.id}
                       href={`/guides/${guide.slug}`}
                       className="group min-w-0"
@@ -759,7 +759,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
                 <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {newsItems.map((item) => (
-                    <Link
+                    <Link prefetch={false}
                       key={item.id}
                       href={`/news/${item.slug}`}
                       className="group min-w-0"
@@ -920,7 +920,7 @@ function SectionHeading({
         <h2 className="mt-1 text-xl font-black">{title}</h2>
       </div>
 
-      <Link
+      <Link prefetch={false}
         href={href}
         className="text-[0.68rem] font-black text-cyan-400 transition hover:text-white sm:text-xs"
       >
