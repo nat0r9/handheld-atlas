@@ -19,6 +19,13 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|twitter-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Keep legacy URL corrections even for signed-out visitors.
+    "/(.*%5[cC].*)",
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|opengraph-image|twitter-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+      // Supabase SSR uses sb-<project>-auth-token, optionally split into .0, .1, ...
+      // The matcher only selects requests for refresh; authorization stays in the routes.
+      has: [{ type: "header", key: "cookie", value: "(?:.*;\\s*)?sb-[^;=]+-auth-token(?:\\.[0-9]+)?=.*" }],
+    },
   ],
 };
