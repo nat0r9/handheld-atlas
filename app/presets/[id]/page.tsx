@@ -18,14 +18,15 @@ import {
   type SettingImpactEntry,
 } from "../../../lib/settings-impact";
 import { calculatePresetTrust } from "../../../lib/preset-trust";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
 import { absoluteUrl, siteConfig } from "../../../lib/site";
 import {
   getPresetProfileGuide,
   parseSettingNote,
 } from "../../../lib/preset-guidance";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
+export function generateStaticParams() { return []; }
 
 type PresetType =
   | "Performance"
@@ -256,10 +257,6 @@ export default async function PresetDetailPage({
 }: PresetPageProps) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const [presetResult, guidesResult] = await Promise.all([
     supabase
       .from("presets")
@@ -361,6 +358,7 @@ export default async function PresetDetailPage({
       .from("profiles")
       .select("id, display_name, public_slug, avatar_url, contributor_level, public_profile")
       .eq("id", preset.created_by)
+      .eq("public_profile", true)
       .maybeSingle();
     contributor = contributorData as PublicContributor | null;
   }
@@ -420,15 +418,9 @@ export default async function PresetDetailPage({
   );
 
   const upvoteCount = preset.preset_votes?.length ?? 0;
-  const hasUpvoted =
-    user !== null &&
-    (preset.preset_votes ?? []).some((vote) => vote.user_id === user.id);
+  const hasUpvoted = false;
   const confirmationCount = preset.preset_confirmations?.length ?? 0;
-  const hasConfirmed =
-    user !== null &&
-    (preset.preset_confirmations ?? []).some(
-      (confirmation) => confirmation.user_id === user.id,
-    );
+  const hasConfirmed = false;
 
   const summaryText = preset.summary ?? "Tested handheld performance configuration.";
   const profileGuide = getPresetProfileGuide(preset.preset_type);

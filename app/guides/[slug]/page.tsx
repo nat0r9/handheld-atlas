@@ -7,8 +7,10 @@ import Link from "next/link";
 import GuideVoteButton from "../../../components/GuideVoteButton";
 import JsonLd from "../../../components/JsonLd";
 import { notFound } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
 import { absoluteUrl, siteConfig } from "../../../lib/site";
+
+export const revalidate = 600;
+export function generateStaticParams() { return []; }
 
 interface GuidePageProps {
   params: Promise<{
@@ -30,6 +32,7 @@ interface DatabaseGuide {
   related_handheld_slug: string | null;
   published_at: string | null;
   updated_at: string | null;
+  guide_votes: Array<{ user_id: string }>;
 }
 
 interface RelatedContent {
@@ -55,7 +58,8 @@ const getGuide = cache(async (slug: string) => {
       related_game_slug,
       related_handheld_slug,
       published_at,
-      updated_at
+      updated_at,
+      guide_votes (user_id)
     `)
     .eq("slug", slug)
     .eq("status", "published")
@@ -312,25 +316,9 @@ export default async function GuidePage({
     notFound();
   }
 
-  const supabase =
-    await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const votesResult = await supabase.from("guide_votes").select("user_id").eq("guide_id", guide.id);
-  // Voting is optional: a failed read must not hide the published article.
-  if (votesResult.error) console.warn("Guide voting temporarily unavailable:", votesResult.error.message);
-  const votes = votesResult.data ?? [];
-  const upvoteCount = votes.length;
-
-  const hasUpvoted =
-    user !== null &&
-    votes.some(
-      (vote) =>
-        vote.user_id === user.id,
-    );
+  const upvoteCount = guide.guide_votes?.length ?? 0;
+  // Personalized vote state is loaded by the client after hydration.
+  const hasUpvoted = false;
 
   const {
     relatedGame,
@@ -511,21 +499,12 @@ export default async function GuidePage({
           </div>
 
           <div className="mt-4 flex justify-end">
-            {votesResult.error ? (
-              <p className="text-sm text-slate-400" role="status">
-                Voting is temporarily unavailable. Reload to try again.
-              </p>
-            ) : (
             <GuideVoteButton
               guideId={guide.id}
-              initialCount={
-                upvoteCount
-              }
-              initialHasUpvoted={
-                hasUpvoted
-              }
+              initialCount={upvoteCount}
+              initialHasUpvoted={hasUpvoted}
+              loadUserVote
             />
-            )}
           </div>
         </div>
       </section>

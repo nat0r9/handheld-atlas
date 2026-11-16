@@ -1,15 +1,18 @@
 "use client";
 
 import {
+  useEffect,
   useState,
   useTransition,
 } from "react";
+import { createClient } from "../lib/supabase/client";
 import { toggleGuideVote } from "../app/guides/actions";
 
 interface GuideVoteButtonProps {
   guideId: string;
   initialCount: number;
   initialHasUpvoted: boolean;
+  loadUserVote?: boolean;
   compact?: boolean;
   onVoteChange?: (
     guideId: string,
@@ -22,6 +25,7 @@ export default function GuideVoteButton({
   guideId,
   initialCount,
   initialHasUpvoted,
+  loadUserVote = false,
   compact = false,
   onVoteChange,
 }: GuideVoteButtonProps) {
@@ -39,6 +43,26 @@ export default function GuideVoteButton({
     isPending,
     startTransition,
   ] = useTransition();
+
+  useEffect(() => {
+    if (!loadUserVote) return;
+    let active = true;
+    const supabase = createClient();
+
+    async function loadVote() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+      const { data, error } = await supabase.from("guide_votes")
+        .select("id")
+        .eq("guide_id", guideId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (active && !error) setHasUpvoted(Boolean(data));
+    }
+
+    void loadVote();
+    return () => { active = false; };
+  }, [guideId, loadUserVote]);
 
   function publishState(
     nextCount: number,
@@ -86,8 +110,8 @@ export default function GuideVoteButton({
         );
       } catch (error) {
         publishState(
-          initialCount,
-          initialHasUpvoted,
+          count,
+          hasUpvoted,
         );
 
         console.error(
