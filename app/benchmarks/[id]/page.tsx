@@ -10,7 +10,10 @@ import {
 } from "../../../lib/benchmarks";
 import { assertRead } from "../../../lib/catalog/read";
 import { catalogUrl } from "../../../lib/catalog/query";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
+export const revalidate = 600;
+export function generateStaticParams() { return []; }
+
 const getBenchmark = cache(async (id: string) => {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)

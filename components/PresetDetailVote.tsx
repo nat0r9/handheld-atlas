@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabase/client";
 import PresetVoteButton from "./PresetVoteButton";
 
 interface PresetDetailVoteProps {
@@ -16,6 +17,22 @@ export default function PresetDetailVote({
 }: PresetDetailVoteProps) {
   const [count, setCount] = useState(initialCount);
   const [hasUpvoted, setHasUpvoted] = useState(initialHasUpvoted);
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+    async function loadOwnVote() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+      const { data, error } = await supabase.from("preset_votes")
+        .select("id")
+        .eq("preset_id", presetId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (active && !error) setHasUpvoted(Boolean(data));
+    }
+    void loadOwnVote();
+    return () => { active = false; };
+  }, [presetId]);
 
   function handleVoteChange(
     _presetId: string,
@@ -29,8 +46,8 @@ export default function PresetDetailVote({
   return (
     <PresetVoteButton
       presetId={presetId}
-      initialCount={initialCount}
-      initialHasUpvoted={initialHasUpvoted}
+      initialCount={count}
+      initialHasUpvoted={hasUpvoted}
       count={count}
       hasUpvoted={hasUpvoted}
       onVoteChange={handleVoteChange}

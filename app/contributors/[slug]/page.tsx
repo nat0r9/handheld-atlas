@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { contributorLevelClass, contributorLevelLabel, type ContributorLevel } from "../../../lib/contributors";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
 import { absoluteUrl } from "../../../lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
+export function generateStaticParams() { return []; }
 
 interface PageProps { params: Promise<{ slug: string }>; }
 interface ProfileRow {
@@ -24,7 +25,7 @@ interface ProfileRow {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("display_name, bio, public_profile").eq("public_slug", slug).maybeSingle();
+  const { data } = await supabase.from("profiles").select("display_name, bio, public_profile").eq("public_slug", slug).eq("public_profile", true).maybeSingle();
   if (!data || !data.public_profile) return { title: "Contributor Not Found" };
   const title = `${data.display_name ?? "Community Contributor"} — HandheldAtlas`;
   const description = data.bio ?? "Handheld gaming presets, benchmarks and community contributions.";

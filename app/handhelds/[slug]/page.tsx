@@ -14,7 +14,10 @@ import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import JsonLd from "../../../components/JsonLd";
 import { calculatePresetTrust } from "../../../lib/preset-trust";
 import { absoluteUrl, siteConfig } from "../../../lib/site";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
+
+export const revalidate = 600;
+export function generateStaticParams() { return []; }
 
 interface HandheldPageProps {
   params: Promise<{

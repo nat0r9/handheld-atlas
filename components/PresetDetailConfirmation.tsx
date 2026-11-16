@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabase/client";
 import PresetConfirmationButton from "./PresetConfirmationButton";
 
 interface PresetDetailConfirmationProps {
@@ -16,6 +17,22 @@ export default function PresetDetailConfirmation({
 }: PresetDetailConfirmationProps) {
   const [count, setCount] = useState(initialCount);
   const [hasConfirmed, setHasConfirmed] = useState(initialHasConfirmed);
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+    async function loadOwnConfirmation() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+      const { data, error } = await supabase.from("preset_confirmations")
+        .select("id")
+        .eq("preset_id", presetId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (active && !error) setHasConfirmed(Boolean(data));
+    }
+    void loadOwnConfirmation();
+    return () => { active = false; };
+  }, [presetId]);
 
   function handleConfirmationChange(
     _presetId: string,
@@ -29,8 +46,8 @@ export default function PresetDetailConfirmation({
   return (
     <PresetConfirmationButton
       presetId={presetId}
-      initialCount={initialCount}
-      initialHasConfirmed={initialHasConfirmed}
+      initialCount={count}
+      initialHasConfirmed={hasConfirmed}
       count={count}
       hasConfirmed={hasConfirmed}
       onConfirmationChange={handleConfirmationChange}

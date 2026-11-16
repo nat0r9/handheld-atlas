@@ -16,10 +16,13 @@ import JsonLd from "../../../components/JsonLd";
 import AtlasScore from "../../../components/AtlasScore";
 import PresetTrustBadge from "../../../components/PresetTrustBadge";
 import { notFound } from "next/navigation";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
 import { getPresetProfileGuide } from "../../../lib/preset-guidance";
 import { calculatePresetTrust } from "../../../lib/preset-trust";
 import { absoluteUrl, siteConfig } from "../../../lib/site";
+
+export const revalidate = 600;
+export function generateStaticParams() { return []; }
 
 interface GamePageProps {
   params: Promise<{
@@ -202,58 +205,31 @@ async function getGameBenchmarks(gameId: string) {
 }
 
 async function getGameRatings(gameId: string) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [summaryResult, userRatingResult] = await Promise.all([
-    supabase.rpc("get_game_rating_summary", {
-      p_game_id: gameId,
-    }, { get: true }),
-    user
-      ? supabase
-          .from("game_ratings")
-          .select("rating")
-          .eq("game_id", gameId)
-          .eq("user_id", user.id)
-          .maybeSingle()
-      : Promise.resolve({
-          data: null,
-          error: null,
-        }),
-  ]);
+  // The public aggregate can be shared by everyone. The user's own
+  // rating is hydrated in the browser, so this page can use ISR.
+  const supabase = createClient();
+  const summaryResult = await supabase.rpc(
+    "get_game_rating_summary",
+    { p_game_id: gameId },
+    { get: true },
+  );
 
   if (summaryResult.error) {
-    console.error(
-      "Could not load game rating summary:",
-      summaryResult.error.message,
-    );
-  }
-
-  if (userRatingResult.error) {
-    console.error(
-      "Could not load the current user's game rating:",
-      userRatingResult.error.message,
-    );
+    console.error("Could not load game rating summary:", summaryResult.error.message);
   }
 
   const summaryRow = Array.isArray(summaryResult.data)
     ? summaryResult.data[0]
     : summaryResult.data;
-
   const averageRating =
     summaryRow?.average_rating !== null &&
     summaryRow?.average_rating !== undefined
       ? Number(summaryRow.average_rating)
       : null;
-
   const ratingCount = Number(summaryRow?.rating_count ?? 0);
-  const userRating = userRatingResult.data?.rating ?? null;
 
   return {
-    unavailable: Boolean(summaryResult.error || userRatingResult.error),
+    unavailable: Boolean(summaryResult.error),
     averageRating:
       averageRating !== null && Number.isFinite(averageRating)
         ? averageRating
@@ -261,8 +237,8 @@ async function getGameRatings(gameId: string) {
     ratingCount: Number.isFinite(ratingCount)
       ? Math.max(0, Math.trunc(ratingCount))
       : 0,
-    userRating: userRating !== null ? Number(userRating) : null,
-    isAuthenticated: user !== null,
+    userRating: null,
+    isAuthenticated: false,
   };
 }
 
@@ -598,6 +574,7 @@ export default async function GamePage({ params }: GamePageProps) {
                       initialRatingCount={gameRatings.ratingCount}
                       initialUserRating={gameRatings.userRating}
                       isAuthenticated={gameRatings.isAuthenticated}
+                      loadUserRating
                     />
                   )}
                 </div>

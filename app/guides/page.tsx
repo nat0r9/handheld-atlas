@@ -1,7 +1,9 @@
 import GuidesCatalog, {
   type PublicGuide,
 } from "../../components/GuidesCatalog";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
+
+export const revalidate = 600;
 
 interface DatabaseGuide {
   id: string;
@@ -22,10 +24,6 @@ interface DatabaseGuide {
 
 export default async function GuidesPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
     .from("guides")
@@ -158,12 +156,7 @@ export default async function GuidesPage() {
       upvoteCount:
         guide.guide_votes?.length ?? 0,
 
-      hasUpvoted:
-        user !== null &&
-        (guide.guide_votes ?? []).some(
-          (vote) =>
-            vote.user_id === user.id,
-        ),
+      hasUpvoted: false,
     }));
 
   const databaseError =
