@@ -2,7 +2,8 @@
 import { useUrlValue } from "../lib/use-url-value";
 
 import Link from "next/link";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "../lib/supabase/client";
 import PresetConfirmationButton from "./PresetConfirmationButton";
 import ContributorAttribution from "./ContributorAttribution";
 import type { PublicContributor } from "../lib/contributors";
@@ -202,6 +203,59 @@ export default function PresetsCatalog({
   const [confirmationOverrides, setConfirmationOverrides] = useState<
     Record<string, ConfirmationOverride>
   >({});
+
+  // Vote and confirmation state are member-specific; fetch them in the browser
+  // so the shared catalog never needs a Supabase auth session.
+  useEffect(() => {
+    if (!presets.length) return;
+    let active = true;
+    const supabase = createClient();
+    async function loadOwnVotes() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+      const ids = presets.map((preset) => preset.id);
+      const [votesResult, confirmationsResult] = await Promise.all([
+        supabase.from("preset_votes").select("preset_id")
+          .eq("user_id", user.id).in("preset_id", ids),
+        supabase.from("preset_confirmations").select("preset_id")
+          .eq("user_id", user.id).in("preset_id", ids),
+      ]);
+      if (!active) return;
+      if (!votesResult.error) {
+        const voted = new Set((votesResult.data ?? []).map((row) => row.preset_id));
+        setVoteOverrides((current) => {
+          const next = { ...current };
+          for (const preset of presets) {
+            if (!(preset.id in current)) {
+              next[preset.id] = {
+                count: preset.upvoteCount, hasUpvoted: voted.has(preset.id),
+              };
+            }
+          }
+          return next;
+        });
+      }
+      if (!confirmationsResult.error) {
+        const confirmed = new Set(
+          (confirmationsResult.data ?? []).map((row) => row.preset_id),
+        );
+        setConfirmationOverrides((current) => {
+          const next = { ...current };
+          for (const preset of presets) {
+            if (!(preset.id in current)) {
+              next[preset.id] = {
+                count: preset.confirmationCount,
+                hasConfirmed: confirmed.has(preset.id),
+              };
+            }
+          }
+          return next;
+        });
+      }
+    }
+    void loadOwnVotes();
+    return () => { active = false; };
+  }, [presets]);
 
   const getVoteState = useCallback(
     (preset: PublicPreset): VoteOverride =>
@@ -785,8 +839,8 @@ export default function PresetsCatalog({
 
                           <PresetVoteButton
                             presetId={preset.id}
-                            initialCount={preset.upvoteCount}
-                            initialHasUpvoted={preset.hasUpvoted}
+                            initialCount={voteState.count}
+                            initialHasUpvoted={voteState.hasUpvoted}
                             count={voteState.count}
                             hasUpvoted={voteState.hasUpvoted}
                             onVoteChange={handleVoteChange}
@@ -794,8 +848,8 @@ export default function PresetsCatalog({
 
                           <PresetConfirmationButton
                             presetId={preset.id}
-                            initialCount={preset.confirmationCount}
-                            initialHasConfirmed={preset.hasConfirmed}
+                            initialCount={confirmationState.count}
+                            initialHasConfirmed={confirmationState.hasConfirmed}
                             count={confirmationState.count}
                             hasConfirmed={confirmationState.hasConfirmed}
                             onConfirmationChange={handleConfirmationChange}

@@ -1,6 +1,6 @@
 // Only these anonymous reads may enter the shared Next.js Data Cache.
 export const PUBLIC_CACHE_SECONDS = 600;
-export const PUBLIC_TABLES = ["games", "handhelds", "benchmarks", "presets", "news", "guides", "profiles"] as const;
+export const PUBLIC_TABLES = ["games", "handhelds", "benchmarks", "presets", "news", "guides", "profiles", "setting_impact_entries"] as const;
 const publicRpcs: Record<string, string[]> = {
   get_game_rating_summaries: ["games"],
   get_game_rating_summary: ["games"],
@@ -28,5 +28,7 @@ export function publicReadTags(url: URL, method: string, headers: Headers, origi
 }
 export function publicPathTags(path: string): string[] {
   const section = path.split("/")[1];
+  if (section === "settings-impact") return ["atlas:setting_impact_entries"];
+  if (section === "profile" || section === "contributors") return ["atlas:profiles"];
   return PUBLIC_TABLES.some((table) => table === section) ? [`atlas:${section}`] : [];
 }

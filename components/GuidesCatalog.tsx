@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "../lib/supabase/client";
 import GuideVoteButton from "./GuideVoteButton";
 
 export interface PublicGuide {
@@ -95,6 +96,38 @@ export default function GuidesCatalog({
   ] = useState<
     Record<string, VoteOverride>
   >({});
+
+  // Cache the public catalog and hydrate only the signed-in member's vote state.
+  useEffect(() => {
+    if (!guides.length) return;
+    let active = true;
+    const supabase = createClient();
+    async function loadVotes() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+      const { data, error } = await supabase
+        .from("guide_votes")
+        .select("guide_id")
+        .eq("user_id", user.id)
+        .in("guide_id", guides.map((guide) => guide.id));
+      if (!active || error) return;
+      const voted = new Set((data ?? []).map((row) => row.guide_id));
+      setVoteOverrides((current) => {
+        const next = { ...current };
+        for (const guide of guides) {
+          if (!(guide.id in current)) {
+            next[guide.id] = {
+              count: guide.upvoteCount,
+              hasUpvoted: voted.has(guide.id),
+            };
+          }
+        }
+        return next;
+      });
+    }
+    void loadVotes();
+    return () => { active = false; };
+  }, [guides]);
 
   const getVoteState = useCallback(
     (guide: PublicGuide): VoteOverride =>

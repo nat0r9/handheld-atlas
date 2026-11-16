@@ -1,7 +1,9 @@
 import PresetsCatalog, {
   type PublicPreset,
 } from "../../components/PresetsCatalog";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
+
+export const revalidate = 600;
 import type { PublicContributor } from "../../lib/contributors";
 
 interface DatabaseSettingItem {
@@ -60,10 +62,6 @@ interface DatabasePreset {
 
 export default async function PresetsPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
     .from("presets")
@@ -126,7 +124,8 @@ export default async function PresetsPage() {
     const { data: contributors } = await supabase
       .from("profiles")
       .select("id, display_name, public_slug, avatar_url, contributor_level, public_profile")
-      .in("id", contributorIds);
+      .in("id", contributorIds)
+        .eq("public_profile", true);
     contributorMap = new Map(((contributors ?? []) as PublicContributor[]).map((profile) => [profile.id, profile]));
   }
 
@@ -182,18 +181,9 @@ export default async function PresetsPage() {
           preset
             .evidence_exception_approved ?? false,
         upvoteCount,
-        hasUpvoted:
-          user !== null &&
-          (preset.preset_votes ?? []).some(
-            (vote) => vote.user_id === user.id,
-          ),
+        hasUpvoted: false,
         confirmationCount,
-        hasConfirmed:
-          user !== null &&
-          (preset.preset_confirmations ?? []).some(
-            (confirmation) =>
-              confirmation.user_id === user.id,
-          ),
+        hasConfirmed: false,
         game: preset.games,
         handheld: preset.handhelds,
         groups,
