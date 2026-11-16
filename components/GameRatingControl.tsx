@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createClient } from "../lib/supabase/client";
 import {
   setGameRating,
   type GameRatingResult,
@@ -14,6 +15,7 @@ interface GameRatingControlProps {
   initialUserRating: number | null;
   initialMonthlyRatingCount?: number;
   isAuthenticated?: boolean;
+  loadUserRating?: boolean;
   compact?: boolean;
   onRatingChange?: (
     gameId: string,
@@ -28,6 +30,7 @@ export default function GameRatingControl({
   initialUserRating,
   initialMonthlyRatingCount = 0,
   isAuthenticated = false,
+  loadUserRating = false,
   compact = false,
   onRatingChange,
 }: GameRatingControlProps) {
@@ -41,6 +44,45 @@ export default function GameRatingControl({
     monthlyRatingCount: initialMonthlyRatingCount,
   });
   const [hoveredRating, setHoveredRating] = useState<number | null>(null);
+  const [authenticated, setAuthenticated] = useState(isAuthenticated);
+  const [isLoadingUserRating, setIsLoadingUserRating] = useState(loadUserRating);
+
+  useEffect(() => {
+    if (!loadUserRating) return;
+
+    let active = true;
+    const supabase = createClient();
+
+    async function loadRating() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active) return;
+      setAuthenticated(Boolean(user));
+      if (!user) {
+        setRatingState((current) => ({ ...current, userRating: null }));
+        setIsLoadingUserRating(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("game_ratings")
+        .select("rating")
+        .eq("game_id", gameId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!active) return;
+      if (!error) {
+        setRatingState((current) => ({
+          ...current,
+          userRating: data?.rating ?? null,
+        }));
+      }
+      setIsLoadingUserRating(false);
+    }
+
+    void loadRating().catch(() => {
+      if (active) setIsLoadingUserRating(false);
+    });
+    return () => { active = false; };
+  }, [gameId, loadUserRating]);
 
   const activeRating = hoveredRating ?? ratingState.userRating ?? 0;
   const confidenceLabel = getRatingConfidenceLabel(ratingState.ratingCount);
@@ -86,7 +128,7 @@ export default function GameRatingControl({
             <button
               key={value}
               type="button"
-              disabled={isPending}
+              disabled={isPending || isLoadingUserRating}
               onMouseEnter={() => setHoveredRating(value)}
               onFocus={() => setHoveredRating(value)}
               onBlur={() => setHoveredRating(null)}
@@ -124,7 +166,7 @@ export default function GameRatingControl({
         {!compact && ratingState.userRating !== null && (
           <button
             type="button"
-            disabled={isPending}
+            disabled={isPending || isLoadingUserRating}
             onClick={() => submitRating(null)}
             className="text-xs font-black text-slate-600 transition hover:text-red-400 disabled:opacity-50"
           >
@@ -138,9 +180,11 @@ export default function GameRatingControl({
           <p>
             {ratingState.userRating !== null
               ? `Your rating: ${ratingState.userRating}/5.`
-              : isAuthenticated
-                ? "Choose a star to rate this game."
-                : "Sign in and choose a star to rate this game."}{" "}
+              : isLoadingUserRating
+                ? "Checking your account..."
+                : authenticated
+                  ? "Choose a star to rate this game."
+                  : "Sign in and choose a star to rate this game."}{" "}
             One live rating per account is used for the all-time score.
           </p>
           <p className="mt-1">

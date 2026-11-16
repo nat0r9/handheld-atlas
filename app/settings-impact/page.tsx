@@ -1,7 +1,7 @@
 import Link from "next/link";
 import SettingsImpactCatalog from "../../components/SettingsImpactCatalog";
 import type { SettingImpactEntry } from "../../lib/settings-impact";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "../../lib/supabase/public";
 
 export const revalidate = 3600;
 

@@ -1,4 +1,4 @@
-import { createClient } from "./supabase/server";
+import { createClient } from "./supabase/public";
 import type { PublicContributor } from "./contributors";
 import type { BenchmarkRecord } from "./benchmarks";
 export async function withBenchmarkContributors(records: BenchmarkRecord[]) {
@@ -15,13 +15,14 @@ export async function withBenchmarkContributors(records: BenchmarkRecord[]) {
     ),
   );
   if (!ids.length) return records;
-  const db = await createClient();
+  const db = createClient();
   const { data, error } = await db
     .from("profiles")
     .select(
       "id,display_name,public_slug,avatar_url,contributor_level,public_profile",
     )
-    .in("id", ids);
+    .in("id", ids)
+    .eq("public_profile", true);
   if (error) {
     console.error("Could not load benchmark contributors:", error.message);
     return records;

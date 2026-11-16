@@ -5,9 +5,11 @@ import ImpactMeter from "../../../components/ImpactMeter";
 import JsonLd from "../../../components/JsonLd";
 import type { SettingImpactEntry } from "../../../lib/settings-impact";
 import { absoluteUrl } from "../../../lib/site";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "../../../lib/supabase/public";
 
 export const revalidate = 3600;
+
+export function generateStaticParams() { return []; }
 
 interface SettingsImpactDetailProps {
   params: Promise<{ slug: string }>;

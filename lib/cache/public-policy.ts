@@ -1,8 +1,9 @@
 // Only these anonymous reads may enter the shared Next.js Data Cache.
 export const PUBLIC_CACHE_SECONDS = 600;
-export const PUBLIC_TABLES = ["games", "handhelds", "benchmarks", "presets", "news", "guides"] as const;
+export const PUBLIC_TABLES = ["games", "handhelds", "benchmarks", "presets", "news", "guides", "profiles"] as const;
 const publicRpcs: Record<string, string[]> = {
   get_game_rating_summaries: ["games"],
+  get_game_rating_summary: ["games"],
   get_monthly_top_games: ["games"],
 };
 export function publicReadTags(url: URL, method: string, headers: Headers, origin: string, key: string): string[] {
@@ -14,6 +15,10 @@ export function publicReadTags(url: URL, method: string, headers: Headers, origi
   const rpcName = resource.startsWith("rpc/") ? resource.slice(4) : "";
   const rpcTags = Object.hasOwn(publicRpcs, rpcName) ? publicRpcs[rpcName] : undefined;
   if (rpcTags) return rpcTags.map((table) => `atlas:${table}`);
+  // Only explicitly public profiles may be stored in the shared cache.
+  if (resource === "profiles") {
+    return url.searchParams.get("public_profile") === "eq.true" ? ["atlas:profiles"] : [];
+  }
   if (!PUBLIC_TABLES.some((table) => table === resource) || url.searchParams.get("status") !== "eq.published") return [];
   const select = url.searchParams.get("select") ?? "";
   // Joined labels and counts must be refreshed when their source changes too.
