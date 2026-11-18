@@ -151,7 +151,7 @@ export default function RootLayout({
         </a>
 
         <div className="flex min-h-screen flex-col">
-          <Header />
+          <div className="atlas-standard-header"><Header /></div>
 
           <div id="main-content" className="flex-1 pt-[4.5rem]" tabIndex={-1}>
             {children}
