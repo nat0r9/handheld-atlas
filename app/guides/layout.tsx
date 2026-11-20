@@ -1,3 +1,4 @@
+import "../editorial.css";
 import type { ReactNode } from "react";
 import { createPageMetadata } from "../../lib/site";
 
@@ -13,5 +14,5 @@ export default function GuidesLayout({
 }: {
   children: ReactNode;
 }) {
-  return children;
+  return <div className="atlas-editorial">{children}</div>;
 }

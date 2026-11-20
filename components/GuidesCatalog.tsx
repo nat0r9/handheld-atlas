@@ -291,12 +291,7 @@ export default function GuidesCatalog({
             <div className="min-w-0">
               <p className="atlas-section-label">Knowledge base</p>
 
-              <h1 className="mt-3 text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-4 sm:text-6xl">
-                Learn faster.
-                <span className="block">
-                  Fix the <span className="atlas-text-red">bullshit.</span>
-                </span>
-              </h1>
+              <h1 className="mt-3 text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:mt-4 sm:text-6xl">Handheld guides</h1>
 
               <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">
                 Optimization, setup, troubleshooting and handheld gaming guides
