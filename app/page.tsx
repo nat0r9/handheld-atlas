@@ -20,7 +20,7 @@ export default async function HomePage() {
     <section className="atlas-cover">
       <picture><source media="(max-width: 700px)" srcSet="/magazine/mobile.webp"/><img className="atlas-art" src="/magazine/desktop.webp" alt="" fetchPriority="high"/></picture>
       <img className="atlas-logo" src="/magazine/logo.webp" alt="HandheldAtlas"/>
-      <nav aria-label="Magazine"><img src="/magazine/emblem.png" alt=""/>{[["Guides","/guides"],["News","/news"],["Devices","/handhelds"],["Search","/search"]].map(([name,url])=><Link prefetch={false} key={url} href={url}>{name}</Link>)}</nav>
+      <nav aria-label="Magazine"><img src="/magazine/emblem.png" alt=""/>{[["Guides","/guides"],["News","/news"],["Devices","/handhelds"],["Search","/search"],["Account","/profile"]].map(([name,url])=><Link prefetch={false} key={url} href={url}>{name}</Link>)}</nav>
       <div className="atlas-lead"><h1>{lead?.title ?? "Explore handheld gaming"}</h1><Link prefetch={false} href={lead ? "/guides/"+lead.slug : "/guides"}>{lead ? "Explore the guide" : "Browse guides"} ↗</Link></div>
       <aside><h2>On the radar</h2>{news.data?.map((item,i)=><Link prefetch={false} key={item.slug} href={"/news/"+item.slug}><img alt="" src={item.cover_image_url || "/magazine/"+images[i]+".webp"}/>{item.title} ↗</Link>)}{!news.data?.length && <Link href="/news">Explore news ↗</Link>}</aside>
     </section>

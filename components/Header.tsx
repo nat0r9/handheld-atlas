@@ -77,6 +77,10 @@ const primaryNavigation: NavigationItem[] = [
 
 export default function Header() {
   const pathname = usePathname();
+  return pathname === "/" ? null : <StandardHeader pathname={pathname} />;
+}
+
+function StandardHeader({ pathname }: { pathname: string }) {
   const router = useRouter();
 
   const [isMenuOpen, setIsMenuOpen] =
