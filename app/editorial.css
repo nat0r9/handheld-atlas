@@ -1,0 +1,38 @@
+.atlas-editorial {
+  --editorial-accent: #d7bcff;
+  --editorial-line: #604284;
+  color: #f8f5ff;
+  background: #100a1c;
+}
+.atlas-editorial .atlas-page {
+  background: radial-gradient(ellipse at 82% 0%, #292044 0%, transparent 38rem), #100a1c;
+}
+.atlas-editorial .atlas-section-label {
+  color: var(--editorial-accent);
+  letter-spacing: .15em;
+}
+.atlas-editorial h1 {
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  font-style: oblique 10deg;
+}
+.atlas-editorial .atlas-card {
+  border-color: #40304f;
+  background-color: #171023;
+}
+.atlas-editorial .atlas-card-hover:focus-within,
+.atlas-editorial .atlas-card-hover:hover {
+  border-color: var(--editorial-line);
+}
+.atlas-editorial article.min-w-0 > p {
+  max-inline-size: 68ch;
+  line-height: 1.75;
+}
+.atlas-editorial article h2.border-l-2 {
+  border-color: var(--editorial-accent);
+  scroll-margin-top: 6rem;
+}
+.atlas-editorial :where(a, button, input, select):focus-visible {
+  outline: 2px solid #9cdaff;
+  outline-offset: 3px;
+}

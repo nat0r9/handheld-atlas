@@ -1,0 +1,2 @@
+-- Superseded by the separately reviewed profile-access change in PR #15.
+-- No database operations are part of the magazine redesign.

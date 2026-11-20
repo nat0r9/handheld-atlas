@@ -1,0 +1,21 @@
+name: Magazine type check
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - '.github/workflows/magazine-check.yml'
+permissions:
+  contents: read
+jobs:
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npx next typegen
+      - run: npx tsc --noEmit

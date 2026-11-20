@@ -16,7 +16,7 @@ interface DatabaseGuide {
   related_handheld_slug: string | null;
   published_at: string | null;
   guide_votes: Array<{
-    user_id: string;
+    count: number;
   }>;
 }
 
@@ -41,9 +41,7 @@ export default async function GuidesPage() {
       related_game_slug,
       related_handheld_slug,
       published_at,
-      guide_votes (
-        user_id
-      )
+      guide_votes(count)
     `)
     .eq("status", "published")
     .order("published_at", {
@@ -78,7 +76,7 @@ export default async function GuidesPage() {
     ),
   );
 
-  const [gamesResult, handheldsResult] =
+  const [gamesResult, handheldsResult, ownVotes] =
     await Promise.all([
       relatedGameSlugs.length > 0
         ? supabase
@@ -102,8 +100,13 @@ export default async function GuidesPage() {
             data: [],
             error: null,
           }),
+      user && databaseGuides.length
+        ? supabase.from("guide_votes").select("guide_id")
+            .eq("user_id", user.id).in("guide_id", databaseGuides.map((guide) => guide.id))
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
+  const votedIds = new Set((ownVotes.data ?? []).map((vote) => vote.guide_id));
   const gameNames = new Map(
     (gamesResult.data ?? []).map((game) => [
       game.slug,
@@ -156,18 +159,15 @@ export default async function GuidesPage() {
           : null,
 
       upvoteCount:
-        guide.guide_votes?.length ?? 0,
+        guide.guide_votes?.[0]?.count ?? 0,
 
       hasUpvoted:
-        user !== null &&
-        (guide.guide_votes ?? []).some(
-          (vote) =>
-            vote.user_id === user.id,
-        ),
+        votedIds.has(guide.id),
     }));
 
   const databaseError =
     error?.message ??
+    ownVotes.error?.message ??
     gamesResult.error?.message ??
     handheldsResult.error?.message ??
     null;
